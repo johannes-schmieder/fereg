@@ -1,7 +1,40 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 — 2026-11-11
 
+fereg's fixed-effect solvers now live in fedemean, the workspace's
+fixed-effect library: an exact elimination of the largest effect for two to
+five categorical effects, conjugate gradients on the full system with Jacobi
+escalating to additive Schwarz, and the modified LSMR engine. The `within`
+dependency is removed. This release breaks compatibility: `solver()` has a new
+grammar, several stored results are renamed, and `feppml` no longer accepts
+`solver(map)`. There are no compatibility aliases; scripts that pass
+`solver()`, `preconditioner()` or the `cmg*()` options, or read
+`e(fe_solver)`, `e(fereg_solver)`, `e(feppml_solver)` or
+`e(fe_block_solvers)`, need updating.
+
+Estimates agree with 0.5.3 within the solver tolerance, most in the last
+digits; samples, ranks and separation decisions are unchanged. Of exactly
+collinear regressors, the one listed first is now kept on every platform. On
+the one-million-row benchmark panel at four threads, the elimination's
+integration measured OLS with two to five effects at 16-32% of its 0.5.3 time
+on the Mac and PPML at 11-34%. Where an
+entry below says results are unchanged bit for bit, the comparison is with the
+exact-elimination runtime that precedes it in this release, not with 0.5.3.
+See [validation](docs/VALIDATION.md) for the evidence on each platform.
+
+- Exact elimination first: OLS Auto with two to five categorical intercept
+  effects and PPML's categorical projections eliminate the largest effect
+  exactly and solve the remaining effects' Schur complement by lockstep PCG
+  with Jacobi on its true diagonal (escalating to block-Jacobi), reported as
+  `cg, reduce(eliminate) precondition(jacobi)`; a decline continues on the
+  full system. Fresh PPML fits first take plain IRLS steps on these
+  projections; a pre-solve that meets the deviance criterion counts as the
+  first of the two certified passes, and the strict checkpoint is unchanged.
+  Shared column statistics, certificates, objectives and weight sums now merge
+  fixed chunks over fixed binary trees, so every route may differ from 0.5.3
+  in the last bits (about 1e-15 relative); results still repeat exactly at a
+  fixed worker count.
 - Platform-independent LSMR and QR arithmetic: the modified LSMR recurrence
   (Givens rotations, residual and norm estimates) and the rank-revealing QR
   (streamed Givens rotations, column norms, the dropped-span and
@@ -28,8 +61,8 @@
   top-level `cmgdegree()`/`cmgsamples()`/`cmgseed()`. Examples are
   `solver(map, accelerate(irons-tuck))`, `solver(lsmr, precondition(schwarz))`,
   `solver(cg)` and `solver(cg, reduce(eliminate) cmgdegree(6))`.
-  `feppml` accepts `auto`, `lsmr` and `cg`. Unsupported combinations return
-  `r(198)`.
+  `feppml` accepts `auto`, `lsmr` and `cg`; its former `solver(map)` is
+  removed. Unsupported combinations return `r(198)`.
 - Report what ran in the same words, against the request. `e(fe_route)` and
   `e(fe_reduction)`, `e(fe_method)`, `e(fe_preconditioner)` (including
   block-Jacobi and Schwarz local solves), `e(fe_acceleration)`,

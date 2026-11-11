@@ -1,6 +1,6 @@
 # fereg user guide
 
-Version 0.5.0 provides two commands: `fereg` for ordinary and weighted least
+Version 0.6.0 provides two commands: `fereg` for ordinary and weighted least
 squares, and `feppml` for Poisson pseudo-maximum likelihood. Both allow models
 with no fixed effects, one fixed effect, or several high-dimensional effects.
 They validate the estimates and requested outputs before publishing results.
@@ -491,7 +491,7 @@ creates synthetic data and preserves/restores the caller's dataset. The
 comparison skips unavailable commands and supports Stata 15 or newer without
 installing a table add-on.
 
-Version 0.5.0 does not support IV/GMM, group outcomes with individual
+Version 0.6.0 does not support IV/GMM, group outcomes with individual
 fixed effects, HAC or Driscoll--Kraay covariance estimators, other GLMs, or GPU
 execution. When the dataset in memory has fewer than one million observations,
 `feppml` temporarily sets Stata's `processors` to 1 to limit competition with

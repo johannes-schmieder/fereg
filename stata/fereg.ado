@@ -1,4 +1,4 @@
-*! fereg 0.5.3 OLS 07nov2026
+*! fereg 0.6.0 OLS 07nov2026
 program define fereg, rclass
     version 15.0
 
@@ -28,7 +28,7 @@ program define fereg, rclass
             exit 198
         }
 
-        di as txt "fereg.ado_version=0.5.3"
+        di as txt "fereg.ado_version=0.6.0"
         if `"`verbose'"' != "" {
             di as txt "Stata OS: `c(os)'"
             di as txt "Stata machine type: `c(machine_type)'"
@@ -41,8 +41,8 @@ program define fereg, rclass
         local plugin_name "`r(plugin_name)'"
         local plugin_file `"`r(plugin_file)'"'
 
-        return local ado_version "0.5.3"
-        return local fereg_version "0.5.3"
+        return local ado_version "0.6.0"
+        return local fereg_version "0.6.0"
 
         return local action_protocol "1.7"
         return local model_wire "2.1"

@@ -49,12 +49,12 @@ static int load_symbol(HMODULE library, const char *name, void *target, size_t t
 static int check_selftest_verbose(stata_call_function call)
 {
     char *arguments[] = {
-        "selftest", "ado=0.5.3", "protocol_major=1", "protocol_minor=7",
+        "selftest", "ado=0.6.0", "protocol_major=1", "protocol_minor=7",
         "stata=18.0", "threads=2", "verbose=1"
     };
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "fereg.plugin_version=0.5.3") == NULL ||
+    if (strstr(display_buffer, "fereg.plugin_version=0.6.0") == NULL ||
         strstr(display_buffer, "fereg.action_protocol=1.7") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
         strstr(display_buffer, "fereg.ols_result_wire=1.7") == NULL ||
@@ -67,7 +67,7 @@ static int check_selftest_verbose(stata_call_function call)
 static int check_selftest(stata_call_function call)
 {
     char *arguments[] = {
-        "selftest", "ado=0.5.3", "protocol_major=1",
+        "selftest", "ado=0.6.0", "protocol_major=1",
         "protocol_minor=0", "stata=18.0", "threads=32",
         "plugin_file=validation.plugin"
     };
@@ -82,14 +82,14 @@ static int check_selftest(stata_call_function call)
 static int check_protocol_mismatch(stata_call_function call)
 {
     char *arguments[] = {
-        "selftest", "ado=0.5.3", "protocol_major=99",
+        "selftest", "ado=0.6.0", "protocol_major=99",
         "protocol_minor=0", "stata=18.0"
     };
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 499) return 1;
     if (strstr(error_buffer, "protocol_mismatch") == NULL ||
         strstr(error_buffer, "restart Stata") == NULL ||
-        strstr(display_buffer, "fereg.plugin_version=0.5.3") == NULL ||
+        strstr(display_buffer, "fereg.plugin_version=0.6.0") == NULL ||
         strstr(display_buffer, "fereg.ado_plugin_compatible=no") == NULL ||
         strstr(display_buffer, "fereg.selftest.overall=") != NULL) return 2;
     return 0;

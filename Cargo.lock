@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "fereg-core"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "cmg",
  "fedemean",
@@ -103,14 +103,14 @@ dependencies = [
 
 [[package]]
 name = "fereg-oracle"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "fereg-core",
 ]
 
 [[package]]
 name = "fereg-plugin"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "fedemean",
  "fereg-core",
@@ -121,7 +121,7 @@ dependencies = [
 
 [[package]]
 name = "fereg-testkit"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "fereg-core",
  "fereg-oracle",

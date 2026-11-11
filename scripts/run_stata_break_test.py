@@ -443,7 +443,7 @@ def main() -> None:
                 "local provenance_load_rc = _rc",
                 "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 "
                 "exit `provenance_load_rc'",
-                'plugin call __fereg_break_provenance, selftest "ado=0.5.3" '
+                'plugin call __fereg_break_provenance, selftest "ado=0.6.0" '
                 '"protocol_major=1" "protocol_minor=7" '
                 '"stata=`c(stata_version)\'" "threads=1" "verbose=1"',
             ]

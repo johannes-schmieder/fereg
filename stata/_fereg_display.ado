@@ -1,4 +1,4 @@
-*! Shared OLS/PPML result display 0.5.3 09nov2026
+*! Shared OLS/PPML result display 0.6.0 11nov2026
 program define _fereg_display
     version 15.0
     syntax [, *]

@@ -1,4 +1,4 @@
-*! fereg PPML prediction adapter 0.5.3 07nov2026
+*! fereg PPML prediction adapter 0.6.0 11nov2026
 program define feppml_p
     version 15.0
     if !inlist(`"`e(cmd)'"', "feppml", "_fereg_estimate_ppml") {

@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "fereg-core"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "cmg",
  "fedemean",
@@ -130,7 +130,7 @@ dependencies = [
 
 [[package]]
 name = "fereg-plugin"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "fereg-core",
  "libc",

@@ -1,4 +1,4 @@
-*! fereg model-wire v2 metadata parser 0.5.3 07nov2026
+*! fereg model-wire v2 metadata parser 0.6.0 11nov2026
 program define fereg_parse, rclass
     version 15.0
     syntax [varlist(fv ts numeric default=none)], ///

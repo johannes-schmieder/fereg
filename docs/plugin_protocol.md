@@ -4,12 +4,12 @@ The platform plugin exports Stata's required `pginit` and `stata_call`; the C
 bridge forwards to Rust's `fereg_dispatch`. Scientific logic and result
 validation remain in Rust.
 
-## 0.5.0 versions
+## 0.6.0 versions
 
 The action handshake, model metadata, OLS result layout, and additive PPML
 request/result layouts are independently versioned:
 
-| Contract | 0.5.0 version |
+| Contract | 0.6.0 version |
 |---|---:|
 | Action protocol | 1.7 |
 | Model wire | 2.1 |
@@ -20,7 +20,7 @@ request/result layouts are independently versioned:
 Estimation requires the exact action and estimator-specific request/result
 versions. Diagnostic `selftest` callers retain the action
 protocol's same-major, not-newer-minor compatibility rule. ADO identity must be
-exactly 0.5.0. Model wire 2.0 remains readable only for the bounded older
+exactly 0.6.0. Model wire 2.0 remains readable only for the bounded older
 no-absorbed-metadata case; model wire v1, unknown majors, and newer minors are
 rejected. The additive PPML wires do not alter or alias the OLS result wire.
 

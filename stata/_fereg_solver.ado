@@ -1,4 +1,4 @@
-*! fereg solver() grammar 0.5.3 09nov2026
+*! fereg solver() grammar 0.6.0 11nov2026
 *! One vocabulary in and out. With spec(), parse solver(method [, reduce()
 *! precondition() accelerate() cmg*()]) for fereg or feppml, validate the
 *! combination and map it to the native route tokens of the request wire

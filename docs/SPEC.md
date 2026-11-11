@@ -2036,8 +2036,8 @@ e(), named/null estimates, data, order and output names. No correction or
 postestimation path makes an extra substantive estimation call.
 
 Retain independently versioned exact estimation handshakes. Current
-versions are action 1.7, model 2.1, OLS result 1.5, PPML request 1.8, PPML
-result 1.5, ado identity 0.5.3 and SPI 3.0. Diagnostics accept same-major,
+versions are action 1.7, model 2.1, OLS result 1.7, PPML request 1.10, PPML
+result 1.5, ado identity 0.6.0 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
 no-absorbed-metadata shape;
 unknown/newer identities and malformed framing fail before observation access.

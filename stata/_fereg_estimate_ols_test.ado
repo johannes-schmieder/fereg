@@ -1,4 +1,4 @@
-*! fereg developer-only OLS transaction adapter 0.5.3 07nov2026
+*! fereg developer-only OLS transaction adapter 0.6.0 11nov2026
 program define _fereg_estimate_ols_test, eclass sortpreserve
     version 15.0
     _fereg_estimate_ols `0'

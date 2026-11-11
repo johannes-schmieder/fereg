@@ -105,7 +105,7 @@ mod tests {
     fn diagnostic_args(extra: &[&str]) -> Vec<String> {
         [
             "selftest",
-            "ado=0.5.3",
+            "ado=0.6.0",
             "protocol_major=1",
             "protocol_minor=7",
             "stata=18.0",
@@ -122,7 +122,7 @@ mod tests {
         let sink = BufferSink::default();
         dispatch_args(&diagnostic_args(&[]), &sink).expect("selftest");
         let output = sink.displayed();
-        assert!(output.contains("fereg.plugin_version=0.5.3"));
+        assert!(output.contains("fereg.plugin_version=0.6.0"));
         assert!(output.contains("fereg.ado_plugin_compatible=yes"));
         assert!(output.contains("fereg.configured_threads=2"));
         assert!(output.contains("fereg.selftest.overall=pass"));
@@ -213,7 +213,7 @@ mod tests {
         let sink = BufferSink::default();
         let args = [
             "selftest".to_owned(),
-            "ado=0.5.3".to_owned(),
+            "ado=0.6.0".to_owned(),
             "protocol_major=99".to_owned(),
             "protocol_minor=0".to_owned(),
             "stata=18.0".to_owned(),
@@ -222,7 +222,7 @@ mod tests {
             dispatch_args(&args, &sink).expect_err("must reject").code,
             ErrorCode::ProtocolMismatch
         );
-        assert!(sink.displayed().contains("fereg.plugin_version=0.5.3"));
+        assert!(sink.displayed().contains("fereg.plugin_version=0.6.0"));
         assert!(sink.displayed().contains("fereg.ado_plugin_compatible=no"));
         assert!(!sink.displayed().contains("fereg.selftest.overall="));
     }

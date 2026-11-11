@@ -1,6 +1,6 @@
 # Installation
 
-`fereg` and `feppml` require Stata 15 or newer. The 0.5.3 binary release supports
+`fereg` and `feppml` require Stata 15 or newer. The 0.6.0 binary release supports
 Linux x86-64, Windows x86-64 and macOS. The macOS plugin contains Apple Silicon
 and Intel code; licensed Mac testing uses Apple Silicon. See
 [validation](VALIDATION.md) for the checks performed on each platform.
@@ -10,12 +10,12 @@ Break during Windows loading may be delayed or unavailable; other Windows hosts
 retain serial loading. The Intel Mac code is included but has not been tested
 in a licensed Intel Mac Stata session.
 
-## Install stable version 0.5.3
+## Install stable version 0.6.0
 
 Start a fresh Stata session and run:
 
 ```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.3/") replace
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.6.0/") replace
 fereg, selftest
 help fereg
 help feppml
@@ -36,7 +36,7 @@ fereg price mpg, absorb(rep78) vce(robust)
 feppml price mpg, absorb(rep78) vce(robust)
 ```
 
-To install the development package, change `v0.5.3` in the URL to `main`.
+To install the development package, change `v0.6.0` in the URL to `main`.
 The community-contributed [`github` installer](https://github.com/haghish/github)
 also installs from `main`:
 
@@ -48,13 +48,13 @@ fereg, selftest
 
 Use the tagged `net install` command when you need a fixed release for replication.
 
-For an offline installation, download `fereg-0.5.3.zip` from the
-[0.5.3 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.3),
+For an offline installation, download `fereg-0.6.0.zip` from the
+[0.6.0 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.6.0),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 
 ```stata
-net install fereg, from("/absolute/path/to/fereg-0.5.3") replace
+net install fereg, from("/absolute/path/to/fereg-0.6.0") replace
 fereg, selftest
 ```
 
@@ -65,23 +65,24 @@ then rerun the direct `net install` command above with `replace`. `clear all`
 does not reliably unload a native plugin. On Windows, loaded plugin files also cannot
 be overwritten. To remove an installed package, run `ado uninstall fereg`.
 
-## CMG dependency consolidation
+## CMG dependency
 
-Version 0.5.3 uses the consolidated upstream CMG 0.2.0 source with its native
-MIT metadata. It retains the existing 32-level hierarchy default and solver
-behavior. Corresponding-source packaging verifies the exact locked dependency
-and its complete vendored file inventory without modifying its license or code.
+Version 0.6.0 uses the published upstream CMG 0.3.0 release (`368eceba`) with
+its native MIT metadata. Its branch-free edge sort and team application of the
+hierarchy levels leave results unchanged bit for bit. Corresponding-source
+packaging verifies the exact locked dependency and its complete vendored file
+inventory without modifying its license or code.
 
 ## Build from source
 
 Source builds need Git, Python 3.11 or newer, Rust installed through
 [rustup](https://rustup.rs/), and a platform C compiler. The repository pins
 Rust 1.85.1; run the commands from the repository root. Native outputs go in
-`dist/`. The commands below check out stable 0.5.3. Use `--branch main` only
+`dist/`. The commands below check out stable 0.6.0. Use `--branch main` only
 when you intend to build the development version.
 
 ```bash
-git clone --depth 1 --branch v0.5.3 https://github.com/johannes-schmieder/fereg.git
+git clone --depth 1 --branch v0.6.0 https://github.com/johannes-schmieder/fereg.git
 cd fereg
 ```
 
@@ -105,7 +106,7 @@ directory is `target/local-install`; to stage another build, choose a fresh
 directory with `--output`. Building successfully on one platform does not
 establish qualification on another.
 
-The release's `fereg-0.5.3-source.zip` contains the project source, exact Cargo
+The release's `fereg-0.6.0-source.zip` contains the project source, exact Cargo
 dependency sources and their license files. Extract it and set the source
 identity from its manifest before using the platform build commands above.
 On macOS/Linux:

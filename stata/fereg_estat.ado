@@ -1,4 +1,4 @@
-*! fereg estat adapter 0.5.3 07nov2026
+*! fereg estat adapter 0.6.0 11nov2026
 program define fereg_estat, rclass
     version 15.0
     if !inlist(`"`e(cmd)'"', "fereg", "_fereg_estimate_ols_test", ///
