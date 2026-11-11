@@ -77,9 +77,39 @@ bytes, 47 files. `dist/` is refreshed from it (runtime `d37bd747…`, the source
 archive hash, CMG `368eceba`), and `check_github_install.py` passes for 38
 files.
 
-Not covered: native Intel-Mac execution, the `staged-install` profile on a
-sealed Windows archive, live Break during Windows loading (waived 2026-11-07)
-and timing; the November campaign on `80b6768e` is descriptive.
+**Strict entry point on the refreshed `dist/`** (`bbc8e958`, Mac): the default
+`./scripts/run_tests.sh` passes, with the installed-package gate on the
+repository's own root package (38 files, bound to `06a805119818`) and 2,509 Rust
+results, none failing. A fresh local `net install` of the root package into
+isolated PLUS/PERSONAL/OLDPLACE/SITE directories installs all 38 files byte for
+byte, once each; the native selftest passes, and the independent checks give
+3.6e-15 (OLS b, SE and covariance against `regress` with dummies for two
+effects) and 2.0e-14 (PPML b against `poisson` with dummies).
+
+**Publication.** [v0.6.0](https://github.com/johannes-schmieder/fereg/releases/tag/v0.6.0)
+(release 441922329, latest) carries only the five assets, uploaded to a draft
+and verified by digest before the tag existed: `fereg-0.6.0.zip`,
+`fereg-0.6.0-source.zip`, their checksums (`1d4af460…`, `ecc97029…`) and
+`macos_source_build.md` (`15b24f6d…`). The annotated tag `v0.6.0` (`ae022c04`)
+names `bbc8e958`, whose `dist/` holds the release plugins; the release was
+published from the draft right after the tag push, and `main` was
+fast-forwarded from `c6511b1a` to `bbc8e958` only after all five public
+downloads matched byte for byte. Fresh HTTP installations on Stata/MP 19
+(Apple Silicon), each into new isolated directories, from the tag URL, from
+`main` and with the actual `github install johannes-schmieder/fereg` (the
+helper itself installed from haghish.github.io into the isolated PLUS) pass
+alike: 38 of 38 installed files exact, plugin resolved from the isolated PLUS,
+selftest `06a805119818`/2026-11-11, OLS 3.6e-15 and PPML 2.0e-14. The release
+list as Stata's `copy` receives it is 252,800 characters on one line (20
+releases), below the helper's 264,392-character limit; the authenticated owner
+view is 269,904 bytes because it also lists the owner-only draft
+`legacy-comparator-v1` (earlier records measured that view). The remaining
+margin, 11,592 characters, is about one more release of this size.
+
+Not covered: native Intel-Mac execution, HTTP installation on Linux and
+Windows, the `staged-install` profile on a sealed Windows archive, live Break
+during Windows loading (waived 2026-11-07) and timing; the November campaign
+on `80b6768e` is descriptive.
 
 ## Exact elimination route and PPML elimination pre-solve, November 8, 2026
 
