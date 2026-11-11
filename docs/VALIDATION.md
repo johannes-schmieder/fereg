@@ -4996,6 +4996,38 @@ lock except the capacity test's):
 audits in fresh processes; rustfmt; both Clippy configurations; the ratchet
 and production identity against `44cd1563`.
 
+## November revision campaign on SCC (80b6768e)
+
+The paper's expanded revision campaign (the November 6 protocol: paired
+default/tight comparison blocks, package-default inference, raw numerical
+deviations, GLFixedEffectModels.jl for PPML and reghdfejl for OLS, Veneto
+included) ran once on `80b6768e`, whose runtime is production-identical to the
+qualified `44cd1563`. The Linux plugin
+(`a21b87b28b4e053f53e9f62360ed8902aa2c0bb3003a882c5d9173964f28a9ec`) was built
+from that commit in SCC job 8549582 and staged as a root package. The frozen
+manifest (`728beacc…`, 779 allocations, 1,297 blocks, 5,188 timed and 992
+diagnostic fits) and policy (`0900bd73…`) reproduce the November 6 run byte for
+byte.
+
+- The two native failures that stopped the November 6 production (blocks 194
+  and 182, a tight PPML fit and two saved-effect diagnostic refits returning
+  r(430)) passed as their frozen blocks in job 8549157 and again in production.
+- The smoke (job 8549679) qualified with both native profiles 19 of 19, and the
+  production array 8549825 completed 779 of 779 tasks with failed=0 and exit 0
+  (175.6 node-hours, 47 hosts). Lifting the task concurrency cap from 8 to 779 at
+  16:51 EST on November 10, at Johannes's request, changed scheduling only.
+- Every native fit passed: 1,297 default and 1,297 tight, plus 260 and 260
+  diagnostic refits. Comparator results keep their 10 command timeouts and 130
+  capture errors; nothing was resampled.
+- Median default fereg time is 0.572 of the paper's beta.15 evidence over the 63
+  matching cells (descriptive, other hosts).
+
+Collection exposed two harness defects, now fixed: production sentinels were
+matched by substring (`4a96ea8f`), and the export's capture hash rejected a
+package's reported log likelihood of −∞ (`10553433`). The
+[campaign record](../bench/results/scc-20261110-revision.md) gives the jobs,
+within-block ratios, deviations, sample differences and export hashes.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
