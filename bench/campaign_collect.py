@@ -32,6 +32,15 @@ def accounting_records(text):
     return result
 
 
+def production_sentinels(logs, context, bundles):
+    """Each task's completion line appears in exactly one production log. Lines
+    are matched whole: task=1 must not match the line of task=10."""
+    from campaign_report import production_job
+    lines = [set(p.read_text(errors='replace').splitlines()) for p in Path(logs).glob('production.*.sge')]
+    return all(sum(f"CAMPAIGN_JOB_COMPLETE job={production_job(context, task)} task={task}" in found for found in lines) == 1
+               for task in range(1, bundles+1))
+
+
 def remote(command):
     return subprocess.run(['ssh', 'scc', command], check=True, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE).stdout
@@ -109,11 +118,7 @@ def collect(context_path, output):
             raise ValueError('scheduler launcher identity changed: '+name)
     sentinels = (output/'environment/COMPLETE').read_text().strip() == 'CAMPAIGN_SETUP_COMPLETE'
     sentinels &= 'CAMPAIGN_JOB_COMPLETE' in (output/'logs/smoke.sge').read_text()
-    from campaign_report import production_job
-    for task in range(1, manifest['policy']['bundles']+1):
-        matches = [p for p in (output/'logs').glob('production.*.sge')
-                   if f"CAMPAIGN_JOB_COMPLETE job={production_job(context, task)} task={task}" in p.read_text()]
-        sentinels &= len(matches) == 1
+    sentinels &= production_sentinels(output/'logs', context, manifest['policy']['bundles'])
     (output/'accounting.json').write_text(json.dumps(dict(jobs=jobs, sentinels_pass=bool(sentinels)), indent=2)+'\n')
     inventory = {str(p.relative_to(output)): hashlib.sha256(p.read_bytes()).hexdigest()
                  for p in output.rglob('*') if p.is_file()}

@@ -82,5 +82,22 @@ class Staging(unittest.TestCase):
         self.assertIn('#$ -l num_proc=28', text)
 
 
+class Collection(unittest.TestCase):
+    def test_production_sentinels_match_whole_lines(self):
+        from campaign_collect import production_sentinels
+        with tempfile.TemporaryDirectory() as directory:
+            logs = Path(directory)
+            for task in range(1, 13):
+                (logs/f'production.{task}.sge').write_text(f'fits\nCAMPAIGN_JOB_COMPLETE job=77 task={task}\n')
+            context = dict(production_job='77')
+            # task=1 is a prefix of task=10, 11 and 12; each still matches one log.
+            self.assertTrue(production_sentinels(logs, context, 12))
+            (logs/'production.12.sge').write_text('fits\n')
+            self.assertFalse(production_sentinels(logs, context, 12))
+            (logs/'production.12.sge').write_text('CAMPAIGN_JOB_COMPLETE job=77 task=12\n')
+            (logs/'production.13.sge').write_text('CAMPAIGN_JOB_COMPLETE job=77 task=12\n')
+            self.assertFalse(production_sentinels(logs, context, 12))
+
+
 if __name__ == '__main__':
     unittest.main()
