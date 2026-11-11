@@ -11,6 +11,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 
@@ -90,10 +91,17 @@ def validate_native_results(native, repeats, workers):
     return limited
 
 
+def objective_value(text):
+    """A reported objective as binary64; a non-finite value (GLFixedEffectModels.jl
+    reports a log likelihood of -inf for fractional Poisson outcomes) as its repr."""
+    value = float(text)
+    return value if math.isfinite(value) else repr(value)
+
+
 def capture_hashes(records, cells):
     models = {c['id']: c['model'] for c in cells}
     return {f"{r['cell']}/{r['arm']}-r{r['repetition']}": canonical(dict(
-                capture=r['capture'], objective=float(r['metadata']['rss' if models[r['cell']]=='ols' else 'll'])))
+                capture=r['capture'], objective=objective_value(r['metadata']['rss' if models[r['cell']]=='ols' else 'll'])))
             for r in records if 'capture' in r}
 
 
@@ -174,7 +182,8 @@ def export(root, report, output, prefix):
         production_comparison_ratio_convention='Per-fit ratio is fereg/comparator; summary CSV speedup is the '
                                                'median paired comparator/fereg ratio over agreeing repetitions.',
         capture_hash_encoding="SHA-256 of UTF-8 json.dumps({capture, objective}, sort_keys=True, "
-                              "separators=(',', ':'), allow_nan=False). Objective is parsed as binary64.",
+                              "separators=(',', ':'), allow_nan=False). Objective is parsed as binary64; "
+                              "a non-finite objective is encoded as its repr string.",
         capture_sha256=captured, artifacts=json.loads((root/'collection-sha256.json').read_text()),
         runtime_inventory_sha256=digest(root/'environment/runtime.json'), exporter_sha256=digest(Path(__file__)),
         report_pdf_sha256=digest(pdf), report_pdf_pages=len(re.findall(rb'/Type\s*/Page[^s]', pdf.read_bytes())),

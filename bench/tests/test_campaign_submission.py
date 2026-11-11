@@ -98,6 +98,17 @@ class Collection(unittest.TestCase):
             (logs/'production.13.sge').write_text('CAMPAIGN_JOB_COMPLETE job=77 task=12\n')
             self.assertFalse(production_sentinels(logs, context, 12))
 
+    def test_capture_hashes_accept_a_package_minus_infinity_likelihood(self):
+        from campaign_export import capture_hashes
+        cells = [dict(id='p', model='ppml'), dict(id='o', model='ols')]
+        records = [dict(cell='p', arm='glfixedeffects', repetition=1, capture=dict(beta=[1.0]), metadata=dict(ll='-Inf')),
+                   dict(cell='p', arm='fereg', repetition=1, capture=dict(beta=[1.0]), metadata=dict(ll='-12.5')),
+                   dict(cell='o', arm='fereg', repetition=1, capture=dict(beta=[1.0]), metadata=dict(rss='2.0'))]
+        hashes = capture_hashes(records, cells)
+        self.assertEqual(len(hashes), 3)
+        changed = capture_hashes([dict(records[0], metadata=dict(ll='-12.5'))], cells)
+        self.assertNotEqual(hashes['p/glfixedeffects-r1'], changed['p/glfixedeffects-r1'])
+
 
 if __name__ == '__main__':
     unittest.main()

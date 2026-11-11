@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Collect, report and export a finished revision campaign inside an SCC compute job.
 
-  campaign_finalize.py RUN_ROOT OUTPUT --prefix scc-YYYYMMDD-revision [--collector PATH]
+  campaign_finalize.py RUN_ROOT OUTPUT --prefix scc-YYYYMMDD-revision [--overrides DIR]
 
 Runs the run's own frozen bench tooling (RUN_ROOT/source/bench): campaign_collect
 (with its scheduler and file commands executed on this node instead of through
@@ -9,15 +9,15 @@ Runs the run's own frozen bench tooling (RUN_ROOT/source/bench): campaign_collec
 the numerical deviations in the shape of the paper's outreach evidence
 (PREFIX-outreach-deviations.json and PREFIX-coefficient-deviations.csv, with every repetition
 and the unavailable positions), copies the context and qualification receipt, and
-writes OUTPUT/export/SHA256SUMS. The run root is only read. --collector loads a
-later campaign_collect.py (for example one with a collection fix) in place of the
-run's own; PREFIX-finalize.json records the driver, collector, job and host.
+writes OUTPUT/export/SHA256SUMS. The run root is only read. Modules in --overrides
+DIR (later versions with collection or export fixes) shadow the run's own;
+PREFIX-finalize.json records the driver, each override and the run's version it
+replaces, the job and the host.
 """
 from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import importlib.util
 import json
 import os
 import socket
@@ -111,14 +111,14 @@ def deviations(campaign, prefix, output):
     return document
 
 
-def main(root, output, prefix, collector=None):
+def main(root, output, prefix, overrides=None):
     sys.path.insert(0, str(root/'source/bench'))
-    collector = Path(collector) if collector else root/'source/bench/campaign_collect.py'
-    spec = importlib.util.spec_from_file_location('campaign_collect', collector)
-    campaign_collect = importlib.util.module_from_spec(spec)
-    sys.modules['campaign_collect'] = campaign_collect
-    spec.loader.exec_module(campaign_collect)
-    import campaign_report, campaign_export
+    replaced = {}
+    if overrides:
+        sys.path.insert(0, str(overrides))
+        replaced = {p.name: dict(sha256=sha256(p), run_sha256=sha256(root/'source/bench'/p.name))
+                    for p in sorted(Path(overrides).glob('campaign_*.py')) if p.name != Path(__file__).name}
+    import campaign_collect, campaign_report, campaign_export
     campaign_collect.remote = local
     output.mkdir(parents=False, exist_ok=False)
     subprocess.run(['sha256sum', '-c', '--quiet', 'input/SHA256SUMS'], cwd=root, check=True)
@@ -137,8 +137,7 @@ def main(root, output, prefix, collector=None):
     shutil.copy2(collection/'qualification.json', output/'export'/f'{prefix}-qualification.json')
     (output/'export'/f'{prefix}-finalize.json').write_text(json.dumps(dict(
         run_root=str(root), source_commit=json.loads((root/'input/source.json').read_text())['commit'],
-        driver_sha256=sha256(Path(__file__)), collector=str(collector), collector_sha256=sha256(collector),
-        run_collector_sha256=sha256(root/'source/bench/campaign_collect.py'),
+        driver_sha256=sha256(Path(__file__)), overrides=replaced,
         job=os.environ.get('JOB_ID'), host=socket.gethostname(),
         scheduling_changes=json.loads((collection/'context.json').read_text()).get('scheduling_changes', [])),
         indent=2)+'\n')
@@ -157,6 +156,6 @@ if __name__ == '__main__':
     parser.add_argument('root', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('--prefix', required=True)
-    parser.add_argument('--collector', type=Path)
+    parser.add_argument('--overrides', type=Path)
     args = parser.parse_args()
-    main(args.root, args.output, args.prefix, args.collector)
+    main(args.root, args.output, args.prefix, args.overrides)
