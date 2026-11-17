@@ -251,7 +251,8 @@
         "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
         "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
         "tests/stata/installation/frequency_singleton_validation.do",
-        "tests/stata/installation/slope_dof_validation.do"
+        "tests/stata/installation/slope_dof_validation.do",
+        "tests/stata/postestimation/ols_empty_axis_prediction.do"
       ],
       "run_break_fixture": true,
       "timeout_seconds": 13800,
@@ -392,7 +393,10 @@
         "tests/stata/installation/observation_stores.do",
         "tests/stata/installation/factor_availability.do",
         "tests/stata/installation/frequency_singleton_validation.do",
-        "tests/stata/installation/slope_dof_validation.do"
+        "tests/stata/installation/slope_dof_validation.do",
+        "tests/stata/installation/indepvars_long_names.do",
+        "tests/stata/installation/public_metadata_transaction.do",
+        "tests/stata/postestimation/ols_empty_axis_prediction.do"
       ],
       "run_break_fixture": true,
       "run_ppml_break_fixture": true,
@@ -506,6 +510,14 @@
         "tests/stata/development/parallel_input_oracle.do",
         "tests/stata/development/rank_pruned_products.do",
         "tests/stata/development/reference_factor_precedence.do",
+        "tests/stata/development/stability061_explicit_omission.do",
+        "tests/stata/development/stability061_offset_start.do",
+        "tests/stata/development/stability061_ppml_affine_offset.do",
+        "tests/stata/development/stability061_ppml_crossed_aliases.do",
+        "tests/stata/development/stability061_ppml_nearcontrast.do",
+        "tests/stata/development/stability061_ppml_partition_contrasts.do",
+        "tests/stata/development/stability061_ppml_sparse_contrast.do",
+        "tests/stata/development/stability061_weight_candidate_once.do",
         "tests/stata/development/within_weighted_ols.do"
       ],
       "timeout_seconds": 13800,
