@@ -5604,3 +5604,99 @@ fn six_and_seven_effect_fits_run_the_full_system_and_match_the_established_route
         assert!(relative_infinity_difference(serial.eta(), full.eta()) <= 1e-12);
     }
 }
+
+#[test]
+fn affine_regressor_with_absorbed_intercepts_matches_exact_poisson_optimum() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
+    let n = 48;
+    let g: Vec<_> = (0..n).map(|i| (i / 12 + 1) as f64).collect();
+    let h: Vec<_> = (0..n).map(|i| (i % 3 + 1) as f64).collect();
+    let base: Vec<_> = (0..n)
+        .map(|i| if i / 6 % 2 == 0 { -1.0 } else { 1.0 })
+        .collect();
+    let y: Vec<_> = (0..n)
+        .map(|i| (g[i] + 1.0) * if base[i] < 0.0 { 2.0 } else { 4.0 })
+        .collect();
+    let eta: Vec<_> = y.iter().map(|v| v.ln()).collect();
+    let weights: Vec<_> = (0..n).map(|i| 1.0 + (i % 5) as f64).collect();
+    for shift in [0.0, 1e8, 1e15] {
+        for slope in [false, true] {
+            let x: Vec<_> = base.iter().map(|v| v + shift).collect();
+            let prepared = if slope {
+                prepared_joint_slopes(&y, &x, &g, &h)
+            } else {
+                prepared_two_fe_with_codes(&y, &x, &g, &h)
+            };
+            for mode in [
+                PreparedOlsExecutionMode::Fast,
+                PreparedOlsExecutionMode::Low,
+            ] {
+                let mut config = PreparedPpmlIrlsConfig::default();
+                config.linear.execution.mode = mode;
+                config.memory.requested = if mode == PreparedOlsExecutionMode::Low {
+                    crate::options::MemoryMode::Low
+                } else {
+                    crate::options::MemoryMode::Fast
+                };
+                let plan =
+                    plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+                let fit = fit_prepared_ppml_irls(
+                    &prepared,
+                    &y,
+                    &weights,
+                    &vec![0.0; n],
+                    config,
+                    plan,
+                    None,
+                )
+                .unwrap_or_else(|error| {
+                    panic!("shift={shift}, slope={slope}, mode={mode:?}: {error:?}")
+                });
+                let beta = fit.coefficients()[0]
+                    .value
+                    .expect("identified shifted slope");
+                assert!(
+                    (beta - 2.0_f64.ln() / 2.0).abs() < 1e-8,
+                    "shift={shift}, slope={slope}, mode={mode:?}, beta={beta}"
+                );
+                assert!(
+                    relative_infinity_difference(fit.eta(), &eta) < 1e-8,
+                    "shift={shift}, slope={slope}, mode={mode:?}, eta={:?}",
+                    fit.eta()
+                );
+            }
+        }
+    }
+}
+
+#[path = "offset_start_tests.rs"]
+mod offset_start_tests;
+
+#[test]
+fn affine_no_fe_poisson_matches_two_cell_optimum() {
+    let n = 48;
+    let y: Vec<_> = (0..n)
+        .map(|i| if i % 2 == 0 { 2.0_f64 } else { 4.0 })
+        .collect();
+    let eta: Vec<_> = y.iter().map(|v| v.ln()).collect();
+    for shift in [0.0, 1e6, 1e8, 1e15] {
+        let x: Vec<_> = (0..n)
+            .map(|i| shift + if i % 2 == 0 { -1.0 } else { 1.0 })
+            .collect();
+        let prepared = prepared(&y, &[x]);
+        let config = PreparedPpmlIrlsConfig::default();
+        let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+        let fit = fit_prepared_ppml_irls(
+            &prepared,
+            &y,
+            &vec![1.0; n],
+            &vec![0.0; n],
+            config,
+            plan,
+            None,
+        )
+        .unwrap_or_else(|e| panic!("shift={shift}: {e}"));
+        assert!((fit.coefficients()[0].value.unwrap() - 2.0_f64.ln() / 2.0).abs() < 1e-8);
+        assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-8);
+    }
+}

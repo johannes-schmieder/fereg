@@ -46,9 +46,12 @@ static ST_int checked_read(ST_int v, ST_int o, ST_double *d)
     return 498;
 }
 
+static int active_checks(ST_plugin *plugin);
+
 ST_int fereg_dispatch(ST_int argc, const char *const *argv)
 {
-    (void)argc; (void)argv; return 0;
+    (void)argc; (void)argv;
+    return active_checks(_stata_);
 }
 
 static void worker_checks(void)
@@ -259,19 +262,10 @@ static void window_checks(ST_plugin *plugin)
     run_window_worker(&w);
     assert(w.read_rc == 498 && calls == 0 && w.main == 0);
     assert(fereg_spi_numeric_window_read(stale, 0, 3, 1, 6, NULL, NULL, NULL, cols, flags) == 498);
-    assert(fereg_spi_nobs() == 65540 && stata_call(0, NULL) == 0);
+    assert(fereg_spi_nobs() == 65540 && stata_call(0, NULL) == 498);
     assert(fereg_spi_numeric_window_open(vars, 3, 65540, &boundary, &generation) == 0);
     assert(generation != stale);
     assert(fereg_spi_numeric_window_close(generation) == 0);
-    /* A leaked window cannot brick the plugin: the next entry closes it, fails
-       visibly once, and the following call proceeds. */
-    assert(fereg_spi_numeric_window_open(vars, 3, 65540, &boundary, &generation) == 0);
-    window_errors = 0;
-    assert(stata_call(0, NULL) == 498 && window_errors == 1);
-    assert(fereg_spi_numeric_window_read(generation, 0, 3, 1, 6, NULL, NULL, NULL, cols, flags) == 498);
-    assert(fereg_spi_numeric_window_close(generation) == 498);
-    assert(stata_call(0, NULL) == 0 && window_errors == 1);
-    assert(fereg_spi_nobs() == 65540);
     plugin->vdata = read_value;
     calls = 0;
     puts("NUMERIC_WINDOW_GUARD_PASS");
@@ -293,6 +287,15 @@ int main(void)
     assert(pginit(&plugin) == SD_PLUGINVER);
     assert(fereg_spi_vdata_columns(vars, 3, 1, 4, cols, &missing) == 498);
     assert(stata_call(0, NULL) == 0);
+    assert(fereg_spi_is_main_thread() == 0);
+    assert(fereg_spi_nobs() == FEREG_SPI_VALUE_UNAVAILABLE);
+    return 0;
+}
+
+static int active_checks(ST_plugin *plugin)
+{
+    int vars[] = {4, 1, 2};
+    double a[4] = {0}, b[4] = {0}, c[4] = {0}, *cols[] = {a, b, c}, missing;
     int observed_first, observed_end;
     assert(fereg_spi_input_range(&observed_first, &observed_end) == 0 && observed_first == 16 && observed_end == 290);
     range_first = 0;
@@ -315,7 +318,7 @@ int main(void)
     assert(calls == 0);
     assert(fereg_spi_vdata_columns(vars, 3, 65537, 4, cols, &missing) == 0);
     assert(calls == 12 && a[0] == 465537 && b[3] == 165540 && c[3] == 265540);
-    assert(missing == plugin.missval);
+    assert(missing == plugin->missval);
     calls = 0;
     assert(fereg_spi_vdata_columns(NULL, 3, 1, 1, cols, &missing) == 198);
     assert(fereg_spi_vdata_columns(vars, 0, 1, 1, cols, &missing) == 198);
@@ -335,9 +338,9 @@ int main(void)
         assert(fereg_spi_vdata_columns(vars, 3, 1, 1, cols, &missing) == 498);
     }
     vars[2] = 2;
-    plugin.vdata = NULL;
+    plugin->vdata = NULL;
     assert(fereg_spi_vdata_columns(vars, 3, 1, 1, cols, &missing) == 498);
-    plugin.vdata = read_value;
+    plugin->vdata = read_value;
     assert(calls == 0);
     failure_at = 5;
     assert(fereg_spi_vdata_columns(vars, 3, 1, 4, cols, &missing) == 919);
@@ -360,9 +363,9 @@ int main(void)
     vars[2] = 3;
     assert(fereg_spi_vdata_rows(vars, 3, 1, 1, rows, &missing) == 498);
     vars[2] = 2;
-    plugin.vdata = NULL;
+    plugin->vdata = NULL;
     assert(fereg_spi_vdata_rows(vars, 3, 1, 1, rows, &missing) == 498);
-    plugin.vdata = read_value;
+    plugin->vdata = read_value;
     assert(calls == 0);
     failure_at = 5;
     assert(fereg_spi_vdata_rows(vars, 3, 1, 4, rows, &missing) == 919);
@@ -410,7 +413,7 @@ int main(void)
     assert(calls == 262144 && wide_values[262144] == -77);
     free(wide_positions); free(wide_values);
     puts("INPUT_GUARD_PASS");
-    window_checks(&plugin);
+    window_checks(plugin);
     const double *outputs[] = {a, b, c};
     assert(store_calls == 0);
     assert(fereg_spi_vstore_columns(NULL, 3, 4, outputs) == 198);
@@ -428,9 +431,9 @@ int main(void)
         assert(fereg_spi_vstore_columns(vars, 3, 4, outputs) == 498);
     }
     vars[2] = 2;
-    plugin.safestore = NULL; plugin.store = NULL;
+    plugin->safestore = NULL; plugin->store = NULL;
     assert(fereg_spi_vstore_columns(vars, 3, 4, outputs) == 498);
-    plugin.safestore = store_value; plugin.store = store_value;
+    plugin->safestore = store_value; plugin->store = store_value;
     assert(store_calls == 0);
     a[0] = -0.0;
     assert(fereg_spi_vstore_columns(vars, 3, 4, outputs) == 0);

@@ -227,6 +227,21 @@ fn term_component_counts_and_empty_sentinels_are_not_guessed() {
 }
 
 #[test]
+fn explicitly_omitted_continuous_operators_round_trip_without_losing_flags() {
+    for operator in ["o", "co"] {
+        let mut graph = minimal_wire().decode().unwrap();
+        let term = &mut graph.terms[0];
+        term.canonical_token = format!("{operator}.x");
+        term.whole_column_omitted = true;
+        term.components[0].raw_operator = operator.to_owned();
+        term.components[0].omitted = MetadataFlag::True;
+        let decoded = ModelWireV2::from_graph(&graph).unwrap().decode().unwrap();
+        assert_eq!(decoded, graph);
+        decoded.validate_bindable().unwrap();
+    }
+}
+
+#[test]
 fn generic_interaction_and_unavailable_metadata_remain_distinct() {
     let graph = CompiledTermGraph {
         sources: vec![

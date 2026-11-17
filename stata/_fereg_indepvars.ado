@@ -1,4 +1,4 @@
-*! fereg e(indepvars) reconstruction shared by OLS and PPML 0.6.0 11nov2026
+*! fereg e(indepvars) reconstruction shared by OLS and PPML 0.6.1 16nov2026
 program define _fereg_indepvars
     version 15.0
     // Pinned reghdfe's e(indepvars) excludes syntax/base coordinates,
@@ -6,7 +6,10 @@ program define _fereg_indepvars
     // factor component with Stata's nonbase `bn' marker. The posted b/V
     // stripe remains the full omission-marked axis. The result is returned
     // in the caller's local `target', so r() is left untouched.
-    syntax , TARGET(name) COUNT(integer) STATUS(string) [NAMES(string asis)]
+    syntax , TARGET(name) COUNT(integer) STATUS(string) [NAMES(string)]
+    // Strip the option wrapper before : word tokenization. Keeping it with
+    // string asis collapses short lists and overflows Stata's quoted-word
+    // parser for long coefficient axes.
     local intended_indepvars
     // Stata 15 cannot subscript e() matrices directly; read a copy.
     tempname status_matrix

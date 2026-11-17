@@ -161,5 +161,40 @@ if _rc exit 9123
 * Diagnostic r(9124) identifies this scientific fixture.
 capture noisily do "tests/stata/development/ols_weighted_schur.do"
 if _rc exit 9124
+* Stability-release regressions run against the installed candidate binary.
+* Each assertion remains authoritative; the wrapper reports its bounded code.
+capture noisily do "tests/stata/installation/indepvars_long_names.do"
+if _rc exit 9125
+capture noisily do "tests/stata/installation/public_metadata_transaction.do"
+if _rc exit 9126
+capture noisily do "tests/stata/postestimation/ols_empty_axis_prediction.do"
+if _rc exit 9127
+capture noisily do "tests/stata/development/stability061_weight_candidate_once.do"
+if _rc exit 9128
+capture noisily do "tests/stata/development/stability061_explicit_omission.do"
+if _rc exit 9129
+capture noisily do "tests/stata/development/stability061_offset_start.do"
+if _rc exit 9130
+capture noisily do "tests/stata/development/stability061_ppml_affine_offset.do"
+if _rc exit 9131
+capture noisily do "tests/stata/development/stability061_ppml_nearcontrast.do"
+if _rc exit 9132
+capture noisily do "tests/stata/development/stability061_ppml_partition_contrasts.do"
+if _rc exit 9134
+capture noisily do "tests/stata/development/stability061_ppml_sparse_contrast.do"
+if _rc exit 9135
+capture noisily do "tests/stata/development/stability061_ppml_crossed_aliases.do"
+if _rc exit 9136
+* Fresh Python processes test changing host threads and native error recovery.
+shell python scripts/check_pystata_threads.py ///
+    --utilities "C:/Program Files/Stata19/utilities" ///
+    --package target/windows-install --output target/windows-pystata
+capture confirm file "target/windows-pystata/pystata.status"
+if _rc exit 9133
+tempname pystata_result
+file open `pystata_result' using "target/windows-pystata/pystata.status", read text
+file read `pystata_result' pystata_status
+file close `pystata_result'
+if `"`pystata_status'"' != "PYSTATA_THREADS=PASS" exit 9133
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass

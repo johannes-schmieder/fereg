@@ -29,7 +29,7 @@ class ReleaseStagingTests(unittest.TestCase):
     def test_posted_release_label_matches_the_release_tag(self) -> None:
         # e(fereg_version) and the selftest's r(fereg_version) name the release.
         label = stage_release.RELEASE_TAG.removeprefix("v")
-        for name in ("fereg.ado", "_fereg_estimate_public.ado", "_fereg_estimate_ppml.ado"):
+        for name in ("fereg.ado", "_fereg_estimate_ols.ado", "_fereg_estimate_ppml.ado"):
             text = (ROOT / "stata" / name).read_text()
             self.assertIn(f'fereg_version "{label}"', text, name)
 
@@ -38,7 +38,7 @@ class ReleaseStagingTests(unittest.TestCase):
             stage_release.PRODUCTION_STATA_FILES,
             self.PRODUCTION_STATA_FILES,
         )
-        self.assertEqual(stage_release.VERSION, "0.6.0")
+        self.assertEqual(stage_release.VERSION, "0.6.1")
     def test_ppml_objects_are_bound_to_source_and_oldest_compiler(self):
         stage_release.validate_ppml_mata_objects(ROOT / "stata")
         with tempfile.TemporaryDirectory() as directory:
@@ -146,7 +146,7 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertIn(prefix + '_fereg_factor_sample.ado', names)
             self.assertNotIn(prefix + 'LEGACY_COMPARATOR.json', names)
             self.assertFalse(any('fereg_legacy_' in name for name in names))
-            self.assertEqual(manifest["version"], "0.6.0")
+            self.assertEqual(manifest["version"], "0.6.1")
             self.assertEqual(manifest["phase"], "stable")
             # The manifest names the wires the runtime actually speaks.
             protocol = (ROOT / "crates/fereg-core/src/protocol.rs").read_text(encoding="utf-8")
@@ -236,7 +236,7 @@ class ReleaseStagingTests(unittest.TestCase):
                 )
             )
             self.assertFalse(any(name.endswith(".pdf") for name in names))
-            self.assertEqual(source_manifest["version"], "0.6.0")
+            self.assertEqual(source_manifest["version"], "0.6.1")
 
     def test_checksum_mismatch_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:

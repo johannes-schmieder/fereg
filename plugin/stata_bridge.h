@@ -23,8 +23,9 @@ enum {
 
 /*
  * These wrappers are internal to the one-file plugin and may only call SPI
- * functions after the official pginit() has initialized _stata_ and the first
- * valid stata_call() has bound the bridge to Stata's calling thread.
+ * functions after the official pginit() has initialized _stata_ and while a
+ * valid stata_call() owns the bridge on its calling thread. Sequential calls
+ * may use different host threads; overlapping and reentrant calls are refused.
  * Functions returning an SPI return code use 498 for an unavailable session.
  * Scalar metadata functions use -1. Predicate fallbacks are deliberately
  * fail-closed: stop/missing return true, while selected-observation returns

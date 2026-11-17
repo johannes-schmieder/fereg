@@ -17,6 +17,7 @@ use crate::ols::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 #[derive(Debug, Clone, Copy)]
 pub(super) enum BoundColumn<'a> {
     Numeric(&'a [f64]),
+    Response(&'a [f64]),
     Generated(&'a PreparedOlsData, usize),
 }
 impl<'a> BoundColumn<'a> {
@@ -42,8 +43,24 @@ impl<'a> BoundColumn<'a> {
     }
     #[inline]
     pub(super) fn value(self, row: usize) -> Result<f64> {
+        let raw = self.raw_value(row)?;
+        if matches!(self, Self::Response(_)) {
+            return Ok(raw);
+        }
+        // Keep the location outside every group mean. Otherwise a weighted
+        // mean near 1e15 loses unit-scale information before subtraction.
+        let centered = raw - self.raw_value(0)?;
+        if centered.is_finite() {
+            Ok(centered)
+        } else {
+            Err(numerical())
+        }
+    }
+
+    #[inline]
+    fn raw_value(self, row: usize) -> Result<f64> {
         match self {
-            Self::Numeric(values) => Ok(values[row]),
+            Self::Numeric(values) | Self::Response(values) => Ok(values[row]),
             Self::Generated(prepared, column) => prepared.fit_column_value(column, row),
         }
     }
@@ -356,7 +373,7 @@ impl ImplicitCenteredDesign {
             .try_for_each(|(index, center)| -> Result<()> {
                 let (position, group) = (index / groups, index % groups);
                 let column = if position == columns {
-                    BoundColumn::Numeric(response)
+                    BoundColumn::Response(response)
                 } else {
                     BoundColumn::new(prepared, generated[position])?
                 };
@@ -377,7 +394,7 @@ impl ImplicitCenteredDesign {
             .enumerate()
             .try_for_each(|(position, stats)| -> Result<()> {
                 let column = if position == columns {
-                    BoundColumn::Numeric(response)
+                    BoundColumn::Response(response)
                 } else {
                     BoundColumn::new(prepared, generated[position])?
                 };
@@ -385,9 +402,9 @@ impl ImplicitCenteredDesign {
                     (0., 1., 0., 1.);
                 let (mut sum, mut correction) = (0., 0.);
                 for (row, &w) in normalized.iter().enumerate() {
-                    let value = column.value(row)?;
-                    let centered =
-                        value - centers[position * groups + effect.codes()[row] as usize];
+                    let value = column.raw_value(row)?;
+                    let centered = column.value(row)?
+                        - centers[position * groups + effect.codes()[row] as usize];
                     update_scaled_square(w.sqrt() * value, &mut raw_scale, &mut raw_sum)?;
                     update_scaled_square(w.sqrt() * centered, &mut within_scale, &mut within_sum)?;
                     compensated_add(w * value, &mut sum, &mut correction)?;
@@ -412,7 +429,7 @@ impl ImplicitCenteredDesign {
             .enumerate()
             .try_for_each(|(position, stats)| -> Result<()> {
                 let column = if position == columns {
-                    BoundColumn::Numeric(response)
+                    BoundColumn::Response(response)
                 } else {
                     BoundColumn::new(prepared, generated[position])?
                 };

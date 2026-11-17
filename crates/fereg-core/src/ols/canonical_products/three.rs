@@ -263,6 +263,11 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 compensated_add(weight * value, &mut sum, &mut correction)?;
             }
             *norm = scale * square.sqrt();
+            if j != 0 {
+                *norm = crate::ols::centered::reference_norm(n, *norm, |row| {
+                    Ok((columns[j].value(row)?, w[row]))
+                })?;
+            }
             *mean = (sum + correction) / total;
             if !norm.is_finite() || !mean.is_finite() {
                 return Err(declined());

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.1 — in development
+
+Stability and correctness repairs; candidate validation is in progress.
+
+- Recheck suspicious projected rank before freezing PPML coefficients; correct
+  reported-inverse certification under changes of regressor units.
+- Strengthen full-model separation checks, including contrasts between controls
+  and fixed effects and unresolved near-dependent directions.
+- Preserve identified finite and absorbed-slope variation under large shifts;
+  stabilize nonzero-offset initialization without discarding offset components.
+- Allow serialized PyStata calls from different host threads while rejecting
+  concurrent/reentrant native calls and retaining numeric-window safeguards.
+- Fix long coefficient-name lists and factor metadata; include public OLS
+  metadata in atomic rollback.
+- Evaluate weighted candidate restrictions once, accept explicit continuous
+  omission operators, and support prediction with an empty coefficient axis.
+- Add independent adversarial mathematical witnesses and platform integration
+  checks for these cases. Detailed final coverage remains pending.
+
+
 ## 0.6.0 — 2026-11-11
 
 fereg's fixed-effect solvers now live in fedemean, the workspace's

@@ -1,4 +1,4 @@
-*! fereg_run 0.6.0 11nov2026
+*! fereg_run 0.6.1 16nov2026
 *! Run named examples embedded in fereg.sthlp.
 program define fereg_run
     version 15.0

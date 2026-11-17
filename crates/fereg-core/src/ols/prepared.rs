@@ -516,7 +516,7 @@ fn compile_column_kind(
                     component.time_series_state,
                     TimeSeriesState::None | TimeSeriesState::Materialized
                 )
-                && matches!(component.raw_operator.as_str(), "" | "c" | "co") =>
+                && matches!(component.raw_operator.as_str(), "" | "c" | "o" | "co") =>
         {
             PreparedOlsColumnKind::Continuous {
                 source: component.source,
@@ -2518,6 +2518,28 @@ pub(crate) mod tests {
             model.coefficients[0].status,
             PreparedOlsCoefficientStatus::SyntaxOmitted
         );
+    }
+
+    #[test]
+    fn explicit_continuous_omission_compiles_to_preserved_zero_slot() {
+        for operator in ["o", "co"] {
+            let mut request = request(1, false);
+            let term = &mut request.model.terms[0];
+            term.canonical_token = format!("{operator}.x1");
+            term.whole_column_omitted = true;
+            term.components[0].raw_operator = operator.to_owned();
+            term.components[0].omitted = MetadataFlag::True;
+            let model = request
+                .validate_and_compile()
+                .expect("omitted continuous term");
+            assert!(model.columns.is_empty());
+            assert_eq!(model.coefficients.len(), 1);
+            assert_eq!(
+                model.coefficients[0].status,
+                PreparedOlsCoefficientStatus::SyntaxOmitted
+            );
+            assert_eq!(model.coefficients[0].generated_column_index, None);
+        }
     }
 
     #[test]

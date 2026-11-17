@@ -162,16 +162,67 @@ impl<'a> CategoricalAbsorbedEffectView<'a> {
         usize::from(self.intercept) + self.slopes.len()
     }
 
-    fn basis_value(&self, channel: usize, row: usize, scales: &[f64]) -> f64 {
+    // Intercepts make a translation of each local slope an exact change of
+    // coordinates. Subtract the observed anchor before dividing so that units
+    // and large offsets do not determine which channels survive rank selection.
+    fn basis_value(&self, channel: usize, row: usize, scales: &[f64], anchor: usize) -> f64 {
         if self.intercept {
             if channel == 0 {
                 1.0
             } else {
-                self.slopes[channel - 1][row] / scales[channel]
+                {
+                    let slope = self.slopes[channel - 1];
+                    let difference = slope[row] - slope[anchor];
+                    if difference.is_finite() {
+                        difference / scales[channel]
+                    } else {
+                        slope[row] / scales[channel] - slope[anchor] / scales[channel]
+                    }
+                }
             }
         } else {
             self.slopes[channel][row] / scales[channel]
         }
+    }
+}
+
+/// Use an observed value carrying maximal normalized weight. A vanishingly
+/// weighted row must not make a common slope nearly cancel the intercept.
+fn group_anchor(members: &[usize], weights: ValidatedWeights<'_>) -> usize {
+    members
+        .iter()
+        .copied()
+        .reduce(|best, row| {
+            if weights.value(row) > weights.value(best) {
+                row
+            } else {
+                best
+            }
+        })
+        .expect("nonempty local level")
+}
+
+/// Return the original channel coefficient after solving in a level-anchored
+/// basis. Only intercept-bearing effects permit this translation.
+fn raw_group_coefficient(
+    effect: &CategoricalAbsorbedEffectView<'_>,
+    anchor: usize,
+    workspace: &SlopeWorkspace,
+    channel: usize,
+) -> f64 {
+    let raw = workspace.coefficients[channel] / workspace.channel_scales[channel];
+    if effect.intercept && channel == 0 {
+        effect
+            .slopes
+            .iter()
+            .enumerate()
+            .fold(raw, |intercept, (slope, values)| {
+                let coefficient =
+                    workspace.coefficients[slope + 1] / workspace.channel_scales[slope + 1];
+                (-values[anchor]).mul_add(coefficient, intercept)
+            })
+    } else {
+        raw
     }
 }
 
@@ -676,7 +727,12 @@ pub(crate) fn recover_finalized_single_slope_direct_certified(
             cached[channels * channels..].copy_from_slice(&workspace.channel_scales[..channels]);
             solve_group(channels, 1, workspace)?;
             for (channel, value) in destination.iter_mut().enumerate() {
-                *value = workspace.coefficients[channel] / workspace.channel_scales[channel];
+                *value = raw_group_coefficient(
+                    effect,
+                    group_anchor(source.members(level)?, weights),
+                    workspace,
+                    channel,
+                );
                 if !value.is_finite() {
                     return Err(invalid_data("direct recovery coefficient is not finite"));
                 }
@@ -698,8 +754,12 @@ pub(crate) fn recover_finalized_single_slope_direct_certified(
                     )?;
                     solve_group(channels, 1, workspace)?;
                     for (channel, value) in destination.iter_mut().enumerate() {
-                        *value =
-                            workspace.coefficients[channel] / workspace.channel_scales[channel];
+                        *value = raw_group_coefficient(
+                            effect,
+                            group_anchor(source.members(batch * block + local)?, weights),
+                            workspace,
+                            channel,
+                        );
                         if !value.is_finite() {
                             return Err(invalid_data("direct recovery coefficient is not finite"));
                         }
@@ -2596,6 +2656,7 @@ fn project_effect_and_accumulate(
     let channels = effect.channels();
     for level in 0..source.n_levels() {
         let members = source.members(level)?;
+        let anchor = group_anchor(members, weights);
         group_moments(members, effect, weights, residual, workspace)?;
         solve_group(channels, 1, workspace)?;
         let level_offset = effect_offset
@@ -2606,7 +2667,7 @@ fn project_effect_and_accumulate(
             )
             .ok_or_else(|| allocation("categorical recovery coefficient offset overflows"))?;
         for channel in 0..channels {
-            let raw = workspace.coefficients[channel] / workspace.channel_scales[channel];
+            let raw = raw_group_coefficient(effect, anchor, workspace, channel);
             let destination = alphas.get_mut(level_offset + channel).ok_or_else(|| {
                 invalid_argument("categorical recovery coefficient is out of range")
             })?;
@@ -2621,7 +2682,7 @@ fn project_effect_and_accumulate(
             let mut fitted = 0.0_f64;
             for channel in 0..channels {
                 fitted = effect
-                    .basis_value(channel, row, &workspace.channel_scales)
+                    .basis_value(channel, row, &workspace.channel_scales, anchor)
                     .mul_add(workspace.coefficients[channel], fitted);
             }
             residual[(row, 0)] -= fitted;
@@ -3155,6 +3216,7 @@ fn project_effect(
     )?;
     for level in 0..source.n_levels() {
         let members = source.members(level)?;
+        let anchor = group_anchor(members, weights);
         group_moments(members, effect, weights, values, workspace)?;
         solve_group(effect.channels(), values.ncols(), workspace)?;
         for &row in members {
@@ -3162,7 +3224,7 @@ fn project_effect(
                 let mut fitted = 0.0_f64;
                 for channel in 0..effect.channels() {
                     fitted = effect
-                        .basis_value(channel, row, &workspace.channel_scales)
+                        .basis_value(channel, row, &workspace.channel_scales, anchor)
                         .mul_add(
                             workspace.coefficients[channel * values.ncols() + rhs],
                             fitted,
@@ -3204,6 +3266,7 @@ fn group_moments_with_row_cache(
             "categorical slope MAP contains an empty final level",
         ));
     }
+    let anchor = group_anchor(members, weights);
     let channels = effect.channels();
     let rhs_count = values.ncols();
     if cache_row_basis && (!(1..=4).contains(&channels) || rhs_count != 1) {
@@ -3227,7 +3290,14 @@ fn group_moments_with_row_cache(
         let channel = slope_offset + slope_index;
         let scale = members
             .iter()
-            .map(|row| slope[*row].abs())
+            .map(|row| {
+                let magnitude = if effect.intercept {
+                    (slope[*row] - slope[anchor]).abs().min(f64::MAX)
+                } else {
+                    slope[*row].abs()
+                };
+                weights.value(*row).sqrt() * magnitude
+            })
             .fold(0.0_f64, f64::max);
         // A zero group-specific slope contributes no local span. Keeping unit
         // scale lets the rank-revealing solve drop it without division by zero.
@@ -3249,7 +3319,7 @@ fn group_moments_with_row_cache(
             let weight = weights.value(row);
             let mut basis = [0.0_f64; 4];
             for (channel, value) in basis[..channels].iter_mut().enumerate() {
-                *value = effect.basis_value(channel, row, &workspace.channel_scales);
+                *value = effect.basis_value(channel, row, &workspace.channel_scales, anchor);
             }
             let value = if scale != 0.0 {
                 values[(row, 0)] / scale
@@ -3285,14 +3355,14 @@ fn group_moments_with_row_cache(
             // computing it once per row leaves every product unchanged.
             if stack_basis {
                 for (channel, value) in basis[..channels].iter_mut().enumerate() {
-                    *value = effect.basis_value(channel, row, &workspace.channel_scales);
+                    *value = effect.basis_value(channel, row, &workspace.channel_scales, anchor);
                 }
             }
             for left in 0..channels {
                 let left_basis = if stack_basis {
                     basis[left]
                 } else {
-                    effect.basis_value(left, row, &workspace.channel_scales)
+                    effect.basis_value(left, row, &workspace.channel_scales, anchor)
                 };
                 // Index form keeps the stack and recomputed bases on one path.
                 #[allow(clippy::needless_range_loop)]
@@ -3300,7 +3370,7 @@ fn group_moments_with_row_cache(
                     let right_basis = if stack_basis {
                         basis[right]
                     } else {
-                        effect.basis_value(right, row, &workspace.channel_scales)
+                        effect.basis_value(right, row, &workspace.channel_scales, anchor)
                     };
                     compensated_add(
                         weight * left_basis * right_basis,
@@ -3352,6 +3422,7 @@ fn group_residual_moments_with_geometry(
             "cached recovery geometry is nonfinite or has a nonpositive scale",
         ));
     }
+    let anchor = group_anchor(members, weights);
     workspace.gram[..square].copy_from_slice(&geometry[..square]);
     workspace.channel_scales[..channels].copy_from_slice(&geometry[square..]);
     workspace.cross[..channels].fill(0.0);
@@ -3369,7 +3440,7 @@ fn group_residual_moments_with_geometry(
     for &row in members {
         let weight = weights.value(row);
         for channel in 0..channels {
-            let basis = effect.basis_value(channel, row, &workspace.channel_scales);
+            let basis = effect.basis_value(channel, row, &workspace.channel_scales, anchor);
             if scale != 0.0 {
                 compensated_add(
                     weight * basis * (values[(row, 0)] / scale),
@@ -3577,7 +3648,14 @@ fn certify_single_slope_parallel(
                     worker,
                 )?;
                 solve_group(channels, 1, worker)?;
-                *partial = group_rhs_certificate(worker, channels, 1, 0, weights.raw_scale)?;
+                *partial = group_rhs_certificate(
+                    worker,
+                    effect,
+                    group_anchor(source.members(batch * block + local)?, weights),
+                    1,
+                    0,
+                    weights.raw_scale,
+                )?;
             }
             Ok(())
         })?;
@@ -3680,11 +3758,11 @@ fn certify_with_geometry(
                 )?;
             }
             solve_group(effect.channels(), residuals.ncols(), workspace)?;
-            let channels = effect.channels();
             for rhs in 0..residuals.ncols() {
                 let (raw, relative) = group_rhs_certificate(
                     workspace,
-                    channels,
+                    effect,
+                    group_anchor(source.members(level)?, weights),
                     residuals.ncols(),
                     rhs,
                     weights.raw_scale,
@@ -3713,11 +3791,13 @@ fn certify_with_geometry(
 
 fn group_rhs_certificate(
     workspace: &SlopeWorkspace,
-    channels: usize,
+    effect: &CategoricalAbsorbedEffectView<'_>,
+    anchor: usize,
     rhs_count: usize,
     rhs: usize,
     raw_scale: f64,
 ) -> Result<(f64, f64)> {
+    let channels = effect.channels();
     let mut absolute = 0.0_f64;
     let mut projected_square = 0.0_f64;
     for left in 0..channels {
@@ -3746,10 +3826,12 @@ fn group_rhs_certificate(
         ));
     }
     for channel in 0..channels {
-        let raw = workspace.cross[channel * rhs_count + rhs].abs()
-            * workspace.value_scales[rhs]
-            * workspace.channel_scales[channel]
-            * raw_scale;
+        let mut moment =
+            workspace.cross[channel * rhs_count + rhs] * workspace.channel_scales[channel];
+        if effect.intercept && channel > 0 {
+            moment = effect.slopes[channel - 1][anchor].mul_add(workspace.cross[rhs], moment);
+        }
+        let raw = moment.abs() * workspace.value_scales[rhs] * raw_scale;
         absolute = absolute.max(if raw.is_finite() { raw } else { f64::INFINITY });
     }
     Ok((absolute, relative))

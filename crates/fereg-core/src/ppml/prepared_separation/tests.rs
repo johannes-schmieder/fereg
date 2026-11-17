@@ -541,6 +541,7 @@ fn numerical_proposal_boundary_rejects_every_identity_and_shape_forgery() {
         exact_intercept_span: None,
         note: "adversarial proposal".into(),
         fixed_point: None,
+        stable_dual: None,
     };
 
     let mut forgeries = Vec::new();
@@ -2113,12 +2114,11 @@ fn admitted_graph_direction_passes_full_span_and_terminal_ledger_checks() {
     ppml.absorb.solver = FeSolverKind::Map;
     ppml.absorb.map.max_iterations = 128;
     ppml.absorb.lsmr.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
-    let original = detect_prepared_ppml_separation(make_owner(), ppml, config, None, None);
-    assert!(original
-        .err()
-        .unwrap()
-        .message
-        .contains("borrowed MAP exhausted"));
+    // The extreme-weight MAP attempt exhausts, but the unit-metric recovery
+    // now certifies the same deletion without allocating a graph proposal.
+    let original = detect_prepared_ppml_separation(make_owner(), ppml, config, None, None).unwrap();
+    assert_eq!(original.prepared.original_rows(), &[0, 1, 2, 3]);
+    assert_eq!(original.separation.separated_count, 2);
     ppml.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
         execution_bytes: 0,
         usable_bytes: 1_000_000,
@@ -2133,8 +2133,10 @@ fn admitted_graph_direction_passes_full_span_and_terminal_ledger_checks() {
     // A generic solver budget is not authority to allocate detector state.
     let unadmitted =
         prepared_bound_iterated_rectifier(generation, ppml, config, linear, false, &mut |_| Ok(()));
-    let error = unadmitted.err().unwrap();
-    assert!(error.message.contains("borrowed MAP exhausted"), "{error}");
+    let unadmitted = unadmitted.unwrap();
+    assert!(unadmitted.exact_intercept_span.is_none());
+    assert_eq!(unadmitted.dropped_original_rows, &[4, 5]);
+    validate_numerical_proposal(generation, unadmitted, ppml, config, linear).unwrap();
     let proposal =
         prepared_bound_iterated_rectifier(generation, ppml, config, linear, true, &mut |_| Ok(()))
             .unwrap();
@@ -2645,4 +2647,487 @@ fn column(values: &[f64]) -> LoadedNumericColumn {
         values: values.to_vec(),
         missing: vec![false; values.len()],
     }
+}
+
+/// The finite/control contrast x - 1[g=2] - 1[g=3] is exactly -1
+/// on rows 5/6 and zero elsewhere. The first two FE effects do not separate;
+/// the control may be explicit or the THIRD absorbed categorical effect.
+#[test]
+fn unit_metric_rectifier_recovers_boundary_only_control_contrast_and_singleton() {
+    for absorbed in [false, true] {
+        for threads in [1, 2, 4] {
+            let (mut request, clusters, mut loaded, mut uses) = fixture();
+            let mut h = request.absorbed_terms[0].clone();
+            h.id = AbsorbTermId::new(2).unwrap();
+            h.categorical_sources = vec![SourceId::new(3).unwrap()];
+            request.absorbed_terms.push(h);
+            uses[2].fixed_effect = true;
+            loaded.candidate = vec![true; 8].into();
+            loaded.outcome = column(&[1., 1., 1., 1., 1., 0., 0., 0.]);
+            loaded.numeric_sources[0].1 = column(&[0., 0., 1., 1., 1., 0., 0., 0.]);
+            loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 3., 3., 3., 1.]);
+            loaded.numeric_sources[2].1 = column(&[1., 2., 1., 2., 1., 1., 2., 1.]);
+            if absorbed {
+                let mut control = request.absorbed_terms[0].clone();
+                control.id = AbsorbTermId::new(3).unwrap();
+                control.categorical_sources = vec![SourceId::new(1).unwrap()];
+                request.absorbed_terms.push(control);
+                request.model.terms.clear();
+                uses[0].fixed_effect = true;
+            }
+            let make_owner = || {
+                PreparedPpmlModelOwner::new(
+                    request.clone(),
+                    clusters.clone(),
+                    loaded.clone(),
+                    prepare_numeric(&loaded, &uses),
+                )
+                .unwrap()
+            };
+            let mut config = rectifier_only();
+            config.drop_singletons = true;
+            let mut ppml = detector_ppml(FeSolverKind::Cg);
+            ppml.absorb.lsmr.threads = crate::ThreadConfig::from_requested(threads, true).unwrap();
+            let coordinator = PreparedSeparationCoordinator::new(make_owner()).unwrap();
+            let generation = coordinator.view().prepared;
+            let linear = PreparedOlsFitConfig {
+                absorb: ppml.absorb,
+                fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+                ..PreparedOlsFitConfig::default()
+            };
+            let stable::Resolution::Direction(candidate) =
+                stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0).unwrap()
+            else {
+                panic!("exact separator was missed");
+            };
+            assert_eq!(candidate.dropped_original_rows, &[5, 6]);
+            validate_numerical_proposal(generation, candidate, ppml, config, linear).unwrap();
+            let result = detect_prepared_ppml_separation(make_owner(), ppml, config, None, None)
+                .unwrap_or_else(|e| panic!("absorbed={absorbed}, threads={threads}: {e}"));
+            assert_eq!(result.separation.separated_count, 2);
+            assert_eq!(result.separation.singleton_count, 1);
+            assert_eq!(result.prepared.original_rows(), &[0, 1, 2, 3, 7]);
+        }
+    }
+}
+
+#[test]
+fn unit_metric_dual_certificate_rejects_zero_margin_and_full_model_moments() {
+    let coordinator = PreparedSeparationCoordinator::new(finite_separation_owner(false)).unwrap();
+    let generation = coordinator.view().prepared;
+    let ppml = detector_ppml(FeSolverKind::Cg);
+    let config = rectifier_only();
+    let linear = PreparedOlsFitConfig {
+        absorb: ppml.absorb,
+        fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+        ..PreparedOlsFitConfig::default()
+    };
+    let stable::Resolution::Dual(dual, _) =
+        stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0).unwrap()
+    else {
+        panic!("opposed regressor cannot separate");
+    };
+    assert!(stable::certify_dual(generation, &dual, ppml, config, linear, 0).unwrap());
+    let mut corrupt = dual.clone();
+    corrupt[4] = 0.;
+    assert!(!stable::certify_dual(generation, &corrupt, ppml, config, linear, 0).unwrap());
+    corrupt[4] = f64::EPSILON;
+    assert!(!stable::certify_dual(generation, &corrupt, ppml, config, linear, 0).unwrap());
+    corrupt = dual.clone();
+    corrupt[4] += 0.1;
+    assert!(!stable::certify_dual(generation, &corrupt, ppml, config, linear, 0).unwrap());
+    corrupt[4] = f64::NAN;
+    assert!(!stable::certify_dual(generation, &corrupt, ppml, config, linear, 0).unwrap());
+}
+
+#[test]
+fn unit_metric_dual_never_certifies_away_a_shifted_boundary_indicator() {
+    for absorbed_slope in [false, true] {
+        for shift in [0., 1e15] {
+            let (mut request, clusters, mut loaded, mut uses) = fixture();
+            request.keep_singletons = true;
+            if absorbed_slope {
+                request.absorbed_terms[0].slope_sources = vec![SourceId::new(1).unwrap()];
+                request.model.terms.clear();
+                uses[0].fixed_effect = true;
+            }
+            let n = 48;
+            loaded.candidate = vec![true; n].into();
+            loaded.outcome = column(
+                &(0..n)
+                    .map(|i| if i % 2 == 0 { 1. } else { 0. })
+                    .collect::<Vec<_>>(),
+            );
+            loaded.numeric_sources[0].1 =
+                column(&(0..n).map(|i| shift + (i % 2) as f64).collect::<Vec<_>>());
+            loaded.numeric_sources[1].1 =
+                column(&(0..n).map(|i| (i / 12) as f64).collect::<Vec<_>>());
+            loaded.numeric_sources[2].1 =
+                column(&(0..n).map(|i| (i % 3) as f64).collect::<Vec<_>>());
+            let owner = PreparedPpmlModelOwner::new(
+                request,
+                clusters,
+                loaded.clone(),
+                prepare_numeric(&loaded, &uses),
+            )
+            .unwrap();
+            let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+            let generation = coordinator.view().prepared;
+            let ppml = detector_ppml(FeSolverKind::Cg);
+            let config = rectifier_only();
+            let linear = PreparedOlsFitConfig {
+                absorb: ppml.absorb,
+                fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+                ..PreparedOlsFitConfig::default()
+            };
+            let stable::Resolution::Direction(candidate) =
+                stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0)
+                    .unwrap_or_else(|e| {
+                        panic!("absorbed_slope={absorbed_slope}, shift {shift}: {e}")
+                    })
+            else {
+                panic!("exact shifted separator was falsely certified absent at shift {shift}");
+            };
+            assert_eq!(
+                candidate.dropped_original_rows,
+                (0..n).filter(|i| i % 2 == 1).collect::<Vec<_>>()
+            );
+            validate_numerical_proposal(generation, candidate, ppml, config, linear).unwrap();
+        }
+    }
+}
+
+#[test]
+fn unit_metric_dual_refuses_numerically_omitted_exact_separating_contrasts() {
+    for absorbed_slope in [false, true] {
+        for (power, scaling) in [
+            (40, 1.),
+            (44, 1.),
+            (48, 1.),
+            (50, 1.),
+            (600, 1.),
+            (48, 2.0_f64.powi(-600)),
+        ] {
+            let (mut request, clusters, mut loaded, mut uses) = fixture();
+            let mut second = request.model.terms[0].clone();
+            second.id = TermId::new(2).unwrap();
+            second.order = TermOrder::new(2).unwrap();
+            second.coefficient_slot = CoefficientSlot::new(2).unwrap();
+            second.components[0].source = SourceId::new(3).unwrap();
+            request.model.terms.push(second);
+            request.keep_singletons = true;
+            uses[2].ordinary = true;
+            if absorbed_slope {
+                request.model.terms.clear();
+                request.absorbed_terms[0].slope_sources =
+                    vec![SourceId::new(1).unwrap(), SourceId::new(3).unwrap()];
+                uses[0].fixed_effect = true;
+                uses[2].fixed_effect = true;
+            }
+            let n = 48;
+            let x1: Vec<_> = (0..n).map(|i| scaling * ((i % 3) as f64 - 1.)).collect();
+            let x2: Vec<_> = (0..n)
+                .map(|i| x1[i] + scaling * 2.0_f64.powi(-power) * (i % 2) as f64)
+                .collect();
+            loaded.candidate = vec![true; n].into();
+            loaded.outcome = column(
+                &(0..n)
+                    .map(|i| if i % 2 == 0 { 1. } else { 0. })
+                    .collect::<Vec<_>>(),
+            );
+            loaded.numeric_sources[0].1 = column(&x1);
+            loaded.numeric_sources[1].1 =
+                column(&(0..n).map(|i| (i / 12) as f64).collect::<Vec<_>>());
+            loaded.numeric_sources[2].1 = column(&x2);
+            let owner = PreparedPpmlModelOwner::new(
+                request,
+                clusters,
+                loaded.clone(),
+                prepare_numeric(&loaded, &uses),
+            )
+            .unwrap();
+            let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+            let generation = coordinator.view().prepared;
+            let ppml = detector_ppml(FeSolverKind::Cg);
+            let config = rectifier_only();
+            let linear = PreparedOlsFitConfig {
+                absorb: ppml.absorb,
+                fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+                ..PreparedOlsFitConfig::default()
+            };
+            match stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0) {
+                Ok(stable::Resolution::Dual(_, _)) => {
+                    panic!("erased exact 2^-{power} separating contrast")
+                }
+                Ok(stable::Resolution::Direction(candidate)) => {
+                    assert_eq!(
+                        candidate.dropped_original_rows,
+                        (0..n).filter(|i| i % 2 == 1).collect::<Vec<_>>()
+                    );
+                    validate_numerical_proposal(generation, candidate, ppml, config, linear)
+                        .unwrap();
+                }
+                Err(error) => assert!(matches!(
+                    error.code,
+                    ErrorCode::NonConvergence | ErrorCode::InvalidData
+                )),
+            }
+        }
+    }
+}
+
+#[test]
+fn unit_metric_dual_accepts_exact_finite_aliases_without_separation() {
+    for (multiple, offset) in [(2., 0.), (1., 1.), (3., -2.)] {
+        let (mut request, clusters, mut loaded, mut uses) = fixture();
+        let mut second = request.model.terms[0].clone();
+        second.id = TermId::new(2).unwrap();
+        second.order = TermOrder::new(2).unwrap();
+        second.coefficient_slot = CoefficientSlot::new(2).unwrap();
+        second.components[0].source = SourceId::new(3).unwrap();
+        request.model.terms.push(second);
+        request.keep_singletons = true;
+        uses[2].ordinary = true;
+        let n = 48;
+        let x1: Vec<_> = (0..n).map(|i| (i % 3) as f64 - 1.).collect();
+        loaded.candidate = vec![true; n].into();
+        loaded.outcome = column(
+            &(0..n)
+                .map(|i| if i % 2 == 0 { 1. } else { 0. })
+                .collect::<Vec<_>>(),
+        );
+        loaded.numeric_sources[0].1 = column(&x1);
+        loaded.numeric_sources[1].1 = column(&(0..n).map(|i| (i / 12) as f64).collect::<Vec<_>>());
+        loaded.numeric_sources[2].1 =
+            column(&x1.iter().map(|x| multiple * x + offset).collect::<Vec<_>>());
+        let owner = PreparedPpmlModelOwner::new(
+            request,
+            clusters,
+            loaded.clone(),
+            prepare_numeric(&loaded, &uses),
+        )
+        .unwrap();
+        let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+        let generation = coordinator.view().prepared;
+        let ppml = detector_ppml(FeSolverKind::Cg);
+        let config = rectifier_only();
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..PreparedOlsFitConfig::default()
+        };
+        assert!(matches!(
+            stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0).unwrap(),
+            stable::Resolution::Dual(_, _)
+        ));
+    }
+}
+
+#[test]
+fn unit_metric_recovery_no_drop_replays_its_own_dual_certificate() {
+    let coordinator = PreparedSeparationCoordinator::new(finite_separation_owner(false)).unwrap();
+    let generation = coordinator.view().prepared;
+    let ppml = detector_ppml(FeSolverKind::Cg);
+    let config = rectifier_only();
+    let linear = PreparedOlsFitConfig {
+        absorb: ppml.absorb,
+        fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+        ..PreparedOlsFitConfig::default()
+    };
+    let proposal = stable::recover(
+        generation,
+        ppml,
+        config,
+        linear,
+        &mut |_| Ok(()),
+        FeregError::new(ErrorCode::NonConvergence, "weighted projection failure"),
+        0,
+    )
+    .unwrap();
+    assert_eq!(proposal.status, MethodStatus::NoSeparation);
+    assert!(proposal.fixed_point.is_none());
+    assert!(proposal.stable_dual.is_some());
+    assert_eq!(
+        replay_numerical_no_drop(
+            generation,
+            &proposal,
+            ppml,
+            config,
+            linear,
+            false,
+            &mut |_| Ok(()),
+            None
+        )
+        .unwrap(),
+        proposal.certificate
+    );
+    let mut corrupted = proposal.clone();
+    corrupted
+        .certificate
+        .as_mut()
+        .unwrap()
+        .negative_margin_relative += 1.;
+    assert!(replay_numerical_no_drop(
+        generation,
+        &corrupted,
+        ppml,
+        config,
+        linear,
+        false,
+        &mut |_| Ok(()),
+        None
+    )
+    .is_err());
+}
+
+#[test]
+fn exact_integer_alias_proves_factor_bundle_and_rejects_perturbation_and_rounded_overflow() {
+    let (request, clusters, mut loaded, uses) = fixture();
+    loaded.outcome = column(&[1., 0., 1., 0., 1., 0.]);
+    loaded.numeric_sources[0].1 = column(&[1., 0., 0., 0., 1., 0.]);
+    let owner = PreparedPpmlModelOwner::new(
+        request.clone(),
+        clusters.clone(),
+        loaded.clone(),
+        prepare_numeric(&loaded, &uses),
+    )
+    .unwrap();
+    let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+    let generation = coordinator.view().prepared;
+    let original = vec![0., 1., 0., 0., 0., 1.];
+    assert!(stable::exact_integer_alias(
+        generation,
+        &mut original.clone(),
+        &[(0, -1. + 1e-12)],
+        &[0]
+    )
+    .unwrap());
+    // A proposed relation may not cite the omitted target itself as a basis.
+    assert!(!stable::exact_integer_alias(
+        generation,
+        &mut vec![1., 0., 0., 0., 1., 0.],
+        &[(0, 1.)],
+        &[]
+    )
+    .unwrap());
+    let mut perturbed = original;
+    perturbed[3] += 2.0_f64.powi(-48);
+    assert!(!stable::exact_integer_alias(generation, &mut perturbed, &[(0, -1.)], &[0]).unwrap());
+    loaded.numeric_sources[0].1 = column(&[3.; 6]);
+    let owner = PreparedPpmlModelOwner::new(
+        request,
+        clusters,
+        loaded.clone(),
+        prepare_numeric(&loaded, &uses),
+    )
+    .unwrap();
+    let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+    // 3 * 3002399751580331 = 2^53+1; binary64 multiplication rounds down.
+    // The independent i128 product must refuse the >2^53 contribution.
+    assert!(!stable::exact_integer_alias(
+        coordinator.view().prepared,
+        &mut vec![(1_u64 << 53) as f64; 6],
+        &[(0, 3002399751580331.)],
+        &[0]
+    )
+    .unwrap());
+}
+
+#[test]
+fn unit_metric_direction_survives_complete_ppml_publication_validation() {
+    use crate::ppml::{
+        fit_prepared_ppml, LoadedPpmlInput, PpmlMemoryConfig, PpmlSolverFamily, PpmlVceRequest,
+        PreparedPpmlAdjustmentKind, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
+    };
+    let (mut ols, _, mut loaded, _) = fixture();
+    let mut second = ols.absorbed_terms[0].clone();
+    second.id = AbsorbTermId::new(2).unwrap();
+    second.categorical_sources = vec![SourceId::new(3).unwrap()];
+    ols.absorbed_terms.push(second);
+    loaded.candidate = vec![true; 8].into();
+    loaded.outcome = column(&[1., 1., 1., 1., 1., 0., 0., 0.]);
+    loaded.numeric_sources[0].1 = column(&[0., 0., 1., 1., 1., 0., 0., 0.]);
+    loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 3., 3., 3., 1.]);
+    loaded.numeric_sources[2].1 = column(&[1., 2., 1., 2., 1., 1., 2., 1.]);
+    let mut separation = rectifier_only();
+    separation.drop_singletons = true;
+    let request = PreparedPpmlRequestV1 {
+        bias: None,
+        ols,
+        clusters: Vec::new(),
+        vce: PpmlVceRequest::Robust,
+        ppml: PpmlConfig::default(),
+        linear: PreparedOlsFitConfig::default(),
+        memory: PpmlMemoryConfig::default(),
+        memory_preflight_probe: None,
+        allocation_snapshot_probe: None,
+        phase_allocation_probe: None,
+        linear_phase_allocation_probe: None,
+        action_allocation_snapshot_probe: None,
+        action_allocation_start: None,
+        action_allocation_previous_baseline_bytes: None,
+        separation,
+        output: PreparedPpmlOutputRequest {
+            residual: None,
+            xb: false,
+            absorbed: false,
+            eta: false,
+            mean: false,
+            requested_observation_columns: 0,
+            publication_matrix_cells: 512,
+        },
+        solver: PpmlSolverFamily::Auto,
+        lsmr_preconditioner: crate::fe::LsmrPreconditioner::Auto,
+        inject_fe_recovery_allocation_failure: false,
+        inject_topology_sharing: false,
+        inject_separation_cg: false,
+    };
+    let result = fit_prepared_ppml(
+        request,
+        LoadedPpmlInput {
+            bias_units: None,
+            ols: loaded,
+            adjustment: None,
+            adjustment_kind: PreparedPpmlAdjustmentKind::None,
+        },
+    )
+    .unwrap();
+    assert_eq!(result.sample().original_rows(), &[0, 1, 2, 3, 7]);
+    complete_span_admission_boundary(result.memory().plan);
+    assert_eq!(result.separation().separated_count, 2);
+    assert_eq!(result.separation().singleton_count, 1);
+    assert!(result
+        .separation()
+        .methods
+        .iter()
+        .any(
+            |report| report.method == SeparationMethod::IteratedRectifier
+                && report.status == MethodStatus::Certified
+                && report.iterations > 0
+        ));
+}
+
+#[path = "alias_support_tests.rs"]
+mod alias_support_tests;
+
+// Use an actual publication plan to exercise the production admission hook.
+// The extra bank is private scratch, not a change in the public tolerance.
+fn complete_span_admission_boundary(mut plan: PpmlMemoryPlan) {
+    let legacy = 8192_u128;
+    let extra = plan.separation_projection_bytes + 4096;
+    let required = legacy + extra;
+    let boundary =
+        (plan.required_peak_bytes + extra).max(plan.selected_inventory().preparation_peak_bytes);
+    plan.usable_bytes = Some(boundary - 1);
+    let before = plan;
+    let error = admit_complete_span_workspace(&mut plan, required, legacy).unwrap_err();
+    assert_eq!(error.code, ErrorCode::Allocation);
+    assert_eq!(plan, before);
+    plan.usable_bytes = Some(boundary);
+    let cap = admit_complete_span_workspace(&mut plan, required, legacy).unwrap();
+    assert_eq!(cap, required);
+    assert_eq!(plan.separation_projection_bytes, extra);
+    // A smaller subsequent audit shares the bank rather than double charging.
+    assert_eq!(admit_complete_span_workspace(&mut plan, 1, 0).unwrap(), 1);
+    assert_eq!(plan.separation_projection_bytes, extra);
 }

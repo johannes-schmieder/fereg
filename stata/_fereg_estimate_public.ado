@@ -1,6 +1,7 @@
-*! fereg public OLS dispatcher 0.6.0 11nov2026
+*! fereg public OLS dispatcher 0.6.1 16nov2026
 program define _fereg_estimate_public, eclass
     version 15.0
+    local public_cmdline `"fereg `0'"'
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
          KEEPsingletons RESIDuals(name) SAVEFEs(string asis) ///
@@ -81,6 +82,7 @@ program define _fereg_estimate_public, eclass
     local residual_option
     local constant_option
     local weight_option
+    local fit_if `"`if'"'
     local memory_option `"memory(`memory_mode')"'
     if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
     local vce_text = strtrim(`"`vce'"')
@@ -118,6 +120,9 @@ program define _fereg_estimate_public, eclass
             * as feppml does; e(wexp) keeps the caller's expression.
             tempvar public_weight_touse public_weight
             quietly mark `public_weight_touse' `if' `in'
+            // Reuse the candidate decision: an if expression may be random or
+            // stateful and must not be evaluated again by the hidden frontend.
+            if `"`if'"' != "" local fit_if "if `public_weight_touse'"
             quietly generate double `public_weight' = ///
                 `weight_variable' if `public_weight_touse'
             local weight_variable `public_weight'
@@ -133,68 +138,21 @@ program define _fereg_estimate_public, eclass
     if `cmgseed_explicit' local cmgsampling_options ///
         "`cmgsampling_options' cmgseed(`cmgseed')"
 
-    _fereg_estimate_ols `varlist' `if' `in', ///
+    local timeit_option
+    if `"`timeit'"' != "" local timeit_option "publictimeit"
+    _fereg_estimate_ols `varlist' `fit_if' `in', ///
         `absorb_option' `vce_option' `cluster_option' `dof_option' `singleton_option' ///
         `residual_option' `constant_option' `memory_option' ///
         `weight_option' `public_wexp_option' ///
         solver(`solver_mode') `reduction_option' `cmgdegree_option' `cmgsampling_options' ///
         preconditioner(`preconditioner_mode') ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
-        iterate(`iterate') `deterministic'
+        iterate(`iterate') `deterministic' ///
+        publicmode publiccmdline(`"`public_cmdline'"') ///
+        publicsolver(`"`solver_spec'"') publicverbose(`verbose') `timeit_option'
 
-    // Preserve the public coefficient-axis adapter without paying for a
-    // second full syntax/parser program invocation on every estimate.
-    local coefficient_count = el(e(fereg_receipt),1,5)
-    local posted_indepvars
-    if `coefficient_count' > 0 local posted_indepvars : colfullnames e(b)
-    _fereg_indepvars, target(intended_indepvars) count(`coefficient_count') ///
-        status(e(fereg_status)) names(`"`posted_indepvars'"')
-    ereturn scalar fereg_v_determinant = el(e(fereg_certificate),31,2)
-    ereturn local indepvars `"`intended_indepvars'"'
-    ereturn local fereg_gate "public_ols_v1"
-    ereturn local fereg_intended_public_command "fereg"
-
-    ereturn local cmd "fereg"
-    ereturn local cmdline `"fereg `0'"'
-    ereturn local fereg_version "0.6.0"
-    ereturn local predict "fereg_p"
-    local selected_memory_code = el(e(fereg_runtime), 2, 2)
-    local selected_memory = cond(`selected_memory_code' == 1, "fast", "low")
-    ereturn local fereg_memory_mode "`memory_mode'"
-    ereturn local fereg_memory_requested "`memory_mode'"
-    ereturn local fereg_memory_selected "`selected_memory'"
-    // The request in the caller's normalized solver() spelling.
-    _fereg_solver, command(fereg) spec(`"`solver_spec'"')
-    ereturn local fe_requested `"`solver_spec'"'
-    foreach item in method reduction preconditioner acceleration {
-        ereturn local fe_requested_`item' "`r(requested_`item')'"
-    }
-    if `"`solver_mode'"' == "cmgschur" {
-        ereturn scalar fe_cmgdegree = `cmgdegree'
-        ereturn scalar fe_cmgsamples = `cmgsamples'
-        ereturn scalar fe_cmgseed = `cmgseed'
-    }
-    ereturn scalar fereg_requested_threads = el(e(fereg_runtime), 28, 2)
-    ereturn scalar fereg_threads = el(e(fereg_runtime), 29, 2)
-    ereturn scalar fereg_poolsize = `poolsize'
-    ereturn scalar fereg_requested_tolerance = `tolerance'
-    ereturn scalar fereg_tolerance = el(e(fereg_runtime), 23, 2)
-    ereturn scalar fereg_iterate = `iterate'
-    ereturn scalar fereg_deterministic = el(e(fereg_runtime), 30, 2)
-    ereturn scalar fereg_timeit = (`"`timeit'"' != "")
-    ereturn scalar fereg_verbose = `verbose'
-    ereturn scalar fereg_memory_fast_bytes = el(e(fereg_runtime), 4, 2)
-    ereturn scalar fereg_memory_low_bytes = el(e(fereg_runtime), 5, 2)
-    ereturn scalar fereg_memory_selected_bytes = el(e(fereg_runtime), 25, 2)
-    ereturn scalar fereg_scratch_bytes = el(e(fereg_runtime), 9, 2)
-    ereturn scalar fereg_native_allocation_bytes = el(e(fereg_runtime), 13, 2)
-    if el(e(fereg_runtime), 6, 1) == 1 ///
-        ereturn scalar fereg_available_memory_bytes = el(e(fereg_runtime), 6, 2)
-    if el(e(fereg_runtime), 15, 1) == 1 ///
-        ereturn scalar fereg_rss_bytes = el(e(fereg_runtime), 15, 2)
-    if el(e(fereg_runtime), 17, 1) == 1 ///
-        ereturn scalar fereg_peak_rss_bytes = el(e(fereg_runtime), 17, 2)
     if `"`timeit'"' != "" {
+        local selected_memory `"`e(fereg_memory_selected)'"'
         di as txt "fereg timing (seconds): preflight=" ///
             as result %9.4f el(e(fereg_runtime), 18, 2) ///
             as txt " input=" as result %9.4f el(e(fereg_runtime), 19, 2) ///

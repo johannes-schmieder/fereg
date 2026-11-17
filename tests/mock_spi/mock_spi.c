@@ -144,6 +144,8 @@ static ST_int mock_macro_use(char *name, char *buffer, ST_int length)
     return 0;
 }
 
+static int check_active_invocation(void);
+
 ST_retcode fereg_dispatch(ST_int argc, const char *const *argv)
 {
     ST_int index;
@@ -152,7 +154,7 @@ ST_retcode fereg_dispatch(ST_int argc, const char *const *argv)
         fereg_spi_display(argv[index]);
         fereg_spi_display(index + 1 == argc ? "\n" : ",");
     }
-    return 0;
+    return check_active_invocation();
 }
 
 struct worker_results {
@@ -320,8 +322,6 @@ int main(void)
 {
     ST_plugin plugin;
     char *arguments[] = {"selftest", "threads=32"};
-    int rc;
-    ST_int scalar_missing = 0;
     memset(&plugin, 0, sizeof(plugin));
     plugin.spoutsml = append_display;
     plugin.spouterr = append_error;
@@ -374,10 +374,23 @@ int main(void)
         fprintf(stderr, "invalid stata_call bound the bridge thread\n");
         return 4;
     }
-    if (stata_call(2, arguments) != 0 || fereg_spi_is_main_thread() != 1) {
-        fprintf(stderr, "first valid stata_call did not bind and dispatch\n");
+    if (stata_call(2, arguments) != 0 || fereg_spi_is_main_thread() != 0) {
+        fprintf(stderr, "first valid stata_call did not dispatch and release ownership\n");
         return 5;
     }
+    if (fereg_spi_display("after dispatch\n") != FEREG_SPI_RC_UNAVAILABLE ||
+        fereg_spi_nobs() != FEREG_SPI_VALUE_UNAVAILABLE) {
+        fprintf(stderr, "returned invocation retained SPI ownership\n");
+        return 6;
+    }
+    puts("mock-spi bridge test: PASS");
+    return 0;
+}
+
+static int check_active_invocation(void)
+{
+    int rc;
+    ST_int scalar_missing = 0;
     rc = check_worker_thread_refusal();
     if (rc != 0) {
         return 6 + rc;
@@ -428,6 +441,5 @@ int main(void)
         fprintf(stderr, "null-pointer guard failed\n");
         return 34;
     }
-    puts("mock-spi bridge test: PASS");
     return 0;
 }

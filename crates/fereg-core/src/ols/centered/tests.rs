@@ -2,6 +2,26 @@ use super::*;
 use crate::error::ErrorCode;
 use crate::ols::prepared_fit::SystemFitReservation;
 
+#[test]
+fn reference_norm_is_translation_and_scale_invariant_with_unequal_weights() {
+    // Independent weighted variance: weights [1,2,3], x=[-1,0,1], mean=1/3,
+    // sum w (x-mean)^2 = 10/3. Power-of-two scales preserve the represented data.
+    for shift in [0.0, 1e8, 2.0_f64.powi(48)] {
+        for scale in [2.0_f64.powi(-300), 1.0, 2.0_f64.powi(300)] {
+            for mass in [1e-100, 1.0, 1e100] {
+                let actual = reference_norm(3, 1.0, |row| {
+                    Ok(((shift + row as f64 - 1.0) * scale, (row + 1) as f64 * mass))
+                })
+                .unwrap();
+                let expected = (10.0_f64 / 3.0 * mass).sqrt() * scale;
+                assert!((actual / expected - 1.0).abs() < 8.0 * f64::EPSILON);
+            }
+        }
+    }
+    assert_eq!(reference_norm(3, 7.0, |_| Ok((1e8, 1.0))).unwrap(), 7.0);
+    assert_eq!(reference_norm(3, 0.0, |_| Ok((0.0, 1.0))).unwrap(), 0.0);
+}
+
 fn matrix(rows: usize, columns: usize, values: Vec<f64>) -> DenseMatrix {
     DenseMatrix::from_row_major(rows, columns, values).unwrap()
 }

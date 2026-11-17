@@ -83,6 +83,8 @@ struct PreparedNumericalProposal {
     /// Stored projection of a terminal no-separation rectifier iteration; the
     /// no-drop check verifies it instead of re-running the detector.
     fixed_point: Option<IrFixedPointEvidence>,
+    /// Unit-metric full-model dual, strictly positive on every boundary row.
+    stable_dual: Option<Vec<f64>>,
 }
 
 /// The rectifier's final recurrence vector, the residual of its certified
@@ -375,6 +377,13 @@ where
         prepare_initial_generation(owner, phase_allocation_probe)?;
     let (projection_ppml, projection_linear, retained_cg, lsmr) =
         admit_detector_projection(coordinator.view().prepared, ppml, config, &mut execution)?;
+    let mut admission =
+        DetectorAdmission::from(execution.preliminary_plan.separation_projection_bytes > 0);
+    if config.methods.iterated_rectifier && coordinator.view().prepared.outcome().contains(&0.) {
+        let (required, legacy) = stable_local::workspace_bound(coordinator.view().prepared)?;
+        admission.full_span_bytes =
+            admit_complete_span_workspace(&mut execution.preliminary_plan, required, legacy)?;
+    }
     // A detector re-execution may charge its LSMR workspace mid-chain; the
     // later exploration and publication fits read the charged plan.
     let plan = std::cell::Cell::new(execution.preliminary_plan);
@@ -389,7 +398,7 @@ where
         &policy,
         config,
         phase_allocation_probe,
-        execution.preliminary_plan.separation_projection_bytes > 0,
+        admission,
         interrupt,
         |generation, interrupt| {
             explore_generation(generation, &plan.get(), execution.linear, interrupt)
@@ -517,7 +526,45 @@ mod graph;
 mod recertify;
 mod retry;
 mod routing;
+/// Full-span scratch and detector projections run at disjoint times. Charge
+/// only capacity beyond the released base workspace, retaining any larger
+/// previously admitted detector bank. Refusal never mutates the plan.
+fn admit_complete_span_workspace(
+    plan: &mut PpmlMemoryPlan,
+    required: u128,
+    legacy: u128,
+) -> Result<u128> {
+    let charge = plan
+        .separation_projection_bytes
+        .max(required.saturating_sub(legacy));
+    if !plan.admit_separation_projection(charge) {
+        return Err(allocation(
+            "PPML complete FE span certificate exceeds the available separation memory budget",
+        ));
+    }
+    Ok(required)
+}
+
+mod stable;
+mod stable_alias;
+mod stable_local;
 mod trace;
+
+/// Private action-lifetime admission; no public numerical option is changed.
+#[derive(Clone, Copy, Default)]
+struct DetectorAdmission {
+    graph: bool,
+    full_span_bytes: u128,
+}
+
+impl From<bool> for DetectorAdmission {
+    fn from(graph: bool) -> Self {
+        Self {
+            graph,
+            full_span_bytes: 0,
+        }
+    }
+}
 
 /// A separate scope makes success and failed initial construction observable;
 /// later rebuilds remain nested in the requesting separation phase.
@@ -562,7 +609,7 @@ fn coordinate_prepared_ppml_separation<T, E, F>(
     policy: &retry::DetectorPolicy<'_>,
     config: SeparationConfig,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
-    graph_admitted: bool,
+    graph_admitted: impl Into<DetectorAdmission>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mut explore_generation: E,
     mut fit_generation: F,
@@ -577,6 +624,7 @@ where
         &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     ) -> Result<T>,
 {
+    let graph_admitted = graph_admitted.into();
     let (ppml, linear) = policy.admitted();
     let candidate_original_rows = coordinator.candidate_original_rows();
     let candidate_observations = candidate_original_rows.len();
@@ -1324,6 +1372,7 @@ fn bind_numerical_proposal(
         exact_intercept_span: None,
         note: proposal.note,
         fixed_point: None,
+        stable_dual: None,
     })
 }
 
@@ -2013,10 +2062,11 @@ fn prepared_bound_iterated_rectifier(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    graph_admitted: bool,
+    graph_admitted: impl Into<DetectorAdmission>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedNumericalProposal> {
-    if graph_admitted && generation.outcome().contains(&0.0) {
+    let graph_admitted = graph_admitted.into();
+    if graph_admitted.graph && generation.outcome().contains(&0.0) {
         if let Some(budget) = linear.absorb.solver_memory_budget {
             if let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? {
                 if graph::workspace_bytes(&design)?.is_some_and(|bytes| budget.fits(bytes)) {
@@ -2065,9 +2115,41 @@ fn prepared_bound_iterated_rectifier(
         }
     }
     let (proposal, fixed_point) =
-        prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?;
+        match prepared_iterated_rectifier(generation, ppml, config, linear, interrupt) {
+            Ok(result) => result,
+            Err(error)
+                if matches!(
+                    error.code,
+                    ErrorCode::NonConvergence | ErrorCode::InvalidData
+                ) =>
+            {
+                return stable::recover(
+                    generation,
+                    ppml,
+                    config,
+                    linear,
+                    interrupt,
+                    error,
+                    graph_admitted.full_span_bytes,
+                );
+            }
+            Err(error) => return Err(error),
+        };
     let mut bound = bind_numerical_proposal(generation, proposal)?;
     bound.fixed_point = fixed_point;
+    if bound.status == MethodStatus::NoSeparation {
+        match stable::resolve(
+            generation,
+            ppml,
+            config,
+            linear,
+            interrupt,
+            graph_admitted.full_span_bytes,
+        )? {
+            stable::Resolution::Dual(dual, _) => bound.stable_dual = Some(dual),
+            stable::Resolution::Direction(proposal) => return Ok(proposal),
+        }
+    }
     Ok(bound)
 }
 
@@ -2469,6 +2551,9 @@ struct PreparedProjection {
     fitted: Vec<f64>,
     residual: Vec<f64>,
     kept_columns: Vec<usize>,
+    /// Finite coefficients can propose exact integer aliases, never certify
+    /// them without independent source/membership reconstruction.
+    coefficients: Vec<(usize, f64)>,
 }
 
 fn prepared_project(
@@ -2560,10 +2645,19 @@ fn prepared_project(
         fit.kept_generated_columns(),
         "unable to reserve prepared separation projection basis",
     )?;
+    let coefficients = fallible_collect(
+        fit.coefficients()
+            .iter()
+            .filter_map(|entry| entry.generated_column_index.zip(entry.value))
+            .filter(|(column, _)| kept_columns.contains(column)),
+        kept_columns.len(),
+        "unable to reserve separation finite coefficient proposal",
+    )?;
     Ok(PreparedProjection {
         fitted,
         residual,
         kept_columns,
+        coefficients,
     })
 }
 
@@ -2992,7 +3086,9 @@ fn ir_weighted_norm_rows(weight: &IrRowFn<'_>, values: &IrRowFn<'_>, rows: usize
 /// Largest `|moment| / channel norm`; a nonzero moment on a zero or
 /// nonfinite norm is infinite.
 fn ir_moment_ratio(largest: f64, moment: f64, norm: f64) -> f64 {
-    if norm > 0.0 && norm.is_finite() {
+    if !moment.is_finite() {
+        f64::INFINITY
+    } else if norm > 0.0 && norm.is_finite() {
         largest.max(moment.abs() / norm)
     } else if moment != 0.0 || !norm.is_finite() {
         f64::INFINITY
@@ -3129,10 +3225,11 @@ fn replay_numerical_no_drop(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    graph_admitted: bool,
+    graph_admitted: impl Into<DetectorAdmission>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mu_exploration: Option<&PreparedPpmlMuExploration>,
 ) -> Result<Option<SeparationCertificate>> {
+    let graph_admitted = graph_admitted.into();
     validate_prepared_numerical_metadata(generation, observed, config)?;
     if !observed.dropped_original_rows.is_empty() || observed.direction.is_some() {
         return Err(FeregError::new(
@@ -3161,13 +3258,41 @@ fn replay_numerical_no_drop(
         && observed.exact_fe_certificate.is_none()
         && (1..=config.max_ir_iterations).contains(&observed.iterations)
     {
+        if observed.fixed_point.is_none() {
+            if let Some(dual) = observed.stable_dual.as_deref() {
+                if stable::certify_dual(
+                    generation,
+                    dual,
+                    ppml,
+                    config,
+                    linear,
+                    graph_admitted.full_span_bytes,
+                )? {
+                    let certificate = stable::dual_certificate(generation, dual);
+                    if observed.certificate.as_ref() == Some(&certificate) {
+                        return Ok(Some(certificate));
+                    }
+                }
+            }
+        }
         if let Some(evidence) = observed.fixed_point.as_ref() {
             interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
             if let Some(certificate) =
                 certify_ir_fixed_point_evidence(generation, evidence, config)?
             {
                 if observed.certificate.as_ref() == Some(&certificate) {
-                    return Ok(Some(certificate));
+                    if let Some(dual) = observed.stable_dual.as_deref() {
+                        if stable::certify_dual(
+                            generation,
+                            dual,
+                            ppml,
+                            config,
+                            linear,
+                            graph_admitted.full_span_bytes,
+                        )? {
+                            return Ok(Some(certificate));
+                        }
+                    }
                 }
             }
         }

@@ -16,8 +16,25 @@ fn fixture_extra_columns(
     interaction: bool,
     extra: usize,
 ) -> SharedPreparedOlsData {
+    fixture_shifted(rank_deficient, interaction, extra, 0.0)
+}
+
+fn fixture_shifted(
+    rank_deficient: bool,
+    interaction: bool,
+    extra: usize,
+    shift: f64,
+) -> SharedPreparedOlsData {
     let n = 96;
-    let x: Vec<_> = (0..n).map(|i| (i as f64 * 0.71).sin()).collect();
+    let x: Vec<_> = (0..n)
+        .map(|i| {
+            if shift == 0.0 {
+                (i as f64 * 0.71).sin()
+            } else {
+                shift + (i % 4) as f64 - 1.5
+            }
+        })
+        .collect();
     let z: Vec<_> = (0..n).map(|i| (i as f64 * 0.47).cos()).collect();
     let groups: Vec<_> = (0..n).map(|i| ((i * 7 + i / 8) % 8) as f64).collect();
     let y: Vec<_> = (0..n)
@@ -481,6 +498,7 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
                         let group = view.codes()[i] as usize;
                         let value = |j: usize| {
                             (prepared.fit_column_value(ids[selected[j]], i).unwrap()
+                                - prepared.fit_column_value(ids[selected[j]], 0).unwrap()
                                 - view.center(selected[j], group))
                                 / if scaled { scales[j] } else { 1. }
                         };
@@ -527,6 +545,47 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
                         });
                 }
             }
+        }
+    }
+}
+
+#[test]
+fn implicit_group_projection_keeps_unit_variation_at_large_locations() {
+    for shift in [1e8, 1e15] {
+        let source = fixture_shifted(false, false, 0, shift);
+        let prepared = source.as_ref();
+        let response = vec![1.0; prepared.sample().n_active()];
+        let weights: Vec<_> = (0..response.len()).map(|i| 1.0 + (i % 3) as f64).collect();
+        let mut frame =
+            ImplicitCenteredDesign::new(source.clone(), &[0], PreparedOlsExecutionMode::Low)
+                .unwrap();
+        frame
+            .refresh(
+                &response,
+                BorrowedMapWeights::Provided(&weights),
+                1.0,
+                1e-14,
+                &mut [0.0],
+                &mut [0.0],
+                &mut [0.0],
+                Vec::new(),
+            )
+            .unwrap();
+        let view = frame.view().unwrap();
+        let mut value = [0.0];
+        for row in 0..response.len() {
+            let members = view
+                .effect
+                .level_index()
+                .members(view.codes()[row] as usize);
+            let total: f64 = members.iter().map(|&i| weights[i]).sum();
+            let mean: f64 = members
+                .iter()
+                .map(|&i| weights[i] * ((i % 4) as f64 - 1.5))
+                .sum::<f64>()
+                / total;
+            view.fill_row(row, &mut value).unwrap();
+            assert!((value[0] - ((row % 4) as f64 - 1.5 - mean)).abs() < 1e-14);
         }
     }
 }

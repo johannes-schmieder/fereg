@@ -1374,6 +1374,11 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 }
             }
             *norm = scale * square.sqrt();
+            if j != 0 {
+                *norm = super::centered::reference_norm(n, *norm, |row| {
+                    Ok((columns[j].value(row)?, w[row]))
+                })?;
+            }
             if !norm.is_finite() {
                 return Err(declined());
             }

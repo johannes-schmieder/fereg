@@ -23,3 +23,14 @@ fi
   -pthread \
   -o "$BUILD/mock_spi_test"
 "$BUILD/mock_spi_test"
+
+"${CC:-cc}" \
+  -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Werror \
+  -DSYSTEM=OPUNIX \
+  -I"$ROOT/plugin" \
+  "$ROOT/plugin/stplugin.c" \
+  "$ROOT/plugin/stata_bridge.c" \
+  "$ROOT/tests/mock_spi/invocation_guard_test.c" \
+  -pthread \
+  -o "$BUILD/invocation_guard_test"
+"$BUILD/invocation_guard_test"

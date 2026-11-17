@@ -1,4 +1,4 @@
-*! fereg guarded prepared OLS eclass transaction 0.6.0 11nov2026
+*! fereg guarded prepared OLS eclass transaction 0.6.1 16nov2026
 // This path preserves observation order directly: factor parsing and TS
 // evaluation do not sort, and native row maps are used for all output stores.
 // Do not add a sorting operation without restoring order on every exit.
@@ -18,7 +18,18 @@ program define _fereg_estimate_ols, eclass
          CMGSAMples(string) CMGSEed(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
-         INJECT(string) BREAKMARKERTOKEN(string) PUBLICWEXP(string)]
+         INJECT(string) BREAKMARKERTOKEN(string) PUBLICWEXP(string) ///
+         PUBLICMode PUBLICCMDLINE(string) PUBLICSOLVER(string) ///
+         PUBLICTIMEIT PUBLICVERBOSE(integer 0)]
+
+    if (`"`publicmode'"' == "" & ///
+            (strtrim(`"`publiccmdline'"') != "" | strtrim(`"`publicsolver'"') != "" | ///
+             `"`publictimeit'"' != "" | `publicverbose' != 0)) | ///
+       (`"`publicmode'"' != "" & ///
+            (strtrim(`"`publiccmdline'"') == "" | strtrim(`"`publicsolver'"') == "")) {
+        di as error "invalid private OLS public-publication context"
+        exit 198
+    }
 
     local memory_mode = lower(strtrim(`"`memory'"'))
     if `"`memory_mode'"' == "" local memory_mode "fast"
@@ -580,7 +591,7 @@ program define _fereg_estimate_ols, eclass
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
     quietly _fereg_input_host `candidate_variable' `depvar' `source_vars' `weight_variable'
-    local request_arguments `"ado=0.6.0;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=fereg-estimation;plugin=0.6.0;result_major=1;result_minor=7;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.6.1;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=fereg-estimation;plugin=0.6.1;result_major=1;result_minor=7;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     if `"`solver_mode'"' == "pcg" {
         local request_arguments `"`request_arguments'reduction=`reduction_mode';"'
     }
@@ -909,7 +920,62 @@ program define _fereg_estimate_ols, eclass
     ereturn local fereg_action_protocol "1.7"
     ereturn local fereg_model_wire "2.1"
     ereturn local fereg_result_wire "1.7"
-    ereturn local fereg_plugin "0.6.0"
+    ereturn local fereg_plugin "0.6.1"
+
+    // Public metadata is part of this transaction: a missing helper, error or
+    // Break must restore the caller's e() before any output name is published.
+    if `"`publicmode'"' != "" {
+        local coefficient_count = el(e(fereg_receipt),1,5)
+        local posted_indepvars
+        if `coefficient_count' > 0 local posted_indepvars : colfullnames e(b)
+        _fereg_indepvars, target(intended_indepvars) count(`coefficient_count') ///
+            status(e(fereg_status)) names(`"`posted_indepvars'"')
+        ereturn scalar fereg_v_determinant = el(e(fereg_certificate),31,2)
+        ereturn local indepvars `"`intended_indepvars'"'
+        ereturn local fereg_gate "public_ols_v1"
+        ereturn local fereg_intended_public_command "fereg"
+
+        ereturn local cmd "fereg"
+        ereturn local cmdline `"`publiccmdline'"'
+        ereturn local fereg_version "0.6.1"
+        ereturn local predict "fereg_p"
+        local selected_memory_code = el(e(fereg_runtime), 2, 2)
+        local selected_memory = cond(`selected_memory_code' == 1, "fast", "low")
+        ereturn local fereg_memory_mode "`memory_mode'"
+        ereturn local fereg_memory_requested "`memory_mode'"
+        ereturn local fereg_memory_selected "`selected_memory'"
+        // The request in the caller's normalized solver() spelling.
+        _fereg_solver, command(fereg) spec(`"`publicsolver'"')
+        ereturn local fe_requested `"`publicsolver'"'
+        foreach item in method reduction preconditioner acceleration {
+            ereturn local fe_requested_`item' "`r(requested_`item')'"
+        }
+        if `"`solver_mode'"' == "cmgschur" {
+            ereturn scalar fe_cmgdegree = `cmgdegree'
+            ereturn scalar fe_cmgsamples = `cmgsamples'
+            ereturn scalar fe_cmgseed = `cmgseed'
+        }
+        ereturn scalar fereg_requested_threads = el(e(fereg_runtime), 28, 2)
+        ereturn scalar fereg_threads = el(e(fereg_runtime), 29, 2)
+        ereturn scalar fereg_poolsize = `poolsize'
+        ereturn scalar fereg_requested_tolerance = `tolerance'
+        ereturn scalar fereg_tolerance = el(e(fereg_runtime), 23, 2)
+        ereturn scalar fereg_iterate = `iterate'
+        ereturn scalar fereg_deterministic = el(e(fereg_runtime), 30, 2)
+        ereturn scalar fereg_timeit = (`"`publictimeit'"' != "")
+        ereturn scalar fereg_verbose = `publicverbose'
+        ereturn scalar fereg_memory_fast_bytes = el(e(fereg_runtime), 4, 2)
+        ereturn scalar fereg_memory_low_bytes = el(e(fereg_runtime), 5, 2)
+        ereturn scalar fereg_memory_selected_bytes = el(e(fereg_runtime), 25, 2)
+        ereturn scalar fereg_scratch_bytes = el(e(fereg_runtime), 9, 2)
+        ereturn scalar fereg_native_allocation_bytes = el(e(fereg_runtime), 13, 2)
+        if el(e(fereg_runtime), 6, 1) == 1 ///
+            ereturn scalar fereg_available_memory_bytes = el(e(fereg_runtime), 6, 2)
+        if el(e(fereg_runtime), 15, 1) == 1 ///
+            ereturn scalar fereg_rss_bytes = el(e(fereg_runtime), 15, 2)
+        if el(e(fereg_runtime), 17, 1) == 1 ///
+            ereturn scalar fereg_peak_rss_bytes = el(e(fereg_runtime), 17, 2)
+    }
 
     if `"`inject'"' == "postdiagnostics" exit 3498
     if `"`inject'"' == "precommit" exit 3498

@@ -1036,6 +1036,16 @@ Tests: `tests/intercept_slope_oracle.rs`, `tests/fe_certificate_oracle.rs`,
 `parity_reghdfe/estimate_ols_saved_outputs_parity.do`,
 `parity_ppmlhdfe/feppml_saved_slopes.do`, `bias/final_recovery_precision.do`.
 
+For intercept-bearing absorbed slope blocks, local projection and independent
+QR certificates anchor each slope at an observed level value before weighted
+normalization/rank selection. Recovery maps coefficients back to original
+channels, including singular-level normalization; pure slope-only terms keep
+their original span. Fedemean weighted centers likewise sum deviations from an
+observed anchor, and a constant channel requires exact equality on positive-
+weight observations. Existing eigencurvature tolerances remain. These changes
+preserve representable local variation at large origins without new workspace;
+independent cell-dummy, weighted-span and exact-separation witnesses apply.
+
 ## 6. Regressors and canonical status
 
 Support numeric continuous columns, numeric factor main effects,
@@ -1103,9 +1113,10 @@ Where an absorbed intercept exists, the reported constant is
 finite/absorbed rank direction. With within bread B its extended bread has
 side `-B mean_w(X)` and corner `1/N_ref + mean_w(X)'B mean_w(X)`, using the
 reference weights and their N_ref=N_eff. Pure slope-only absorbed models do
-not automatically have a structural OLS constant. No-FE models retain the
-ordinary constant unless suppressed. `noconstant` preserves its accepted
-model/reporting semantics; it does not delete an intercept already in D.
+not automatically have a structural OLS constant. No-FE models retain a structural constant. `noconstant` suppresses its
+reported normalization coordinate; it does not request a through-origin fit
+or delete an intercept already in D. This preserves the accepted
+model/reporting semantics in both absorbed and no-FE models.
 
 Tests: `fereg-oracle/tests/ols.rs`, `tests/prepared_fit_oracle.rs`,
 `tests/categorical_iid_oracle.rs`, normalized-intercept Stata parity fixtures.
@@ -1157,6 +1168,27 @@ and `retained_qr_tie_band_follows_the_rounding_of_the_column_norms`),
 `tests/intercept_slope_oracle.rs`, `tests/prepared_fit_oracle.rs`,
 `development/ols_weighted_schur.do` (against `regress`),
 `parity_ppmlhdfe/feppml_scientific_contract.do`.
+
+Stability corrections (0.6.1). When the absorbed span contains a constant,
+finite FE-collinearity/reference scales use the weighted norm of the centered
+column, evaluated with anchored scaled differences. Exact constants retain
+zero/FE-collinear classification; the existing finite-rank and FE-collinearity
+thresholds remain. Finite projection inputs remove a constant location, and
+implicit one-FE centering stores that location separately. This preserves
+identified directions under representable translations and changes low bits
+of intercepted reference scaling/projection; formerly falsely omitted
+translated regressors can become identified. Analytic PPML beta/predictor and
+OLS coefficient/residual witnesses cover the change.
+
+Before an iterative session freezes finite rank, a retained direction too
+small relative to projection accuracy, or a narrowly classified
+rank/refinement/inverse failure, receives one tighter FE reprojection at
+`min(requested tolerance, 1e-14)`. The same scaled QR and independent
+certificates decide; a frozen basis cannot silently change. Requested
+configuration and ownership are restored on success or error and the work is
+counted. The reported/intercept-extended inverse certificate uses dimensionless
+diagonal congruence coordinates, retaining its tolerance and fail-closed
+corrupt-bread checks. It changes certificate units, not estimates or bread.
 
 ## 9. Degrees of freedom and nesting
 
@@ -1440,6 +1472,15 @@ Start from `c0=log(sum qy)−log(sum q exp(offset))` using stable logarithmic
 sums. Analytic/group/coordinate/slope start policies may improve this initial state. A declined
 or invalid start proposal restores a finite global state. Starts never certify
 rank, optimality or the final Hessian. Do not clip eta/mu to artificial bounds.
+
+For nonzero offsets, initialization may first use a certified full-model
+projection of `log(y)` (a weighted-mean proxy on zero rows) minus the offset.
+Adding the original offset back retains its out-of-span component. The
+transient projection supplies only a seed; its rank and bread never govern
+IRLS. Warm starts retain their existing path. A declined or unrepresentable
+proposal returns to existing seed policies; if none provides a representable
+state, the fit fails. The duplicate FE topology and temporary dynamic solver
+budget are admitted before construction, and Break propagates.
 
 At an accepted state h=qmu and z=eta−offset+(y−mu)/mu, with exact zero-y
 expression eta−offset−1. Stable evaluation may use exp(log(y)−eta).
@@ -1779,6 +1820,61 @@ any part fails, the detector is re-executed deterministically, as it is for
 simplex and Mu no-drop results. Like the projection's own certificates, this
 weighted check only weakly constrains fitted values on zero-outcome rows.
 
+The 0.6.1 stability repair therefore requires a second, unit-weight full-model
+certificate before accepting IR's no-drop claim. A finite dual vector must be
+strictly positive on every zero-outcome row, with minimum boundary coordinate
+greater than the certificate tolerance times its Euclidean norm. Raw and
+intercept-centered finite/FE channel moments, plus a fresh unit-weight
+projection onto the complete model span, are bounded relative to that minimum
+coordinate. Every omitted finite direction requires an exact raw-source alias
+proof; a tiny projected residual, including a rounded zero, is insufficient.
+This avoids hiding separating combinations of individually small directions.
+Exact source and power-of-two affine identities may establish redundancy.
+Rounded integer coefficients and at most two categorical coordinate sweeps only
+propose identities: checked integer reconstruction must leave every original
+row residual exactly zero. Lost centering/scaling information without an exact
+raw-source proof is unresolved, not evidence of no separation.
+For two categorical intercept effects, an exact bipartite-potential traversal
+also proves additive integer identities on unbalanced or disconnected graphs.
+It checks every edge with integer arithmetic and uses at most six N-equivalent
+cells of the released seven-vector linear workspace; it adds no detector bank.
+
+Absorbed slopes require an audit of the complete FE span. Equivalent partitions
+share a local audit regardless of variable names or level labels; distinct
+partitions include every level-specific intercept and slope channel. Exact
+source-coordinate elimination distinguishes aliases from represented small
+directions. A verified Gram-inverse residual bound accounts for the resulting
+basis's conditioning before its moments can bound the dual's full projection;
+small individual moments alone cannot establish that bound. The audit's extra
+workspace is admitted explicitly, after crediting the released projection
+workspace, and its work is bounded by the configured detector/projection budget.
+Failure to certify within those limits is an explicit numerical refusal, with
+the previous estimates preserved. The categorical-only path is unchanged by
+this additional slope audit.
+
+The unit-weight detector uses the Dykstra recurrence
+`t[positive] = p[positive]`, `t[zero] = max(p[zero], 1)`,
+`p_new = t - P_full(t)`, with FE projection tolerance at most `1e-14`.
+A proposed primal direction still passes the independent full-model deletion
+certificate above. A comfortably positive dual that fails the full-span audit
+fails promptly; repeating a truncated projector cannot certify the missing
+directions. Otherwise the recurrence remains bounded by the IR iteration
+budget. Numerical failures (`NonConvergence` or `InvalidData`) of the weighted
+detector may use this same recovery; an unsuccessful numerical recovery retains
+the original error, while Break, allocation and internal failures propagate.
+The resulting no-drop evidence is independently replayed before publication.
+
+Exact categorical proposals examine the first FE pair and a star centered on
+the effect with the most levels, at most one pair per effect. Each proof binds
+its actual effect identities; failure to find a graph direction is never a
+no-separation certificate. These checks retain the existing eight-observation-
+vector detector allowance and Break polling; the separately admitted slope-audit
+matrix banks cannot exceed the execution memory limit.
+Their authorized numerical scope includes corrected separation, final samples
+and subsequent singleton cascades, as well as detector iteration/certificate
+diagnostics. They neither relax deletion tolerances nor certify estimator
+convergence.
+
 No prior-generation projected design, warm state, rank, cluster subset,
 bread or output is reusable. Recompute canonical finite rank on the final
 sample and verify positive weighted outcome. Report requested/executed
@@ -1963,11 +2059,18 @@ completion and independent bounded transport validation. Rust loads observations
 prepares the sample, estimates, certifies and validates all N/K/K² products
 before the first SPI store. All source/output identities, dimensions and
 nonaliasing bindings are checked before observations. SPI calls and Break
-polling occur on Stata's main thread, with one exception below; workers touch
+polling occur on the host thread owning the active native invocation, with one
+exception below; workers touch
 Rust-owned memory. Native work from preparation through derived outputs and
 saved-FE recovery runs under Break polling, and long serial row passes
 checkpoint at a fixed row stride.
 Catch Rust panics at FFI; no unwind crosses C. Safe crates forbid unsafe code.
+
+The owning host thread may change between serialized PyStata calls. The C
+bridge rejects overlapping and reentrant invocation before SPI/dispatch,
+revokes ownership on every return, and clears a leaked numeric window while
+preserving an existing error/Break/panic code. In this section “main thread”
+means the active invocation owner, not a permanently remembered OS thread.
 
 Parallel numeric input. On a qualified host, action workers may call Stata's
 read-only numeric accessor (`vdata`) inside a numeric window. The main thread
@@ -2031,13 +2134,15 @@ parallel accessor group sizes and core moment/Gram width policies are unchanged.
 COMPLETE is the last native operation; no allocation, polling, display,
 computation or store follows it. A partial physical SPI write has no logical
 meaning. The final ado commit protects posting and public output renames.
-Any error, Break, store failure, bad receipt or missing helper restores prior
+Public metadata adaptation is inside that same transaction, before output
+renames and release of held estimates. Any error, Break, store failure, bad
+receipt or missing helper restores prior
 e(), named/null estimates, data, order and output names. No correction or
 postestimation path makes an extra substantive estimation call.
 
 Retain independently versioned exact estimation handshakes. Current
 versions are action 1.7, model 2.1, OLS result 1.7, PPML request 1.10, PPML
-result 1.5, ado identity 0.6.0 and SPI 3.0. Diagnostics accept same-major,
+result 1.5, ado identity 0.6.1 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
 no-absorbed-metadata shape;
 unknown/newer identities and malformed framing fail before observation access.

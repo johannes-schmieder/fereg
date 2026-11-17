@@ -21,6 +21,13 @@ if ($LASTEXITCODE -ne 0) { throw "Windows mock SPI bridge compilation failed" }
 & $BridgeExe
 if ($LASTEXITCODE -ne 0) { throw "Windows mock SPI bridge test failed" }
 
+$InvocationExe = Join-Path $Build "invocation_guard_test.exe"
+& cl.exe @Common "$Root\plugin\stplugin.c" "$Root\plugin\stata_bridge.c" `
+    "$Root\tests\mock_spi\invocation_guard_test.c" "/Fe:$InvocationExe"
+if ($LASTEXITCODE -ne 0) { throw "Windows invocation guard compilation failed" }
+& $InvocationExe
+if ($LASTEXITCODE -ne 0) { throw "Windows invocation guard test failed" }
+
 $StpluginObj = Join-Path $Build "stplugin.obj"
 $BridgeObj = Join-Path $Build "stata_bridge.obj"
 $DispatchObj = Join-Path $Build "dummy_dispatch.obj"

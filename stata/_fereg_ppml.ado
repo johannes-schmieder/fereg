@@ -1,4 +1,4 @@
-*! fereg public PPML syntax and result adapter 0.6.0 11nov2026
+*! fereg public PPML syntax and result adapter 0.6.1 16nov2026
 program define _fereg_ppml, eclass
     version 15.0
     local public_display = c(noisily)
@@ -39,11 +39,15 @@ program define _fereg_ppml, eclass
         exit 198
     }
     local weight_option
+    local fit_if `"`if'"'
     local public_wexp_option
     if `"`weight'"' != "" {
         local weight_expression = strtrim(substr(`"`exp'"', 2, .))
         tempvar public_weight_touse
         quietly mark `public_weight_touse' `if' `in'
+        // Reuse the candidate decision: an if expression may be random or
+        // stateful and must not be evaluated again by the hidden frontend.
+        if `"`if'"' != "" local fit_if "if `public_weight_touse'"
         tempvar public_weight
         quietly generate double `public_weight' = ///
             `weight_expression' if `public_weight_touse'
@@ -92,7 +96,7 @@ program define _fereg_ppml, eclass
     foreach option in biascorrection biasunit biasfe biasprobes biasseed biasstream {
         if `"``option''"' != "" local bias_options `"`bias_options' `option'(``option'')"'
     }
-    _fereg_estimate_ppml `varlist' `if' `in', ///
+    _fereg_estimate_ppml `varlist' `fit_if' `in', ///
         `bias_options' ///
         `weight_option' `absorb_option' `vce_option' `singleton_option' ///
         `offset_option' `exposure_option' `separation_option' ///

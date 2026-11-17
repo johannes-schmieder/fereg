@@ -10772,3 +10772,57 @@ fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
         .zip(&residuals[1])
         .all(|(a, b)| (a - b).abs() < 1e-6));
 }
+
+#[path = "rank_projection_tests.rs"]
+mod rank_projection_tests;
+
+#[test]
+fn affine_ols_identification_preserves_closed_form_slope_and_residuals() {
+    let n = 48;
+    let g: Vec<_> = (0..n).map(|i| (i / 12 + 1) as f64).collect();
+    let x: Vec<_> = (0..n).map(|i| (i % 4) as f64 - 1.5).collect();
+    let noise: Vec<_> = (0..n)
+        .map(|i| if i / 4 % 2 == 0 { -0.25 } else { 0.25 })
+        .collect();
+    for shift in [0.0, 1e8, 1e15] {
+        for scale in [0.125, 1.0, 8.0] {
+            for with_fe in [false, true] {
+                let y: Vec<_> = (0..n)
+                    .map(|i| 2.0 * x[i] + noise[i] + if with_fe { g[i] } else { 3.0 })
+                    .collect();
+                let shifted: Vec<_> = x.iter().map(|v| (v + shift) * scale).collect();
+                let data = prepared(
+                    &y,
+                    &[shifted],
+                    &[false],
+                    with_fe.then_some(&g[..]),
+                    true,
+                    TestWeights::Unit,
+                );
+                for mode in [
+                    PreparedOlsExecutionMode::Fast,
+                    PreparedOlsExecutionMode::Low,
+                ] {
+                    let mut config = PreparedOlsFitConfig::default();
+                    config.execution.mode = mode;
+                    let fit = fit_prepared_model_coefficients(&data, config).unwrap_or_else(|e| {
+                        panic!("shift={shift}, scale={scale}, fe={with_fe}, mode={mode:?}: {e}")
+                    });
+                    assert!((fit.coefficients()[0].value.unwrap() * scale - 2.0).abs() < 1e-8);
+                    // Noise is balanced within every x cell, so the exact slope is 2.
+                    for (i, &actual) in fit.residuals().iter().enumerate() {
+                        let mean = if !with_fe {
+                            0.0
+                        } else if i / 12 % 2 == 0 {
+                            -1.0 / 12.0
+                        } else {
+                            1.0 / 12.0
+                        };
+                        assert!((actual - (noise[i] - mean)).abs() < 1e-8,
+                            "shift={shift}, scale={scale}, fe={with_fe}, mode={mode:?}, row={i}, actual={actual}");
+                    }
+                }
+            }
+        }
+    }
+}

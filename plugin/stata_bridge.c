@@ -10,11 +10,16 @@
 #include <pthread.h>
 #endif
 
-static ST_int bridge_thread_bound = 0;
+/* A host may invoke sequential actions from different threads (PyStata does).
+   Ownership lasts for one invocation, never for the lifetime of the plugin.
+   Try-locking rejects overlap instead of waiting inside a second Stata call;
+   the thread-local flag also rejects same-thread reentry without SPI access. */
 #if SYSTEM==STWIN32
-static DWORD bridge_main_thread = 0;
+static SRWLOCK bridge_invocation_lock = SRWLOCK_INIT;
+static __declspec(thread) ST_int bridge_invocation_owner = 0;
 #else
-static pthread_t bridge_main_thread;
+static pthread_mutex_t bridge_invocation_lock = PTHREAD_MUTEX_INITIALIZER;
+static _Thread_local ST_int bridge_invocation_owner = 0;
 #endif
 
 /*
@@ -35,18 +40,9 @@ static struct {
 
 static ST_int fereg_bridge_on_main_thread(void)
 {
-    if (_stata_ == NULL || !bridge_thread_bound) {
+    if (!bridge_invocation_owner || _stata_ == NULL) {
         return FEREG_SPI_RC_UNAVAILABLE;
     }
-#if SYSTEM==STWIN32
-    if (GetCurrentThreadId() != bridge_main_thread) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-#else
-    if (!pthread_equal(pthread_self(), bridge_main_thread)) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-#endif
     return 0;
 }
 
@@ -61,14 +57,39 @@ static ST_int fereg_bridge_require_main_thread(void)
     return 0;
 }
 
-static void fereg_bridge_bind_main_thread(void)
+static ST_int fereg_bridge_enter(void)
 {
+    if (bridge_invocation_owner) return FEREG_SPI_RC_UNAVAILABLE;
 #if SYSTEM==STWIN32
-    bridge_main_thread = GetCurrentThreadId();
+    if (!TryAcquireSRWLockExclusive(&bridge_invocation_lock)) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
 #else
-    bridge_main_thread = pthread_self();
+    if (pthread_mutex_trylock(&bridge_invocation_lock) != 0) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
 #endif
-    bridge_thread_bound = 1;
+    bridge_invocation_owner = 1;
+    return 0;
+}
+
+static void fereg_bridge_leave(void)
+{
+    bridge_invocation_owner = 0;
+#if SYSTEM==STWIN32
+    ReleaseSRWLockExclusive(&bridge_invocation_lock);
+#else
+    (void) pthread_mutex_unlock(&bridge_invocation_lock);
+#endif
+}
+
+static void fereg_bridge_clear_numeric_window(void)
+{
+    numeric_window.open = 0;
+    numeric_window.variables = NULL;
+    numeric_window.variable_count = 0;
+    numeric_window.observations = 0;
+    numeric_window.reader = NULL;
 }
 
 ST_int fereg_spi_is_main_thread(void)
@@ -398,11 +419,7 @@ ST_int fereg_spi_numeric_window_close(ST_int generation)
         generation != numeric_window.generation) {
         return FEREG_SPI_RC_UNAVAILABLE;
     }
-    numeric_window.open = 0;
-    numeric_window.variables = NULL;
-    numeric_window.variable_count = 0;
-    numeric_window.observations = 0;
-    numeric_window.reader = NULL;
+    fereg_bridge_clear_numeric_window();
     return 0;
 }
 
@@ -529,30 +546,24 @@ ST_int fereg_spi_macro_use(const char *name, char *buffer, ST_int length)
 STDLL stata_call(int argc, char *argv[])
 {
     const char *const *arguments;
+    ST_retcode rc;
     if (_stata_ == NULL) {
         return FEREG_SPI_RC_UNAVAILABLE;
     }
     if (argc < 0 || (argc > 0 && argv == NULL)) {
         return FEREG_SPI_RC_SYNTAX;
     }
-    if (!bridge_thread_bound) {
-        fereg_bridge_bind_main_thread();
-    }
-    else if (fereg_bridge_on_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    if (numeric_window.open) {
-        /* No action is running and every worker joined before the previous
-           call returned, so a window still open here is a leaked guard. Close
-           it and fail this call visibly instead of refusing every later one. */
-        numeric_window.open = 0;
-        numeric_window.variables = NULL;
-        numeric_window.variable_count = 0;
-        numeric_window.observations = 0;
-        numeric_window.reader = NULL;
-        SF_error((char *) "fereg: internal: a numeric input window was left open and has been closed\n");
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
+    if (fereg_bridge_enter() != 0) return FEREG_SPI_RC_UNAVAILABLE;
     arguments = (const char *const *) argv;
-    return fereg_dispatch((ST_int) argc, arguments);
+    rc = fereg_dispatch((ST_int) argc, arguments);
+    if (numeric_window.open) {
+        /* Rust joins every worker and catches panics before returning. Clear
+           any leaked guard before reporting or releasing this invocation;
+           preserve an existing error/Break/panic code, otherwise fail closed. */
+        fereg_bridge_clear_numeric_window();
+        SF_error((char *) "fereg: internal: a numeric input window was left open and has been closed\n");
+        if (rc == 0) rc = FEREG_SPI_RC_UNAVAILABLE;
+    }
+    fereg_bridge_leave();
+    return rc;
 }

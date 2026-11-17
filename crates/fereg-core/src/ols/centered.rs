@@ -15,6 +15,89 @@ const LEAF_ROWS: usize = 16_384;
 const MAX_LEAVES: usize = 64;
 const RESULT_VECTORS: usize = 11;
 
+/// Reference scale modulo the absorbed constant. Anchored, power-of-two scaled
+/// differences retain small variation around a large location without forming
+/// E[x²] - E[x]². An exactly constant column keeps its old raw scale so its
+/// existing zero/FE-collinear status remains unchanged.
+pub(super) fn reference_norm(
+    rows: usize,
+    raw_norm: f64,
+    value_weight: impl Fn(usize) -> Result<(f64, f64)>,
+) -> Result<f64> {
+    if rows == 0 {
+        return Ok(raw_norm);
+    }
+    let anchor = value_weight(0)?.0;
+    let mut maximum = anchor.abs();
+    let mut weight_sum = Partial::default();
+    for row in 0..rows {
+        crate::interrupt::row_checkpoint(row)?;
+        let (value, weight) = value_weight(row)?;
+        if !value.is_finite() || !weight.is_finite() || weight <= 0.0 {
+            return Err(invalid_data("centered reference input is invalid"));
+        }
+        maximum = maximum.max(value.abs());
+        weight_sum.add(weight);
+    }
+    let total = finite(
+        weight_sum.sum + weight_sum.correction,
+        "centered reference weight sum is not finite",
+    )?;
+    let unit = power_unit(maximum);
+    let delta = |value: f64| {
+        let difference = value - anchor;
+        if difference.is_finite() {
+            difference / unit
+        } else {
+            value / unit - anchor / unit
+        }
+    };
+    let mut mean = Partial::default();
+    for row in 0..rows {
+        crate::interrupt::row_checkpoint(row)?;
+        let (value, weight) = value_weight(row)?;
+        mean.add((weight / total) * delta(value));
+    }
+    let center = mean.sum + mean.correction;
+    let mut norm = Partial::default();
+    for row in 0..rows {
+        crate::interrupt::row_checkpoint(row)?;
+        let (value, weight) = value_weight(row)?;
+        norm.norm_add(weight.sqrt() * (delta(value) - center));
+    }
+    let centered = finite(norm.norm()? * unit, "centered reference norm is not finite")?;
+    Ok(if centered == 0.0 { raw_norm } else { centered })
+}
+
+/// Remove an exactly representable constant direction before FE projection.
+/// The caller keeps original means for coefficient reconstruction. Subtraction
+/// is exact for a large shared location (Sterbenz); overflow leaves the column
+/// untouched so the original validated projector retains error authority.
+pub(super) fn remove_location(
+    values: &mut DenseMatrix,
+    columns: impl Iterator<Item = usize>,
+) -> Result<()> {
+    if values.nrows() == 0 {
+        return Ok(());
+    }
+    for column in columns {
+        let anchor = values[(0, column)];
+        let mut finite = true;
+        for row in 0..values.nrows() {
+            crate::interrupt::row_checkpoint(row)?;
+            finite &= (values[(row, column)] - anchor).is_finite();
+        }
+        if !finite {
+            continue;
+        }
+        for row in 0..values.nrows() {
+            crate::interrupt::row_checkpoint(row)?;
+            values[(row, column)] -= anchor;
+        }
+    }
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug)]
 struct Partial {
     scale: f64,

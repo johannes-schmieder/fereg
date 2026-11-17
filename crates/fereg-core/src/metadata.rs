@@ -951,7 +951,7 @@ fn validate_component_semantics(
                     "continuous components require an absent level and base=false",
                 ));
             }
-            if !matches!(raw_operator, "" | "c" | "co") {
+            if !matches!(raw_operator, "" | "c" | "o" | "co") {
                 return Err(invalid(format!(
                     "unknown continuous raw component operator {raw_operator:?}"
                 )));

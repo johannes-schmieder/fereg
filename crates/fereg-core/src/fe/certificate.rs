@@ -498,6 +498,17 @@ fn level_basis(
 ) -> Result<Vec<Vec<f64>>> {
     let channels = effect.channels();
     let observations = effect.level_index().members(level);
+    let anchor = observations
+        .iter()
+        .copied()
+        .reduce(|best, row| {
+            if weights[row] > weights[best] {
+                row
+            } else {
+                best
+            }
+        })
+        .unwrap_or(0);
     let mut normalized_columns = fallible_empty(
         channels,
         "unable to reserve fixed-effect certificate normalized columns",
@@ -509,7 +520,15 @@ fn level_basis(
         )?;
         let mut column_scale = 0.0_f64;
         for &observation in observations {
-            let value = weights[observation].sqrt() * effect.basis_value(channel, observation);
+            // Translate before normalizing: a large offset must not erase an
+            // intercept-bearing level's slope span during rank selection.
+            let origin = if effect.has_intercept() && channel > 0 {
+                effect.basis_value(channel, anchor)
+            } else {
+                0.0
+            };
+            let value =
+                weights[observation].sqrt() * (effect.basis_value(channel, observation) - origin);
             if !value.is_finite() {
                 return Err(FeregError::new(
                     ErrorCode::InvalidData,
@@ -1022,6 +1041,36 @@ mod tests {
             certify_residuals_with_reference_norms(&design, &[1.0; 4], &residuals, &[10.0], 1e-12)
                 .expect("certificate");
         assert!(certificate.passed);
+    }
+
+    #[test]
+    fn certificate_retains_translated_slope_span() {
+        for shift in [0.0, 1e15, -1e15] {
+            let slope = vec![shift, shift + 1.0, shift, shift + 1.0];
+            let effect = EffectTerm::new(vec![0; 4], 1, true, vec![slope]).unwrap();
+            let design = FeDesign::new(4, vec![effect]).unwrap();
+            let residuals = DenseMatrix::from_columns(&[vec![-1.0, 1.0, -1.0, 1.0]]).unwrap();
+            let certificate = certify_residuals(&design, &[1.0; 4], &residuals, 1e-8).unwrap();
+            assert!(!certificate.passed);
+            assert!((certificate.relative_infinity_norm - 1.0).abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn certificate_retains_a_channel_supported_on_tiny_weight_rows() {
+        let effect = EffectTerm::new(
+            vec![0; 4],
+            1,
+            true,
+            vec![vec![1e15, 1e15 + 1., 1e15, 1e15 + 1.]],
+        )
+        .unwrap();
+        let design = FeDesign::new(4, vec![effect]).unwrap();
+        let residuals = DenseMatrix::from_columns(&[vec![1., 0., 1., 0.]]).unwrap();
+        let certificate =
+            certify_residuals(&design, &[1e-100, 1., 1e-100, 1.], &residuals, 1e-8).unwrap();
+        assert!(!certificate.passed);
+        assert!((certificate.relative_infinity_norm - 1.).abs() < 1e-12);
     }
 
     #[test]

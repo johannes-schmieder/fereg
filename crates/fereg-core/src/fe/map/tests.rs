@@ -1911,8 +1911,9 @@ fn reusable_certificate_geometry_is_exact_and_rebuilt_after_every_call() {
             assert_eq!(cached.capacities(), capacities);
         }
     }
-    // Initial zero-residual success must rebuild even when the old basis is
-    // finite but has the wrong numerical rank under the new weights.
+    // Initial zero-residual success must rebuild under changed weights. The
+    // anchored and normalized channels retain their genuine rank even when
+    // the slope variation occurs only on tiny-weight rows.
     let design = FeDesign::new(
         3,
         vec![EffectTerm::new(
@@ -1928,7 +1929,7 @@ fn reusable_certificate_geometry_is_exact_and_rebuilt_after_every_call() {
     cached.enable_certificate_geometry().unwrap();
     for (weights, rank) in [
         (vec![1.0; 3], 2),
-        (vec![1.0, 1e-60, 1e-60], 1),
+        (vec![1.0, 1e-60, 1e-60], 2),
         (vec![1.0; 3], 2),
     ] {
         cached
@@ -2115,14 +2116,13 @@ fn map_rejects_weighted_basis_overflow_before_mutation() {
     let design = FeDesign::new(4, vec![effect]).unwrap();
     let original = DenseMatrix::from_columns(&[vec![0.0, 1.0, -1.0, 0.0]]).unwrap();
     let mut actual = original.clone();
-    let mut expected = original.clone();
-    let a = absorb_map(&design, &[16.0; 4], &mut actual, MapConfig::default()).unwrap_err();
-    let b =
-        baseline_absorb_map(&design, &[16.0; 4], &mut expected, MapConfig::default()).unwrap_err();
-    assert_eq!(a, b);
-    assert_eq!(a.code, ErrorCode::InvalidData);
+    let error = absorb_map(&design, &[16.0; 4], &mut actual, MapConfig::default()).unwrap_err();
+    assert_eq!(error.code, ErrorCode::InvalidData);
+    assert_eq!(error.message, "weighted fixed-effect basis is not finite");
     assert_eq!(actual, original);
-    assert_eq!(expected, original);
+    // This input guard is distinct from the span certificate: anchoring a
+    // constant slope gives a finite zero channel, so QR is no longer a
+    // surrogate for validation of the original weighted raw products.
 }
 
 fn baseline_absorb_map(

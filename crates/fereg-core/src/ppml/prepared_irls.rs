@@ -62,6 +62,7 @@ use super::{
 };
 
 mod controller;
+mod offset_start;
 mod presolve;
 
 mod retry;
@@ -946,7 +947,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .map(std::num::NonZeroUsize::get)
         .unwrap_or(0);
     let effective_threads = config.linear.execution.threads.resolved();
-    let (memory_plan, solver_admission, solver_memory_budget, installation) = admission
+    let (mut memory_plan, solver_admission, solver_memory_budget, installation) = admission
         .admit_installation(
             prepared,
             &fe_design,
@@ -955,6 +956,28 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             effective_threads,
             shared_prepared.is_some(),
         )?;
+    // Admission and telemetry bind this fit to one resolved team. Repeated
+    // automatic resolution may allocate while querying OS CPU quotas (Linux),
+    // and must not change the team behind the admitted workspace dimensions.
+    // Keep the caller's requested value in telemetry, then use this explicit
+    // count for every ordinary, fallback and strict linear frame in the fit.
+    config.linear.execution.threads.requested = std::num::NonZeroUsize::new(effective_threads);
+    // A provisional full-model projection may neutralize the in-span part
+    // of the offset before exponentiating any starting predictor. Its rank
+    // and Hessian never enter the certified IRLS session below.
+    let projected_start = if start.is_none() && purpose == PreparedPpmlIrlsPurpose::Publication {
+        interrupt(PpmlInterruptPoint::Preparation)?;
+        offset_start::propose(
+            prepared,
+            outcome,
+            prior_weights,
+            offset,
+            config,
+            &mut memory_plan,
+        )?
+    } else {
+        None
+    };
     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
     if let Some((_, reason)) = config.solver_plan.substituted {
         memory.steps.fallback = reason;
@@ -966,24 +989,22 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     + solver_admission.owned_fe_design_shortfall_bytes,
             )?);
     }
-    // Admission and telemetry bind this fit to one resolved team. Repeated
-    // automatic resolution may allocate while querying OS CPU quotas (Linux),
-    // and must not change the team behind the admitted workspace dimensions.
-    // Keep the caller's requested value in telemetry, then use this explicit
-    // count for every ordinary, fallback and strict linear frame in the fit.
-    config.linear.execution.threads.requested = std::num::NonZeroUsize::new(effective_threads);
     let installation_admission_seconds = preparation_trace.lap();
 
-    let (coefficient_values, mut eta) = initialize(
-        prepared,
-        outcome,
-        prior_weights,
-        offset,
-        &fe_design,
-        config,
-        start,
-        purpose,
-    )?;
+    let (coefficient_values, mut eta) = if let Some(seed) = projected_start {
+        seed
+    } else {
+        initialize(
+            prepared,
+            outcome,
+            prior_weights,
+            offset,
+            &fe_design,
+            config,
+            start,
+            purpose,
+        )?
+    };
     let starts_seconds = preparation_trace.lap();
     let objective_inputs = PreparedPoissonInputs::new_with_threads(
         outcome,

@@ -340,7 +340,7 @@ pub(super) fn ir_step(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    graph_admitted: bool,
+    graph_admitted: super::DetectorAdmission,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     lap: &mut trace::IrPhase,
 ) -> Result<Detected> {

@@ -1664,13 +1664,29 @@ pub(super) fn prepare_reusable_group_basis(
     basis: &mut [f64],
 ) -> Result<usize> {
     let member_count = members.len();
+    let anchor = members
+        .iter()
+        .copied()
+        .reduce(|best, row| {
+            if weights[row] > weights[best] {
+                row
+            } else {
+                best
+            }
+        })
+        .unwrap_or(0);
     let channels = effect.channels();
     let mut active = 0_usize;
     for channel in 0..channels {
         let target = active * stride;
         let mut scale = 0.0_f64;
         for (local, &row) in members.iter().enumerate() {
-            let value = weights[row].sqrt() * effect.basis_value(channel, row);
+            let origin = if effect.has_intercept() && channel > 0 {
+                effect.basis_value(channel, anchor)
+            } else {
+                0.0
+            };
+            let value = weights[row].sqrt() * (effect.basis_value(channel, row) - origin);
             columns[target + local] = value;
             scale = scale.max(value.abs());
         }

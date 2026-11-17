@@ -322,49 +322,71 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'_, P> {
             .within
             .take()
             .ok_or_else(|| invalid_argument("weighted-linear retained design disappeared"))?;
-        let result = if self.group_centered_source.is_some() {
-            if retained.generations.same_design(self.generations) {
-                Ok(())
+        let result = (|| {
+            if self.group_centered_source.is_some() {
+                if retained.generations.same_design(self.generations) {
+                    Ok(())
+                } else {
+                    Err(invalid_argument("implicit norms are stale"))
+                }
             } else {
-                Err(invalid_argument("implicit norms are stale"))
-            }
-        } else {
-            let columns = &retained.stored_generated_columns;
-            if retained.reference_norms.len() != columns.len()
-                || retained.reference_means.len() != columns.len()
-                || retained.within_norms.len() != columns.len()
-            {
-                Err(invalid_argument(
-                    "weighted-linear reference workspaces are absent",
-                ))
-            } else {
-                let rows = self.response.len();
-                column_statistics::<true, true>(
-                    rows,
-                    self.weights.borrowed(),
-                    self.bread_weight_scale,
-                    &mut retained.reference_norms,
-                    &mut retained.reference_means,
-                    |column, range, state| {
-                        if let Some(values) =
-                            crate::ols::prepared_fit_view::prepared_continuous_range(
+                let columns = &retained.stored_generated_columns;
+                if retained.reference_norms.len() != columns.len()
+                    || retained.reference_means.len() != columns.len()
+                    || retained.within_norms.len() != columns.len()
+                {
+                    Err(invalid_argument(
+                        "weighted-linear reference workspaces are absent",
+                    ))
+                } else {
+                    let rows = self.response.len();
+                    column_statistics::<true, true>(
+                        rows,
+                        self.weights.borrowed(),
+                        self.bread_weight_scale,
+                        &mut retained.reference_norms,
+                        &mut retained.reference_means,
+                        |column, range, state| {
+                            if let Some(values) =
+                                crate::ols::prepared_fit_view::prepared_continuous_range(
+                                    self.prepared,
+                                    columns[column],
+                                    range.clone(),
+                                )
+                            {
+                                return state.add_run(range.start, range.len(), |i| values[i]);
+                            }
+                            crate::ols::prepared_fit_view::visit_prepared_column_range(
                                 self.prepared,
                                 columns[column],
-                                range.clone(),
+                                range,
+                                |row, value| state.add(row, value),
                             )
-                        {
-                            return state.add_run(range.start, range.len(), |i| values[i]);
+                        },
+                    )?;
+                    if self.prepared.fit_has_absorbed_intercept() {
+                        for (position, &generated) in columns.iter().enumerate() {
+                            retained.reference_norms[position] =
+                                crate::ols::centered::reference_norm(
+                                    rows,
+                                    retained.reference_norms[position],
+                                    |row| {
+                                        Ok((
+                                            self.prepared.fit_column_value(generated, row)?,
+                                            normalized_solver_weight(
+                                                self.weights.borrowed(),
+                                                self.bread_weight_scale,
+                                                row,
+                                            )?,
+                                        ))
+                                    },
+                                )?;
                         }
-                        crate::ols::prepared_fit_view::visit_prepared_column_range(
-                            self.prepared,
-                            columns[column],
-                            range,
-                            |row, value| state.add(row, value),
-                        )
-                    },
-                )
+                    }
+                    Ok(())
+                }
             }
-        };
+        })();
         if result.is_ok() {
             retained.generations = WithinGenerations::from_session(self.generations);
         }

@@ -44,6 +44,10 @@ mod retained_refinement;
 pub(crate) use retained_refinement::coefficient_accuracy_scale;
 use retained_refinement::{refine_workspace, RefinementFrame};
 
+#[path = "rank_projection.rs"]
+mod rank_projection;
+use rank_projection::{RankProjectionWork, RANK_PROJECTION_TOLERANCE};
+
 use super::finite_wls_kernel::{
     certify_finite_inverse, certify_normal_equations, factor_guarded_cholesky_in_place,
     fill_finite_wls_moments, inverse_relative_infinity_norm, invert_guarded_cholesky,
@@ -1681,17 +1685,23 @@ pub(crate) fn classify_frozen_linear_fallback(
         Some(FrozenLinearFallbackKind::Moment)
     } else if matches!(
         message,
-        "frozen weighted-linear basis lost full rank"
+        "frozen weighted-linear basis lost certified full rank"
             | "frozen weighted-linear Cholesky factor is not finite"
             | "frozen weighted-linear condition proxy is not finite"
             | "frozen weighted-linear solution is not finite"
+            | "frozen weighted-linear Cholesky solution is not finite"
+            | "frozen weighted-linear QR solution is not finite"
     ) {
         Some(FrozenLinearFallbackKind::Rank)
     } else if matches!(
         message,
         "frozen weighted-linear inverse certificate is not finite"
             | "frozen weighted-linear bread is not finite"
+            | "frozen weighted-linear Cholesky inverse is not finite"
+            | "frozen weighted-linear QR inverse is not finite"
             | "frozen weighted-linear score or inverse certificate did not pass"
+            | "retained coefficient refinement exhausted its accuracy budget"
+            | "retained coefficient refinement is nonfinite"
     ) {
         Some(FrozenLinearFallbackKind::Bread)
     } else {
@@ -3027,7 +3037,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         // certifies the accepted active positions under the *current*
         // projection before any of that authority moves into the RAII guard.
         let stage = match installed_team.install(|| {
-            self.prepare_retained_solve(
+            self.prepare_rank_checked_solve(
                 LinearSessionSolveKind::Strict,
                 Some(&active_positions),
                 reuse_preconditioner,
@@ -3572,7 +3582,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         prior_active_positions: Option<&[usize]>,
     ) -> Result<Option<LinearWithinDesignCertificate>> {
         self.recycle_frame();
-        let stage = self.prepare_retained_solve(kind, prior_active_positions, false)?;
+        let stage = self.prepare_rank_checked_solve(kind, prior_active_positions, false)?;
         self.install_retained_stage(stage)
     }
 
@@ -3765,12 +3775,62 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(Some((products.response, products.report, products.moments)))
     }
 
-    fn prepare_retained_solve(
+    fn prepare_rank_checked_solve(
         &mut self,
         kind: LinearSessionSolveKind,
         prior_active_positions: Option<&[usize]>,
         reuse_preconditioner: bool,
     ) -> Result<RetainedSolveStage> {
+        let requested = self.config.absorb;
+        let may_recheck = !self.fe_design().effects().is_empty()
+            && requested.map.tolerance.max(requested.lsmr.tolerance) > RANK_PROJECTION_TOLERANCE;
+        let mut work = RankProjectionWork::default();
+        match self.prepare_retained_solve(
+            kind,
+            prior_active_positions,
+            reuse_preconditioner,
+            may_recheck,
+            &mut work,
+        ) {
+            Ok(Some(stage)) => return Ok(stage),
+            Err(error) if !may_recheck || !rank_projection::retryable(&error) => return Err(error),
+            Ok(None) | Err(_) => {}
+        }
+        // An approximate FE projection can lift an exact null direction above
+        // the rank threshold. Recheck once with the same rank/omission policy,
+        // before any basis is installed; never try to refine that false inverse.
+        self.config.absorb.map.tolerance = requested.map.tolerance.min(RANK_PROJECTION_TOLERANCE);
+        self.config.absorb.lsmr.tolerance = requested.lsmr.tolerance.min(RANK_PROJECTION_TOLERANCE);
+        self.projection_refresh_required = true;
+        self.retire_preconditioner();
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(
+                "FEREG_SOLVER_TRACE|phase=finite_rank|action=reproject",
+            );
+        }
+        let mut retry_work = RankProjectionWork::default();
+        let retried = self.prepare_retained_solve(
+            kind,
+            prior_active_positions,
+            false,
+            false,
+            &mut retry_work,
+        );
+        self.config.absorb = requested;
+        let mut stage =
+            retried?.ok_or_else(|| invalid_data("retained rank recheck did not finish"))?;
+        work.merge_into(&mut stage)?;
+        Ok(stage)
+    }
+
+    fn prepare_retained_solve(
+        &mut self,
+        kind: LinearSessionSolveKind,
+        prior_active_positions: Option<&[usize]>,
+        reuse_preconditioner: bool,
+        recheck_projection: bool,
+        work: &mut RankProjectionWork,
+    ) -> Result<Option<RetainedSolveStage>> {
         self.ensure_bound()?;
         let mut report = LinearSessionReuseReport::new(kind);
         report.response_buffer_reused = self.pending_response_buffer_reused;
@@ -3887,6 +3947,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             phase_probe.map(|_| &mut phase_allocation),
             LinearSessionAllocationPhase::FiniteSolve,
         );
+        if recheck_projection {
+            work.projection = Some(absorption_report.clone());
+            work.projection_seconds = projection_seconds;
+        }
         let candidate = match self.take_fresh_rank_failure() {
             Some(error) => Err(error),
             None => self.solve_full_retained_rank(
@@ -3894,6 +3958,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 absorption_report,
                 prior_active_positions,
                 canonical_moments,
+                recheck_projection,
             ),
         };
         // `absorb_current_response` transfers the session-owned response
@@ -3911,9 +3976,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             // not add the already incorporated response delta a second time.
             self.previous_response.copy_from_slice(&self.response);
         }
-        let candidate = candidate?;
         drop(finite_phase);
         let finite_solve_seconds = finite_started.elapsed().as_secs_f64();
+        work.finite_seconds = finite_solve_seconds;
+        work.allocation = phase_allocation;
+        let Some(candidate) = candidate? else {
+            return Ok(None);
+        };
         if kind != LinearSessionSolveKind::Strict {
             if let Some(basis) = &self.frozen_basis {
                 if *basis != candidate.basis {
@@ -3934,12 +4003,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if let Some(work) = observed_projection_work {
             self.canonical_projection_work_hint = work;
         }
-        Ok(RetainedSolveStage {
+        Ok(Some(RetainedSolveStage {
             candidate,
             report,
             #[cfg(test)]
             response_fused_with_design,
-        })
+        }))
     }
 
     fn install_retained_stage(
@@ -4707,7 +4776,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         absorption_report: SolveReport,
         prior_active_positions: Option<&[usize]>,
         canonical_moments: Option<CanonicalMoments>,
-    ) -> Result<RetainedRankSolveDraft> {
+        recheck_projection: bool,
+    ) -> Result<Option<RetainedRankSolveDraft>> {
         let rows = self.response.len();
         let generated_count = self.prepared.fit_model().columns.len();
         let relative_threshold = self.config.rank_tolerance_multiplier
@@ -4905,6 +4975,20 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 result.report.condition_proxy,
             )
         };
+
+        if recheck_projection
+            && rank_projection::unresolved(
+                condition_proxy,
+                self.config
+                    .absorb
+                    .map
+                    .tolerance
+                    .max(self.config.absorb.lsmr.tolerance),
+                candidate_count,
+            )
+        {
+            return Ok(None);
+        }
 
         let mut active_positions =
             fallible_empty(rank, "unable to reserve retained active positions")?;
@@ -5437,7 +5521,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             draft,
             self.generations,
         )?;
-        Ok(RetainedRankSolveDraft {
+        Ok(Some(RetainedRankSolveDraft {
             constant,
             frame,
             basis,
@@ -5445,7 +5529,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             active_positions,
             within_certificate,
             prior_basis_certificate,
-        })
+        }))
     }
 
     fn full_retained_generated_columns(&self) -> Result<Vec<usize>> {
@@ -5538,7 +5622,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         } else {
             match self.config.execution.mode {
                 PreparedOlsExecutionMode::Fast => {
-                    let raw = self.prepared.fit_build_rhs_with_response(&self.response)?;
+                    let mut raw = self.prepared.fit_build_rhs_with_response(&self.response)?;
                     let expected_columns = self
                         .prepared
                         .fit_model()
@@ -5553,19 +5637,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             "weighted-linear combined retained design is inconsistent",
                         ));
                     }
-                    if slope_norms {
-                        self.fill_dense_statistics::<false, true>(
-                            &raw,
-                            |column| stored_generated_columns[column] + 1,
-                            &mut [],
-                            &mut reference_means,
-                        )?;
-                    } else {
-                        self.fill_dense_statistics::<true, true>(
-                            &raw,
-                            |column| stored_generated_columns[column] + 1,
-                            &mut reference_norms,
-                            &mut reference_means,
+                    self.fill_dense_statistics::<true, true>(
+                        &raw,
+                        |column| stored_generated_columns[column] + 1,
+                        &mut reference_norms,
+                        &mut reference_means,
+                    )?;
+                    if self.prepared.fit_has_absorbed_intercept() {
+                        super::centered::remove_location(
+                            &mut raw,
+                            stored_generated_columns.iter().map(|column| column + 1),
                         )?;
                     }
                     let mut norms_reused = false;
@@ -5576,7 +5657,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             self.absorb_slope_with_selected_norms(
                                 raw,
                                 stored_generated_columns.iter().map(|column| column + 1),
-                                Some(&mut reference_norms),
+                                None,
                                 &mut within_norms,
                             )?
                         } else if let Some(FeSession {
@@ -5702,28 +5783,22 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                                 }
                                 Ok(())
                             })?;
-                        let raw = DenseMatrix::from_row_major(rows, block, raw_values)?;
-                        if slope_norms {
-                            self.fill_dense_statistics::<false, true>(
-                                &raw,
-                                |column| column,
-                                &mut [],
-                                &mut reference_means[start..end],
-                            )?;
-                        } else {
-                            self.fill_dense_statistics::<true, true>(
-                                &raw,
-                                |column| column,
-                                &mut reference_norms[start..end],
-                                &mut reference_means[start..end],
-                            )?;
+                        let mut raw = DenseMatrix::from_row_major(rows, block, raw_values)?;
+                        self.fill_dense_statistics::<true, true>(
+                            &raw,
+                            |column| column,
+                            &mut reference_norms[start..end],
+                            &mut reference_means[start..end],
+                        )?;
+                        if self.prepared.fit_has_absorbed_intercept() {
+                            super::centered::remove_location(&mut raw, 0..block)?;
                         }
                         let (absorbed, norms_reused) = if slope_norms {
                             (
                                 self.absorb_slope_with_selected_norms(
                                     raw,
                                     0..block,
-                                    Some(&mut reference_norms[start..end]),
+                                    None,
                                     &mut within_norms[start..end],
                                 )?,
                                 true,
@@ -5769,6 +5844,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 }
             }
         };
+        if self.prepared.fit_has_absorbed_intercept() {
+            for (position, &generated) in stored_generated_columns.iter().enumerate() {
+                reference_norms[position] =
+                    super::centered::reference_norm(rows, reference_norms[position], |row| {
+                        Ok((
+                            self.prepared.fit_column_value(generated, row)?,
+                            normalized_solver_weight(
+                                self.weights.borrowed(),
+                                self.bread_weight_scale,
+                                row,
+                            )?,
+                        ))
+                    })?;
+            }
+        }
         Ok((
             RetainedWithinDesign {
                 storage,
@@ -5841,6 +5931,22 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 ));
             }
         };
+        for (position, &generated) in retained.stored_generated_columns.iter().enumerate() {
+            retained.reference_norms[position] = super::centered::reference_norm(
+                self.response.len(),
+                retained.reference_norms[position],
+                |row| {
+                    Ok((
+                        self.prepared.fit_column_value(generated, row)?,
+                        normalized_solver_weight(
+                            self.weights.borrowed(),
+                            self.bread_weight_scale,
+                            row,
+                        )?,
+                    ))
+                },
+            )?;
+        }
         retained.generations = WithinGenerations::from_session(self.generations);
         retained.certificate.passed = false;
         self.within = Some(retained);

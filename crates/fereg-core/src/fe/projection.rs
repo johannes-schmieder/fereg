@@ -97,6 +97,19 @@ pub(crate) fn project_validated(
     Ok(())
 }
 
+/// Local translations are valid only in the presence of an intercept. Keep
+/// coefficients and fitted values in this basis until the projection ends.
+#[inline]
+fn local_basis_value(effect: &EffectTerm, channel: usize, observation: usize) -> f64 {
+    let value = effect.basis_value(channel, observation);
+    if effect.has_intercept() && channel > 0 {
+        let level = effect.codes()[observation] as usize;
+        value - effect.basis_value(channel, effect.level_index().members(level)[0])
+    } else {
+        value
+    }
+}
+
 #[inline]
 fn group_coefficients(
     effect: &EffectTerm,
@@ -111,28 +124,93 @@ fn group_coefficients(
     gram.fill(0.0);
     coefficients.fill(0.0);
 
-    for observation in effect.level_index().members(level) {
-        let weight = weights[*observation];
-        let row_start = *observation * rhs_count;
-        let row = &values.as_slice()[row_start..row_start + rhs_count];
-        for left_channel in 0..channels {
-            let left_basis = effect.basis_value(left_channel, *observation);
-            for right_channel in 0..channels {
-                let right_basis = effect.basis_value(right_channel, *observation);
-                let index = left_channel * channels + right_channel;
-                gram[index] = (weight * left_basis).mul_add(right_basis, gram[index]);
+    let members = effect.level_index().members(level);
+    let weight_scale = if effect.slopes().is_empty() {
+        1.
+    } else {
+        members
+            .iter()
+            .map(|&row| weights[row])
+            .fold(0.0_f64, f64::max)
+    };
+    for left in 0..channels {
+        let (left_mean, left_scale) =
+            channel_geometry(effect, weights, members, left, weight_scale);
+        for right in 0..channels {
+            let (right_mean, right_scale) =
+                channel_geometry(effect, weights, members, right, weight_scale);
+            for &row in members {
+                let a = (local_basis_value(effect, left, row) - left_mean) / left_scale;
+                let b = (local_basis_value(effect, right, row) - right_mean) / right_scale;
+                let index = left * channels + right;
+                gram[index] = ((weights[row] / weight_scale) * a).mul_add(b, gram[index]);
             }
-            let start = left_channel * rhs_count;
-            let moments = &mut coefficients[start..start + rhs_count];
-            for (moment, value) in moments.iter_mut().zip(row) {
-                *moment = (weight * left_basis).mul_add(*value, *moment);
+        }
+        for &row in members {
+            let basis = (local_basis_value(effect, left, row) - left_mean) / left_scale;
+            for rhs in 0..rhs_count {
+                let index = left * rhs_count + rhs;
+                coefficients[index] = ((weights[row] / weight_scale) * basis)
+                    .mul_add(values[(row, rhs)], coefficients[index]);
+            }
+        }
+    }
+    solve_linear_system(gram, coefficients, channels, rhs_count, 1e-12)?;
+    // Return coefficients in the observed-anchor basis used by subtraction.
+    for channel in 0..channels {
+        let (mean, scale) = channel_geometry(effect, weights, members, channel, weight_scale);
+        for rhs in 0..rhs_count {
+            let index = channel * rhs_count + rhs;
+            coefficients[index] /= scale;
+            if effect.has_intercept() && channel > 0 {
+                coefficients[rhs] = (-mean).mul_add(coefficients[index], coefficients[rhs]);
             }
         }
     }
 
-    solve_linear_system(gram, coefficients, channels, rhs_count, 1e-12)?;
-
     Ok(())
+}
+
+/// Center before taking weighted scales: tiny IR weights on a distinct slope
+/// value must not make its genuine local channel look numerically constant.
+/// Recomputing this O(N) geometry per pair keeps the existing O(N*C²) work and
+/// workspace bound, including the parallel coefficient bank.
+fn channel_geometry(
+    effect: &EffectTerm,
+    weights: &[f64],
+    members: &[usize],
+    channel: usize,
+    weight_scale: f64,
+) -> (f64, f64) {
+    if effect.has_intercept() && channel == 0 {
+        return (0., 1.);
+    }
+    let maximum = members
+        .iter()
+        .map(|&row| local_basis_value(effect, channel, row).abs())
+        .fold(0.0_f64, f64::max);
+    let mut mean = 0.;
+    if effect.has_intercept() && maximum > 0. {
+        let (mut sum, mut correction, mut mass, mut mass_correction) = (0., 0., 0., 0.);
+        for &row in members {
+            let weight = weights[row] / weight_scale;
+            crate::linalg::neumaier_add(
+                weight * (local_basis_value(effect, channel, row) / maximum),
+                &mut sum,
+                &mut correction,
+            );
+            crate::linalg::neumaier_add(weight, &mut mass, &mut mass_correction);
+        }
+        mean = maximum * ((sum + correction) / (mass + mass_correction));
+    }
+    let scale = members
+        .iter()
+        .map(|&row| {
+            (weights[row] / weight_scale).sqrt()
+                * (local_basis_value(effect, channel, row) - mean).abs()
+        })
+        .fold(0.0_f64, f64::max);
+    (mean, if scale == 0. { 1. } else { scale })
 }
 
 #[inline]
@@ -148,7 +226,7 @@ fn subtract_row(
         let mut fitted = [0.0_f64; 32];
         let rhs_start = tile_index * 32;
         for channel in 0..channels {
-            let basis = effect.basis_value(channel, observation);
+            let basis = local_basis_value(effect, channel, observation);
             let start = channel * rhs_count + rhs_start;
             let coefficients = &coefficients[start..start + tile.len()];
             for (value, coefficient) in fitted[..tile.len()].iter_mut().zip(coefficients) {
@@ -623,42 +701,20 @@ mod tests {
         for level in 0..effect.n_levels() {
             let gram_length = channels * channels;
             let rhs_length = channels * rhs_count;
-            workspace.gram[..gram_length].fill(0.0);
-            workspace.right_hand_sides[..rhs_length].fill(0.0);
-
-            for observation in effect.level_index().members(level) {
-                let weight = weights[*observation];
-                for left_channel in 0..channels {
-                    let left_basis = effect.basis_value(left_channel, *observation);
-                    for right_channel in 0..channels {
-                        let right_basis = effect.basis_value(right_channel, *observation);
-                        let index = left_channel * channels + right_channel;
-                        workspace.gram[index] =
-                            (weight * left_basis).mul_add(right_basis, workspace.gram[index]);
-                    }
-                    for rhs in 0..rhs_count {
-                        let index = left_channel * rhs_count + rhs;
-                        workspace.right_hand_sides[index] = (weight * left_basis).mul_add(
-                            values[(*observation, rhs)],
-                            workspace.right_hand_sides[index],
-                        );
-                    }
-                }
-            }
-
-            solve_linear_system(
+            group_coefficients(
+                effect,
+                weights,
+                values,
+                level,
                 &mut workspace.gram[..gram_length],
                 &mut workspace.right_hand_sides[..rhs_length],
-                channels,
-                rhs_count,
-                1e-12,
             )?;
 
             for observation in effect.level_index().members(level) {
                 for rhs in 0..rhs_count {
                     let mut fitted = 0.0;
                     for channel in 0..channels {
-                        fitted = effect.basis_value(channel, *observation).mul_add(
+                        fitted = local_basis_value(effect, channel, *observation).mul_add(
                             workspace.right_hand_sides[channel * rhs_count + rhs],
                             fitted,
                         );
@@ -897,6 +953,84 @@ mod tests {
                         }
                     }
                 });
+        }
+    }
+
+    #[test]
+    fn translated_slope_projection_matches_independent_weighted_cells() {
+        let weights = [1.0, 2.0, 3.0, 1.0, 2.0, 4.0];
+        let original = vec![1.0, 3.0, 4.0, -1.0, 1.0, 5.0];
+        for shift in [0.0, 1e15, -1e15] {
+            let effect = EffectTerm::new(
+                vec![0; 6],
+                1,
+                true,
+                vec![(0..6).map(|row| shift + (row % 2) as f64).collect()],
+            )
+            .unwrap();
+            let mut values = DenseMatrix::from_columns(&[original.clone()]).unwrap();
+            let mut workspace = ProjectionWorkspace::new(2, 1).unwrap();
+            project_effect_in_place(&effect, &weights, &mut values, &mut workspace).unwrap();
+            for row in 0..6 {
+                let cell: Vec<_> = (0..6).filter(|other| other % 2 == row % 2).collect();
+                let mean = cell.iter().map(|&i| weights[i] * original[i]).sum::<f64>()
+                    / cell.iter().map(|&i| weights[i]).sum::<f64>();
+                assert!((values[(row, 0)] - (original[row] - mean)).abs() < 1e-12);
+            }
+        }
+    }
+
+    #[test]
+    fn tiny_weight_slope_contrasts_keep_their_span_across_units_and_offsets() {
+        for weight in [1e-18, 1e-100] {
+            for (offset, units) in [(0., 1.), (1e15, 1.), (0., 1e-100), (0., 1e100)] {
+                let effect = EffectTerm::new(
+                    vec![0; 6],
+                    1,
+                    true,
+                    vec![(0..6)
+                        .map(|row| offset + units * (row % 2) as f64)
+                        .collect()],
+                )
+                .unwrap();
+                let weights: Vec<_> = (0..6)
+                    .map(|row| if row % 2 == 0 { weight } else { 1. })
+                    .collect();
+                let mut values = DenseMatrix::from_columns(&[
+                    vec![0., 1., 0., 1., 0., 1.],
+                    vec![1., 0., 1., 0., 1., 0.],
+                ])
+                .unwrap();
+                let design = FeDesign::new(6, vec![effect.clone()]).unwrap();
+                // A local sweep may need its ordinary MAP correction when
+                // roundoff is large relative to the tiny RHS weighted norm.
+                crate::fe::absorb_map(
+                    &design,
+                    &weights,
+                    &mut values,
+                    crate::fe::MapConfig {
+                        tolerance: 1e-12,
+                        ..crate::fe::MapConfig::default()
+                    },
+                )
+                .unwrap();
+                assert!(
+                    crate::fe::certify_residuals_with_reference_norms(
+                        &design,
+                        &weights,
+                        &values,
+                        &[3.0_f64.sqrt(), (3.0 * weight).sqrt()],
+                        1e-12
+                    )
+                    .unwrap()
+                    .passed
+                );
+                assert!(
+                    values.as_slice().iter().all(|v| v.abs() < 1e-12),
+                    "weight={weight} offset={offset} units={units}: {:?}",
+                    values.as_slice()
+                );
+            }
         }
     }
 

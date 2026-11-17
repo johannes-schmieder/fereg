@@ -12,6 +12,7 @@ use crate::fe::BorrowedInterceptFeDesign;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct ExactInterceptSpan {
+    effects: [usize; 2],
     split: usize,
     potentials: Vec<usize>,
 }
@@ -30,10 +31,11 @@ impl ExactInterceptSpan {
         design: &BorrowedInterceptFeDesign<'_>,
         direction: &[f64],
     ) -> Result<()> {
-        if design.effects().len() < 2
+        if self.effects[0] >= self.effects[1]
+            || self.effects[1] >= design.effects().len()
             || direction.len() != design.nobs()
-            || self.split != design.effects()[0].n_levels()
-            || self.potentials.len() != self.split + design.effects()[1].n_levels()
+            || self.split != design.effects()[self.effects[0]].n_levels()
+            || self.potentials.len() != self.split + design.effects()[self.effects[1]].n_levels()
             || self
                 .potentials
                 .iter()
@@ -49,8 +51,8 @@ impl ExactInterceptSpan {
             "unable to reserve exact separation coefficient replay",
         )?;
         for (effect, offset, sign) in [
-            (design.effects()[0], 0, 1_i64),
-            (design.effects()[1], self.split, -1_i64),
+            (design.effects()[self.effects[0]], 0, 1_i64),
+            (design.effects()[self.effects[1]], self.split, -1_i64),
         ] {
             for level in 0..effect.n_levels() {
                 let value = sign * self.potentials[offset + level] as i64;
@@ -76,8 +78,18 @@ pub(super) fn workspace_bytes(design: &BorrowedInterceptFeDesign<'_>) -> Result<
     if design.effects().len() < 2 {
         return Ok(None);
     }
-    let levels = (design.effects()[0].n_levels() as u128)
-        .checked_add(design.effects()[1].n_levels() as u128)
+    let mut largest = [0_u128; 2];
+    for effect in design.effects() {
+        let levels = effect.n_levels() as u128;
+        if levels > largest[0] {
+            largest[1] = largest[0];
+            largest[0] = levels;
+        } else {
+            largest[1] = largest[1].max(levels);
+        }
+    }
+    let levels = largest[0]
+        .checked_add(largest[1])
         .ok_or_else(|| allocation("separation graph levels overflow"))?;
     // Integer potentials and their differences must be exactly representable.
     if levels > (1_u128 << 53) {
@@ -113,6 +125,41 @@ pub(super) fn direction(
     if workspace_bytes(design)?.is_none() {
         return Ok(None);
     }
+    // Preserve the established first-pair proposal, then search a star about
+    // the finest categorical partition. At most J pairs for J effects bounds
+    // work by O(J*(N+levels)), rather than an exhaustive quadratic pair scan.
+    // Missing a submodel direction cannot certify absence: full-model IR and
+    // its independent unit-metric dual check still follow this accelerator.
+    if let Some(candidate) = pair_direction(design, [0, 1], outcome, interrupt)? {
+        return Ok(Some(candidate));
+    }
+    let mut anchor = 0;
+    for effect in 1..design.effects().len() {
+        if design.effects()[effect].n_levels() > design.effects()[anchor].n_levels() {
+            anchor = effect;
+        }
+    }
+    for other in 0..design.effects().len() {
+        if other == anchor {
+            continue;
+        }
+        let pair = [anchor.min(other), anchor.max(other)];
+        if pair == [0, 1] {
+            continue;
+        }
+        if let Some(candidate) = pair_direction(design, pair, outcome, interrupt)? {
+            return Ok(Some(candidate));
+        }
+    }
+    Ok(None)
+}
+
+fn pair_direction(
+    design: &BorrowedInterceptFeDesign<'_>,
+    effects: [usize; 2],
+    outcome: &[f64],
+    interrupt: &mut dyn FnMut() -> Result<()>,
+) -> Result<Option<GraphDirection>> {
     let invalid_outcome = || {
         crate::parallel::any_index(outcome.len(), |row| {
             !outcome[row].is_finite() || outcome[row] < 0.
@@ -124,8 +171,8 @@ pub(super) fn direction(
         ));
     }
     interrupt()?;
-    let left = design.effects()[0];
-    let right = design.effects()[1];
+    let left = design.effects()[effects[0]];
+    let right = design.effects()[effects[1]];
     let split = left.n_levels();
     let levels = split
         .checked_add(right.n_levels())
@@ -334,6 +381,7 @@ pub(super) fn direction(
     Ok(Some(GraphDirection {
         direction,
         span: ExactInterceptSpan {
+            effects,
             split,
             potentials: parent,
         },
@@ -482,5 +530,43 @@ mod tests {
         .unwrap();
         assert_eq!(&z[..6], &[0.; 6]);
         assert!(z[6] < 0. && z[7] < 0.);
+    }
+    #[test]
+    fn bounded_star_finds_control_contrast_beyond_first_pair_and_replays_indices() {
+        let h = [0, 1, 0, 1, 0, 0, 1, 0];
+        let g = [0, 0, 1, 1, 2, 2, 2, 0];
+        let x = [0, 0, 1, 1, 1, 0, 0, 0];
+        let hi = LevelIndex::from_codes(&h, 2).unwrap();
+        let gi = LevelIndex::from_codes(&g, 3).unwrap();
+        let xi = LevelIndex::from_codes(&x, 2).unwrap();
+        let design = BorrowedInterceptFeDesign::new(
+            8,
+            vec![
+                BorrowedInterceptEffect::new(&h, 2, &hi).unwrap(),
+                BorrowedInterceptEffect::new(&g, 3, &gi).unwrap(),
+                BorrowedInterceptEffect::new(&x, 2, &xi).unwrap(),
+            ],
+        )
+        .unwrap();
+        let candidate = direction(&design, &[1., 1., 1., 1., 1., 0., 0., 0.], &mut || Ok(()))
+            .unwrap()
+            .unwrap();
+        assert_eq!(candidate.span.effects, [1, 2]);
+        candidate
+            .span
+            .verify(&design, &candidate.direction)
+            .unwrap();
+        assert_eq!(
+            candidate
+                .direction
+                .iter()
+                .enumerate()
+                .filter_map(|(row, &z)| (z < 0.).then_some(row))
+                .collect::<Vec<_>>(),
+            vec![5, 6]
+        );
+        let mut stale = candidate.span.clone();
+        stale.effects = [0, 2];
+        assert!(stale.verify(&design, &candidate.direction).is_err());
     }
 }

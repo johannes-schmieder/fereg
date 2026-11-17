@@ -1575,15 +1575,15 @@ pub(crate) fn fit_prepared_weighted_linear_projection_once<
     })?
 }
 
-fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+/// Prepare the finite projection in coordinates modulo its absorbed constant,
+/// retaining the same reference scales for the subsequent rank certificate.
+fn projection_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     frame: LinearSolveFrame<'_>,
-    config: PreparedOlsFitConfig,
     reservation: &mut R,
-) -> Result<CertifiedPreparedLinearProjection> {
+) -> Result<(DenseMatrix, Vec<f64>)> {
     let weights = frame.weights();
-    let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
-    let raw = prepared.fit_build_rhs_with_response(frame.response())?;
+    let mut raw = prepared.fit_build_rhs_with_response(frame.response())?;
     let generated_columns = prepared.fit_model().columns.len();
     let mut reference_norms = reserved_filled(
         reservation,
@@ -1592,6 +1592,27 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         "unable to reserve prepared projection reference norms",
     )?;
     fast_weighted_column_norms(&raw, 1, weights, &mut reference_norms)?;
+    if prepared.fit_has_absorbed_intercept() {
+        for (column, norm) in reference_norms.iter_mut().enumerate() {
+            *norm = super::centered::reference_norm(raw.nrows(), *norm, |row| {
+                Ok((raw[(row, column + 1)], weights.value(row)?))
+            })?;
+        }
+        super::centered::remove_location(&mut raw, 1..generated_columns + 1)?;
+    }
+    Ok((raw, reference_norms))
+}
+
+fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    frame: LinearSolveFrame<'_>,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+) -> Result<CertifiedPreparedLinearProjection> {
+    let weights = frame.weights();
+    let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
+    let (raw, reference_norms) = projection_inputs(prepared, frame, reservation)?;
+    let generated_columns = prepared.fit_model().columns.len();
     let mut absorbed = cmg.project_ols(weights.borrowed(), raw, config.absorb, false, false)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
@@ -3792,9 +3813,11 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
         && intercept_normalization_relative_error <= tolerance
         && values.iter().all(|value| value.is_finite());
     if !passed {
-        return Err(invalid_data(
-            "prepared OLS reported bread or intercept certificate did not pass",
-        ));
+        return Err(invalid_data(format!(
+            "prepared OLS reported bread or intercept certificate did not pass (finite_left={:e}, finite_right={:e}, reported_left={reported_left_inverse_relative_infinity_norm:e}, reported_right={reported_right_inverse_relative_infinity_norm:e}, symmetry={symmetry_relative_infinity_norm:e}, intercept_formula={intercept_formula_relative_error:e}, intercept_normalization={intercept_normalization_relative_error:e}, tolerance={tolerance:e})",
+            finite.left_inverse_relative_infinity_norm,
+            finite.right_inverse_relative_infinity_norm,
+        )));
     }
     Ok(PreparedOlsBread {
         coordinates,
@@ -4017,6 +4040,21 @@ fn reported_inverse_relative_infinity_norm(
         let mut row_error = 0.0_f64;
         let mut row_scale = 1.0_f64;
         for column in 0..dimension {
+            // Certify in dimensionless reported coordinates. Physical units
+            // otherwise magnify off-diagonal roundoff relative to the unit
+            // identity (for example reciprocal regressor rescalings).
+            let row_norm = crossproduct(row, row)?.sqrt();
+            let column_norm = crossproduct(column, column)?.sqrt();
+            let coordinate_scale = if reverse {
+                row_norm / column_norm
+            } else {
+                column_norm / row_norm
+            };
+            if !coordinate_scale.is_finite() || coordinate_scale <= 0.0 {
+                return Err(invalid_data(
+                    "prepared OLS reported inverse coordinate scale is invalid",
+                ));
+            }
             let mut product = 0.0_f64;
             let mut correction = 0.0_f64;
             let mut absolute_products = 0.0_f64;
@@ -4032,7 +4070,7 @@ fn reported_inverse_relative_infinity_norm(
                         inverse[inner * dimension + column],
                     )
                 };
-                let term = left * right;
+                let term = left * right * coordinate_scale;
                 compensated_add(term, &mut product, &mut correction)?;
                 absolute_products += term.abs();
                 if !absolute_products.is_finite() {

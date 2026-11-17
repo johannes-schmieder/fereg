@@ -2162,3 +2162,165 @@ fn recovery_output_capacity_overflow_is_an_allocation_error() {
     .expect_err("oversized recovery output");
     assert_eq!(error.code, ErrorCode::Allocation);
 }
+
+#[test]
+fn shifted_intercept_slope_preserves_explicit_cell_projection() {
+    // A binary slope with an intercept spans two independent cell dummies.
+    // Weighted cell means are an independent oracle, including a level on
+    // which every slope is constant and duplicate slope channels.
+    let groups: Vec<_> = (0..48).map(|row| (row / 12) as u32).collect();
+    let indicator: Vec<_> = (0..48)
+        .map(|row| if row < 12 { 0.0 } else { (row % 2) as f64 })
+        .collect();
+    let target: Vec<_> = (0..48).map(|row| (row % 7) as f64 - 2.0).collect();
+    let provided: Vec<_> = (0..48).map(|row| 1.0 + (row % 5) as f64).collect();
+    let topology = finalize_categorical_topology(
+        &[CategoricalCodeView::new(&groups, 4)],
+        &[&[0]],
+        &[true; 48],
+    )
+    .unwrap();
+    for weighted in [false, true] {
+        let weights = if weighted {
+            BorrowedMapWeights::Provided(&provided)
+        } else {
+            BorrowedMapWeights::Unit
+        };
+        for (shift, unit) in [
+            (0.0, 1.0),
+            (1e15, 1.0),
+            (-1e15, 0.5),
+            (1e-100, 1e-100),
+            (0.0, 1e100),
+        ] {
+            let slope: Vec<_> = indicator.iter().map(|value| shift + unit * value).collect();
+            let duplicate: Vec<_> = slope.iter().map(|value| 2.0 * value).collect();
+            let effects =
+                [CategoricalAbsorbedEffectView::new(true, vec![&slope, &duplicate]).unwrap()];
+            let result = absorb_finalized_categorical_slope_map_certified(
+                &topology,
+                &effects,
+                weights,
+                DenseMatrix::from_columns(&[target.clone()]).unwrap(),
+                config(),
+            )
+            .unwrap();
+            for row in 0..48 {
+                let mut sum = 0.0;
+                let mut mass = 0.0;
+                for other in 0..48 {
+                    if groups[row] == groups[other] && indicator[row] == indicator[other] {
+                        let weight = if weighted { provided[other] } else { 1.0 };
+                        sum += weight * target[other];
+                        mass += weight;
+                    }
+                }
+                assert!(
+                    (result.residualized()[(row, 0)] - (target[row] - sum / mass)).abs() < 1e-10,
+                    "shift={shift} unit={unit} weighted={weighted} row={row}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn slope_only_translation_keeps_its_original_span() {
+    let groups = [0_u32; 6];
+    let topology =
+        finalize_categorical_topology(&[CategoricalCodeView::new(&groups, 1)], &[&[0]], &[true; 6])
+            .unwrap();
+    let target = vec![0.0, 1.0, 3.0, 2.0, 4.0, 1.0];
+    for shift in [0.0, 20.0] {
+        let slope: Vec<_> = (0..6).map(|row| shift + (row % 2) as f64).collect();
+        let effects = [CategoricalAbsorbedEffectView::new(false, vec![&slope]).unwrap()];
+        let result = absorb_finalized_categorical_slope_map_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            DenseMatrix::from_columns(&[target.clone()]).unwrap(),
+            config(),
+        )
+        .unwrap();
+        let coefficient = slope.iter().zip(&target).map(|(x, y)| x * y).sum::<f64>()
+            / slope.iter().map(|x| x * x).sum::<f64>();
+        for row in 0..6 {
+            assert!(
+                (result.residualized()[(row, 0)] - (target[row] - coefficient * slope[row])).abs()
+                    < 1e-10
+            );
+        }
+    }
+}
+
+#[test]
+fn shifted_single_slope_recovery_returns_raw_channels_and_checks_cached_geometry() {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .unwrap()
+        .install(|| {
+            let groups: Vec<_> = (0..24).map(|row| (row / 6) as u32).collect();
+            let topology = finalize_categorical_topology(
+                &[CategoricalCodeView::new(&groups, 4)],
+                &[&[0]],
+                &[true; 24],
+            )
+            .unwrap();
+            let slope: Vec<_> = (0..24).map(|row| 1e15 + (row % 2) as f64).collect();
+            let target: Vec<_> = (0..24).map(|row| 4.0 + (row % 2) as f64).collect();
+            let weights: Vec<_> = (0..24).map(|row| (1 + row % 3) as f64).collect();
+            let effects = [CategoricalAbsorbedEffectView::new(true, vec![&slope]).unwrap()];
+            for cache in [false, true] {
+                let actual = recover_finalized_single_slope_direct_certified(
+                    &topology,
+                    &effects,
+                    BorrowedMapWeights::Provided(&weights),
+                    &target,
+                    &[true, true],
+                    1e-10,
+                    true,
+                    cache,
+                )
+                .unwrap();
+                for row in 0..24 {
+                    assert!((actual.absorbed_sum()[row] - target[row]).abs() < 1e-10);
+                    let intercept = actual.channels()[0].as_ref().unwrap()[row];
+                    let contribution = actual.channels()[1].as_ref().unwrap()[row];
+                    assert!((intercept + contribution - target[row]).abs() < 1e-10);
+                    assert!(intercept < -1e14 && contribution > 1e14);
+                }
+            }
+        });
+}
+
+#[test]
+fn tiny_weight_local_slope_contrast_keeps_its_span() {
+    let groups = [0_u32; 6];
+    let topology =
+        finalize_categorical_topology(&[CategoricalCodeView::new(&groups, 1)], &[&[0]], &[true; 6])
+            .unwrap();
+    let slope = [1e15, 1e15 + 1., 1e15, 1e15 + 1., 1e15, 1e15 + 1.];
+    let effects = [CategoricalAbsorbedEffectView::new(true, vec![&slope]).unwrap()];
+    for small in [1e-18, 1e-100] {
+        let weights = [small, 1., small, 1., small, 1.];
+        let values = DenseMatrix::from_columns(&[
+            vec![0., 1., 0., 1., 0., 1.],
+            vec![1., 0., 1., 0., 1., 0.],
+        ])
+        .unwrap();
+        let result = absorb_finalized_categorical_slope_map_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Provided(&weights),
+            values,
+            config(),
+        )
+        .unwrap();
+        assert!(result
+            .residualized()
+            .as_slice()
+            .iter()
+            .all(|v| v.abs() < 1e-12));
+    }
+}

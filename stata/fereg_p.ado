@@ -1,4 +1,4 @@
-*! fereg prediction adapter 0.6.0 11nov2026
+*! fereg prediction adapter 0.6.1 16nov2026
 program define fereg_p
     version 15.0
     if !inlist(`"`e(cmd)'"', "fereg", "_fereg_estimate_ols_test", ///
@@ -65,6 +65,12 @@ end
 program define _fereg_p_xb
     version 15.0
     syntax newvarname [if] [in], STORage(string)
+    // A valid zero-width finite design intentionally has no e(b). Its dot
+    // product is zero; absorbed predictions still use xbd=y-r and d=xbd-xb.
+    if el(e(fereg_receipt),1,5) == 0 {
+        quietly generate `typlist' `varlist' = 0 `if' `in'
+        exit
+    }
     // Plain numeric coefficient names need no factor or time-series expansion.
     // Score current data; no fitted-value cache survives data edits or sorting.
     // The route follows the caller's requested storage type, as before.

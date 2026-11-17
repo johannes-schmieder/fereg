@@ -74,7 +74,12 @@ pub(crate) fn canonicalize_singular_slope_levels(
                 continue;
             }
             for channel in 0..channels {
-                let value = workspace.coefficients[channel] / workspace.channel_scales[channel];
+                let value = raw_group_coefficient(
+                    effect,
+                    group_anchor(members, weights),
+                    &workspace,
+                    channel,
+                );
                 if !value.is_finite() {
                     return Err(invalid_data(
                         "singular slope level representative is not finite",

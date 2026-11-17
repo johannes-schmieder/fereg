@@ -65,10 +65,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 const NULL: f64 = 1e-10;
 /// Levels per task of the inversion and measure passes.
 pub(super) const LEVEL_TASK: usize = 512;
-/// A centered slope whose sum of squares on a level is at most this
-/// fraction of its raw one (a variation of at most `1e-10` of its
-/// magnitude) is constant there: its centered values are rounding.
-const CONSTANT: f64 = 1e-20;
 /// Rotation sweeps of the eigendecomposition (it converges in a few).
 const SWEEPS: usize = 32;
 /// A slope whose centers exceed this many pooled weighted standard
@@ -705,23 +701,51 @@ fn means(
 ) -> Result<()> {
     let width = part.channels;
     let slopes = effect.slopes();
-    let add = |row: usize, _: usize, g: &mut [f64]| {
+    refill(&mut blocks.sums, part.levels * width, 0.0)?;
+    let span = part.center..part.center + part.levels * part.centered;
+    // Reuse the origins until origins() selects the operator's basis. An
+    // observed anchor keeps a large shared offset out of the weighted sum,
+    // and makes a truly constant level's mean exactly its observed value.
+    let anchors = &mut blocks.origins[span.clone()];
+    let constant = &mut blocks.constant[span.clone()];
+    constant.fill(true);
+    for (row, &level) in effect.codes().iter().enumerate() {
+        if weights.is_some_and(|w| w[row] == 0.0) {
+            continue;
+        }
+        let level = level as usize;
+        let first = blocks.sums[level * width] == 0.0;
+        for (s, slope) in slopes.iter().enumerate() {
+            let at = level * part.centered + s;
+            if first {
+                anchors[at] = slope[row];
+            } else {
+                constant[at] &= slope[row] == anchors[at];
+            }
+        }
+        blocks.sums[level * width] = 1.0;
+    }
+    let add = |row: usize, level: usize, g: &mut [f64]| {
         let w = weights.map_or(1.0, |w| w[row]);
         g[0] += w;
-        for (g, slope) in g[1..].iter_mut().zip(slopes) {
-            *g += w * slope[row];
+        for (s, (g, slope)) in g[1..].iter_mut().zip(slopes).enumerate() {
+            *g += w * (slope[row] - anchors[level * part.centered + s]);
         }
     };
-    refill(&mut blocks.sums, part.levels * width, 0.0)?;
     let out = (&mut blocks.sums[..], &mut blocks.scratch);
     level_sums(st, (e, effect), width, out, &add)?;
     let centers = &mut blocks.centers[part.center..part.center + part.levels * part.centered];
-    for (centers, sums) in centers
+    for ((centers, anchors), sums) in centers
         .chunks_exact_mut(part.centered)
+        .zip(anchors.chunks_exact(part.centered))
         .zip(blocks.sums.chunks_exact(width))
     {
-        for (center, &sum) in centers.iter_mut().zip(&sums[1..]) {
-            *center = if sums[0] > 0.0 { sum / sums[0] } else { 0.0 };
+        for ((center, &anchor), &sum) in centers.iter_mut().zip(anchors).zip(&sums[1..]) {
+            *center = if sums[0] > 0.0 {
+                anchor + sum / sums[0]
+            } else {
+                0.0
+            };
         }
     }
     Ok(())
@@ -770,14 +794,12 @@ fn gram(
                 g[b * c + a] = g[a * c + b];
             }
         }
-        // A constant slope's centered column is rounding: it is decoupled,
+        // An exactly constant slope's centered column is zero: decouple it,
         // with its raw sum of squares as its curvature (a null direction
         // whose rounding the center would otherwise amplify).
         for s in 0..part.centered {
             let (ch, mean) = (s + 1, centers[l * part.centered + s]);
-            let centered = g[ch * c + ch];
-            if centered <= CONSTANT * (centered + mean * mean * g[0]) {
-                constant[l * part.centered + s] = true;
+            if constant[l * part.centered + s] {
                 for k in 0..c {
                     g[ch * c + k] = 0.0;
                     g[k * c + ch] = 0.0;
