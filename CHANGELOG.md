@@ -1,11 +1,11 @@
 # Changelog
 
-## 0.6.1 — all-level factor extension in validation, unpublished, 2026-11-17
+## 0.6.1 — stability candidate in validation, unpublished, 2026-11-17
 
 Stability and correctness repairs. The preceding candidate passed source,
 native platform, canonical replay, private scientific and combined-package
-installation checks locally. A newly authorized all-level factor extension is
-under focused validation; its full source, native and package checks are pending.
+installation checks locally. All-level factors and two additional numerical
+repairs are being qualified; final source, native and package checks are pending.
 Nothing is published.
 See [validation](docs/VALIDATION.md) for the exact evidence and limits.
 
@@ -13,6 +13,13 @@ See [validation](docs/VALIDATION.md) for the exact evidence and limits.
   and PPML, preserving original coefficient slots, bases and omission flags
   after filtering or separation. Explicit `ib#` and `fvset` base overrides
   with these absorbed terms remain unsupported.
+- Retry a narrowly classified failed IID fit-statistic certificate once with
+  stricter fixed-effect accuracy, using the same model and requested solver.
+  Require all original certificates and preserve cancellation, resource and
+  request errors. Already successful fits keep their existing numerical path.
+- Check coefficient-space projections earlier when the recurrence approaches the existing
+  fresh accuracy gate, avoiding an unnecessary unstable step for redundant
+  controls. Fresh acceptance, original-design checks and rank policy are unchanged.
 - Reproject suspicious finite directions before freezing rank and coefficients,
   including projection error amplified against an explicit coefficient goal;
   certify the reported inverse under changes of regressor units.

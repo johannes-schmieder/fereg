@@ -1,6 +1,6 @@
 # Validation status
 
-## Release 0.6.1 all-level factor extension in validation, November 17, 2026
+## Release 0.6.1 additional stability validation, November 17, 2026
 
 **All-level factor extension: focused validation in progress; unpublished.**
 The authorized extension admits `ibn.half#i.(c01-c30)` with interacted absorption
@@ -12,8 +12,44 @@ tests pass, including independent group means and robust contrast covariance
 after missingness and whole-level separation. The maintained native fixture
 adds explicit dummy OLS/Poisson, pweights, two-way clustered covariance, mixed
 `i.`/`ibn.` terms, absorbed slopes, original stripes and atomic error checks.
-Full source, actual-native, private-command and package qualification of this
-extension are pending; the evidence below describes the preceding candidate.
+The clean I1 source gate passes (370 Python, 1,625 core, 213 plugin, 243 serial
+FFI tests, 13 isolated allocator audits and the 108-arm independent separation
+census, plus compiler/static guards). A fresh universal Mac I1 build passes its
+binary, ABI and package checks. The exact private `ibn` command passes with
+29,027 observations and an identical reference sample; maximum main-coefficient
+error is 2.27e-14, relative SE error 2.73e-10 and scaled covariance error 5.45e-10.
+These are correctness checks, not controlled speed measurements. All original
+private calls and final package qualification remain in progress.
+
+**Additional numerical repairs in qualification.** A generated sparse two-FE
+OLS witness reproduces the IID covariance/fit-statistic refusal and its tighter
+tolerance/LSMR workarounds. An independent Walsh/Decimal oracle isolates coarse
+initial within-outcome variation versus more accurate final residuals. One
+bounded same-solver stricter refit is limited to eligible failed sum/statistic
+certificates; all original acceptance checks remain unchanged. Failed owners
+are dropped before rebuilding, and work plus sequential workspace peaks are
+accounted without changing the accepted residual report. The maintained native
+fixture has 54 unit/analytic/frequency-weight, output, solver and worker 1/8/16
+cases. The reduced refusal witness requests residual output; its accepted
+no-output counterpart retains the existing accuracy policy. Restricted reporter
+data and expanded macros were not supplied, so exact-data reproduction is not
+claimed.
+
+A separate generated PPML witness exposes a pre-existing pure-slope failure
+when an explicitly included control is already absorbed. The recurrence misses
+a freshly acceptable state and later takes an unstable near-null step. The
+repair changes reconstruction scheduling only; the fresh local-span gate,
+independent original-design certificate and canonical rank authority are intact.
+Affected scalar coefficient-space stopping points and residual bits may change,
+including categorical fallback uses of that owner; the joint recurrence is
+unchanged. Weak genuine
+contrasts, coordinate changes, workers, repeatability and refusal behavior are
+being checked. Both repairs have bounded independent Astra reviews.
+
+Final clean source, actual-native, cross-platform and package qualification of
+the combined runtime are pending; the evidence below describes the preceding
+candidate. SCC exposes Stata/MP 19 but no separate 19.5 module; exact reporter
+Stata 19.5 equivalence remains unverified.
 
 **Preceding candidate qualification.** Main, public tags and releases remain
 unchanged. All three preceding native plugins were built from
