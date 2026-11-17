@@ -287,3 +287,30 @@ fn precise_full_design_avoids_unnecessary_coefficient_reprojection() {
         }
     }
 }
+
+#[test]
+fn initial_low_projection_retains_full_block_capacity_across_short_tail() {
+    let x = vec![-2., -1., 0.5, 1., 2., 4.];
+    let y = vec![1., 2., 2.5, 4., 5., 9.];
+    let data = prepared(&y, &vec![x; 5], &[false; 5], None, true, TestWeights::Unit);
+    let mut config = PreparedOlsFitConfig::default();
+    config.execution.mode = PreparedOlsExecutionMode::Low;
+    config.execution.poolsize = 3;
+    config.coefficient_tolerance = Some(1e-12);
+    let mut session = CertifiedLinearSession::new(
+        &data,
+        LinearSolveFrame::from_prepared_ols(&data).unwrap(),
+        config,
+        LinearSessionGenerations::new(0, 0, 0, 0, 0),
+    )
+    .unwrap();
+    let initial = session.solve_fresh().unwrap();
+    assert_eq!(initial.frame().finite_rank(), 1);
+    let capacity = session.workspace_capacities();
+    assert!(capacity.projection_block_elements >= y.len() * 3);
+    let candidate = session.strict_candidate().unwrap();
+    assert!(candidate.candidate().certified());
+    candidate.rollback();
+    assert_eq!(session.workspace_capacities(), capacity);
+    assert!(session.solve_frozen().unwrap().certified());
+}

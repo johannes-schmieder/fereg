@@ -28,6 +28,8 @@ See [validation](docs/VALIDATION.md) for completed checks and remaining gates.
   scratch on narrower reuse. Keep LSMR's selected-width allowance through
   escalation and remove the undercharged one-lane Schwarz retry; a tighter
   cap can decline untouched, while a fresh projector admits a smaller history.
+- Retain the initially admitted Low-mode projection bank so later strict
+  retries preserve warm transaction capacity, including a shorter tail block.
 - Allow serialized PyStata calls from different host threads while rejecting
   concurrent/reentrant native calls and retaining numeric-window safeguards.
 - Fix long coefficient-name lists and factor metadata; include public OLS

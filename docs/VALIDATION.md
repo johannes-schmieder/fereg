@@ -104,6 +104,12 @@ separate N3 processes; portable/static, complexity, size and mock-SPI checks
 also pass against a clean N3 snapshot. The initial audit equality failure was
 a conservative future-call admission forecast, not an exceeded memory bound;
 all actual peak/report/cap and certificate checks remain binding.
+Historical N native checks also pass all six private scientific comparisons,
+the extra worker/repeat/LSMR checks, and all 38 supported original commands
+with the expected unsupported `ibn` r(498). Linux N2 passes 170 whole-tree
+Stata fixtures, 12 staged fixtures, older-Stata profiles on 15.1/19, 54
+PyStata calls, 18 CI tests and 482 benchmark tests. These checks precede the
+following rank and scratch-lifetime changes.
 
 A repeated N3 full gate exposed coefficient error on the established FE route
 of the retained-rank Walsh witness (0.90000226366 versus 0.9). The earlier
@@ -112,9 +118,17 @@ reprojection warning now considers an explicit coefficient goal, using the
 all-column certificate on a fresh design and requested FE accuracy on reused
 designs. Both routes pass the unchanged independent oracle; seven focused
 rank tests and 64 retained-solve tests pass, with independent review approval.
-The numerical rank policy and accuracy thresholds are unchanged. This latest
-runtime still requires its full source gate and fresh native qualification;
-the earlier partial results do not constitute a full-gate pass.
+The numerical rank policy and accuracy thresholds are unchanged.
+
+The P full gate passes that rank witness but detects six newly retained
+projection elements inside a Low-mode strict-caller transaction. The initial
+Low projection now retains its already-admitted bank, preserving maximum
+capacity through a short tail before any later speculative retry. The exact
+caller rollback test, eight rank tests, 36 strict tests, two warm-reuse tests
+and the Low-budget witness pass; independent review approves the lifetime
+and accounting change. The latest runtime still requires its full source gate
+and fresh native qualification; earlier partial results do not constitute a
+full-gate pass.
 An attempted H/I performance comparison also stopped at H's uncertified LSMR
 solve before I ran; it provides no comparative timing evidence.
 

@@ -1,28 +1,22 @@
 {
   "growth": [
     {
-      "after": 122260,
-      "before": 122237,
+      "after": 122262,
+      "before": 122260,
       "metric": "fereg-core/production_lines",
-      "reason": "Add one bounded reprojection warning for explicit coefficient accuracy goals before finite-rank publication. Fresh designs use the independent all-column projection certificate; reused response-only reports use requested FE accuracy. Existing rank arithmetic, thresholds and scientific oracles remain unchanged."
+      "reason": "Warm and retain the already-admitted Low-mode pooled projection bank during initial projection, preserving maximum capacity through a shorter tail block so subsequent strict speculative retries do not grow reusable capacity. Numerical operations and admission charges remain unchanged."
     },
     {
-      "after": 5989,
-      "before": 5976,
+      "after": 5991,
+      "before": 5989,
       "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "Add one bounded reprojection warning for explicit coefficient accuracy goals before finite-rank publication. Fresh designs use the independent all-column projection certificate; reused response-only reports use requested FE accuracy. Existing rank arithmetic, thresholds and scientific oracles remain unchanged."
+      "reason": "Warm and retain the already-admitted Low-mode pooled projection bank during initial projection, preserving maximum capacity through a shorter tail block so subsequent strict speculative retries do not grow reusable capacity. Numerical operations and admission charges remain unchanged."
     },
     {
-      "after": 200,
-      "before": 187,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/prepare_retained_solve#1",
-      "reason": "Add one bounded reprojection warning for explicit coefficient accuracy goals before finite-rank publication. Fresh designs use the independent all-column projection certificate; reused response-only reports use requested FE accuracy. Existing rank arithmetic, thresholds and scientific oracles remain unchanged."
-    },
-    {
-      "after": 764,
-      "before": 761,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/solve_full_retained_rank#1",
-      "reason": "Add one bounded reprojection warning for explicit coefficient accuracy goals before finite-rank publication. Fresh designs use the independent all-column projection certificate; reused response-only reports use requested FE accuracy. Existing rank arithmetic, thresholds and scientific oracles remain unchanged."
+      "after": 331,
+      "before": 326,
+      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/build_full_retained_design#1",
+      "reason": "Warm and retain the already-admitted Low-mode pooled projection bank during initial projection, preserving maximum capacity through a shorter tail block so subsequent strict speculative retries do not grow reusable capacity. Numerical operations and admission charges remain unchanged."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -14996,71 +14990,71 @@
           },
           {
             "condition": "self . fe_projector . as_ref ( ) . is_some_and ( FeSession :: borrows_raw_weights )",
-            "line": 6112
+            "line": 6117
           },
           {
             "condition": "self . weights . borrowed ( )",
-            "line": 6122
+            "line": 6127
           },
           {
             "condition": "! divisor . is_finite ( ) || divisor <= 0.0 || values . len ( ) != rows",
-            "line": 6126
+            "line": 6131
           },
           {
             "condition": "rows != self . response . len ( ) || prior . reference_norms . len ( ) != columns || prior . reference_means . len ( ) != columns || prior . within_norms . len ( ) != columns || with_response && ( self . frozen_workspace . response . len ( ) != rows || self . previous_response . len ( ) != rows )",
-            "line": 6184
+            "line": 6189
           },
           {
             "condition": "columns == 0 && ! with_response",
-            "line": 6202
+            "line": 6207
           },
           {
             "condition": "self . config . absorb . solver == FeSolverKind :: Map && matrix . ncols ( ) > self . reusable_map_max_rhs ( ) ?",
-            "line": 6213
+            "line": 6218
           },
           {
             "condition": "self . config . absorb . solver == FeSolverKind :: Map && block_width > self . reusable_map_max_rhs ( ) ?",
-            "line": 6262
+            "line": 6267
           },
           {
             "condition": "columns == 0",
-            "line": 6438
+            "line": 6443
           },
           {
             "condition": "columns == 0",
-            "line": 6447
+            "line": 6452
           },
           {
             "condition": "self . predictors . finite . len ( ) != rows",
-            "line": 6479
+            "line": 6484
           },
           {
             "condition": "within_response . len ( ) != rows || reference_norms . len ( ) != stored_columns || active_positions . windows ( 2 ) . any ( | pair | pair [ 0 ] >= pair [ 1 ] ) || active_positions . last ( ) . is_some_and ( | position | * position >= stored_columns )",
-            "line": 6563
+            "line": 6568
           },
           {
             "condition": "! weighted_residual_square . is_finite ( ) || workspace . residuals . iter ( ) . any ( | value | ! value . is_finite ( ) )",
-            "line": 6589
+            "line": 6594
           },
           {
             "condition": "weights",
-            "line": 6843
+            "line": 6848
           },
           {
             "condition": "weights",
-            "line": 6882
+            "line": 6887
           },
           {
             "condition": "response . len ( ) != within_residuals . len ( )",
-            "line": 6948
+            "line": 6953
           },
           {
             "condition": "source . len ( )",
-            "line": 7064
+            "line": 7069
           },
           {
             "condition": "fast",
-            "line": 7154
+            "line": 7159
           }
         ],
         "functions": {
@@ -15130,7 +15124,7 @@
           },
           "build_full_retained_design#1": {
             "line": 5576,
-            "lines": 326
+            "lines": 331
           },
           "can_reuse#1": {
             "line": 1408,
@@ -15161,7 +15155,7 @@
             "lines": 13
           },
           "certify_frozen_combined_predictor#1": {
-            "line": 6944,
+            "line": 6949,
             "lines": 26
           },
           "check_frozen_failure_injection#1": {
@@ -15169,7 +15163,7 @@
             "lines": 31
           },
           "checked_elements#1": {
-            "line": 6985,
+            "line": 6990,
             "lines": 8
           },
           "classify_frozen_linear_fallback#1": {
@@ -15205,11 +15199,11 @@
             "lines": 100
           },
           "compact_retained_response#1": {
-            "line": 6409,
+            "line": 6414,
             "lines": 64
           },
           "compensated_add#1": {
-            "line": 7078,
+            "line": 7083,
             "lines": 15
           },
           "constant_representation#1": {
@@ -15217,7 +15211,7 @@
             "lines": 3
           },
           "copy_short#1": {
-            "line": 7061,
+            "line": 7066,
             "lines": 11
           },
           "current_hessian_products_match#1": {
@@ -15293,7 +15287,7 @@
             "lines": 9
           },
           "expand_retained_response#1": {
-            "line": 6333,
+            "line": 6338,
             "lines": 75
           },
           "fe_design#1": {
@@ -15301,7 +15295,7 @@
             "lines": 7
           },
           "fill_reusable_map_weights#1": {
-            "line": 6111,
+            "line": 6116,
             "lines": 43
           },
           "fill_row#1": {
@@ -15429,7 +15423,7 @@
             "lines": 136
           },
           "normalized_solver_weight#1": {
-            "line": 6838,
+            "line": 6843,
             "lines": 21
           },
           "nrows#1": {
@@ -15493,7 +15487,7 @@
             "lines": 200
           },
           "project_retained_block#1": {
-            "line": 6304,
+            "line": 6309,
             "lines": 28
           },
           "reader#1": {
@@ -15501,7 +15495,7 @@
             "lines": 9
           },
           "rebuild_predictors#1": {
-            "line": 6474,
+            "line": 6479,
             "lines": 49
           },
           "rebuild_retained_inputs_interruptible#1": {
@@ -15525,7 +15519,7 @@
             "lines": 44
           },
           "refresh_group_centered_design#1": {
-            "line": 5903,
+            "line": 5908,
             "lines": 73
           },
           "refresh_response#1": {
@@ -15549,15 +15543,15 @@
             "lines": 6
           },
           "reproject_retained_in_place#1": {
-            "line": 6157,
+            "line": 6162,
             "lines": 146
           },
           "require_newer#1": {
-            "line": 6974,
+            "line": 6979,
             "lines": 10
           },
           "resize_zeroed#1": {
-            "line": 6994,
+            "line": 6999,
             "lines": 8
           },
           "response#1": {
@@ -15585,7 +15579,7 @@
             "lines": 19
           },
           "retain_canonical_products#1": {
-            "line": 7132,
+            "line": 7137,
             "lines": 57
           },
           "retained_within_memory#1": {
@@ -15673,15 +15667,15 @@
             "lines": 9
           },
           "stable_norm#1": {
-            "line": 7118,
+            "line": 7123,
             "lines": 12
           },
           "stable_weighted_norm#1": {
-            "line": 7003,
+            "line": 7008,
             "lines": 54
           },
           "stream_frozen_solve#1": {
-            "line": 6550,
+            "line": 6555,
             "lines": 287
           },
           "strict_candidate#1": {
@@ -15709,7 +15703,7 @@
             "lines": 122
           },
           "update_scaled_square#1": {
-            "line": 7094,
+            "line": 7099,
             "lines": 23
           },
           "validate_one_fe_profile_basis#1": {
@@ -15733,7 +15727,7 @@
             "lines": 22
           },
           "weighted_mean_slice#1": {
-            "line": 6860,
+            "line": 6865,
             "lines": 83
           },
           "weights#1": {
@@ -15761,7 +15755,7 @@
             "lines": 94
           }
         },
-        "production_lines": 5989
+        "production_lines": 5991
       },
       "crates/fereg-core/src/ols/linear_statistics.rs": {
         "chunk_candidates": [],
@@ -30389,7 +30383,7 @@
         "dispatch_candidates": 1573,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 122260
+        "production_lines": 122262
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

@@ -5780,11 +5780,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     for start in (0..stored_columns).step_by(block_width) {
                         let end = start.saturating_add(block_width).min(stored_columns);
                         let block = end - start;
-                        let mut raw_values = fallible_filled(
+                        // Warm the admitted reusable bank before publishing
+                        // the initial fit. A later strict retry must not grow
+                        // capacity inside a speculative caller transaction.
+                        resize_zeroed(
+                            &mut self.projection_block,
                             checked_elements(rows, block)?,
-                            0.0_f64,
                             "unable to reserve weighted-linear row-major scratch block",
                         )?;
+                        let mut raw_values = std::mem::take(&mut self.projection_block);
                         raw_values
                             .par_chunks_mut(128 * block)
                             .enumerate()
@@ -5856,6 +5860,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             )?;
                         }
                         scratch.patch_row_major_block(start, block, within.as_slice())?;
+                        self.projection_block = within.into_row_major();
                     }
                     (
                         RetainedWithinStorage::Scratch(scratch),

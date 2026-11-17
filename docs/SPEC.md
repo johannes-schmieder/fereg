@@ -2352,6 +2352,12 @@ left admission totals unchanged (they still charge the released storage), so
 or strict OS bounds. No new route-specific admission fences may be added to
 hide a performance regression. Future removal of a mode needs mapped coverage.
 
+The initial Low-mode projection warms and retains its already-admitted pooled
+row-major bank. A shorter final block preserves the largest capacity, so a
+later strict reprojection does not first allocate that bank inside a
+speculative caller transaction. Rollback preserves reusable capacity and
+published state; the existing Low-mode admission charge is unchanged.
+
 The compensated full-system adjoint (§16) uses sum and correction banks of
 `2 × r × scatter_blocks × scatter_levels` doubles for an RHS width `r`.
 Structure preparation checks representability through the maximum batch width;
