@@ -3105,6 +3105,15 @@ fn exact_integer_alias_proves_factor_bundle_and_rejects_perturbation_and_rounded
 
 #[test]
 fn unit_metric_direction_survives_complete_ppml_publication_validation() {
+    publication_contrast(7., false);
+}
+
+#[test]
+fn binary_graph_direction_survives_complete_ppml_publication_validation() {
+    publication_contrast(0., true);
+}
+
+fn publication_contrast(origin: f64, graph: bool) {
     use crate::ppml::{
         fit_prepared_ppml, LoadedPpmlInput, PpmlMemoryConfig, PpmlSolverFamily, PpmlVceRequest,
         PreparedPpmlAdjustmentKind, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
@@ -3116,7 +3125,16 @@ fn unit_metric_direction_survives_complete_ppml_publication_validation() {
     ols.absorbed_terms.push(second);
     loaded.candidate = vec![true; 8].into();
     loaded.outcome = column(&[1., 1., 1., 1., 1., 0., 0., 0.]);
-    loaded.numeric_sources[0].1 = column(&[0., 0., 1., 1., 1., 0., 0., 0.]);
+    loaded.numeric_sources[0].1 = column(&[
+        origin,
+        origin,
+        origin + 1.,
+        origin + 1.,
+        origin + 1.,
+        origin,
+        origin,
+        origin,
+    ]);
     loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 3., 3., 3., 1.]);
     loaded.numeric_sources[2].1 = column(&[1., 2., 1., 2., 1., 1., 2., 1.]);
     let mut separation = rectifier_only();
@@ -3173,7 +3191,11 @@ fn unit_metric_direction_survives_complete_ppml_publication_validation() {
         .any(
             |report| report.method == SeparationMethod::IteratedRectifier
                 && report.status == MethodStatus::Certified
-                && report.iterations > 0
+                && if graph {
+                    report.iterations == 0
+                } else {
+                    report.iterations > 0
+                }
         ));
 }
 
@@ -3204,3 +3226,6 @@ fn complete_span_admission_boundary(mut plan: PpmlMemoryPlan) {
 
 #[path = "unit_policy_tests.rs"]
 mod unit_policy_tests;
+
+#[path = "binary_graph_tests.rs"]
+mod binary_graph_tests;

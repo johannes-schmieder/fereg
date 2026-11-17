@@ -22,6 +22,12 @@ pub(super) struct GraphDirection {
     pub(super) span: ExactInterceptSpan,
 }
 
+struct PairDirection {
+    direction: Vec<f64>,
+    split: usize,
+    potentials: Vec<usize>,
+}
+
 impl ExactInterceptSpan {
     /// Replay the coefficient product through group membership, independently
     /// of the detector's row-code/quotient traversal. Integers below 2^53 and
@@ -88,15 +94,20 @@ pub(super) fn workspace_bytes(design: &BorrowedInterceptFeDesign<'_>) -> Result<
             largest[1] = largest[1].max(levels);
         }
     }
+    // A finite binary column contributes a virtual two-level partition.
     let levels = largest[0]
-        .checked_add(largest[1])
+        .checked_add(largest[1].max(2))
         .ok_or_else(|| allocation("separation graph levels overflow"))?;
     // Integer potentials and their differences must be exactly representable.
     if levels > (1_u128 << 53) {
         return Ok(None);
     }
     // DSU, dual CSR, traversal, finishing order, component labels, returned
-    // direction and proposal overlap. No recursion or per-vertex allocation.
+    // direction and proposal overlap, including one reusable u32 binary-code
+    // bank. Peak pair storage is at most 57*levels + 28*N + 16 bytes on
+    // 64-bit targets (two edge arrays, one direction, binary codes); this
+    // bound also covers earlier cursor phases and returned proposal overlap.
+    // No recursion, binary membership index, or N-by-column materialization.
     let bytes = levels
         .checked_mul(96)
         .and_then(|n| {
@@ -130,7 +141,7 @@ pub(super) fn direction(
     // work by O(J*(N+levels)), rather than an exhaustive quadratic pair scan.
     // Missing a submodel direction cannot certify absence: full-model IR and
     // its independent unit-metric dual check still follow this accelerator.
-    if let Some(candidate) = pair_direction(design, [0, 1], outcome, interrupt)? {
+    if let Some(candidate) = categorical_pair_direction(design, [0, 1], outcome, interrupt)? {
         return Ok(Some(candidate));
     }
     let mut anchor = 0;
@@ -147,36 +158,136 @@ pub(super) fn direction(
         if pair == [0, 1] {
             continue;
         }
-        if let Some(candidate) = pair_direction(design, pair, outcome, interrupt)? {
+        if let Some(candidate) = categorical_pair_direction(design, pair, outcome, interrupt)? {
             return Ok(Some(candidate));
         }
     }
     Ok(None)
 }
 
-fn pair_direction(
+/// Every binary level indicator is in the span of that original finite
+/// column and the categorical intercept's constant. This is only a primal
+/// proposal: the caller must independently certify its full-model span.
+pub(super) fn binary_direction(
+    design: &BorrowedInterceptFeDesign<'_>,
+    outcome: &[f64],
+    columns: usize,
+    value: &mut impl FnMut(usize, usize) -> Result<f64>,
+    interrupt: &mut dyn FnMut() -> Result<()>,
+) -> Result<Option<Vec<f64>>> {
+    if workspace_bytes(design)?.is_none() || columns == 0 {
+        return Ok(None);
+    }
+    interrupt()?;
+    let anchor = design
+        .effects()
+        .iter()
+        .enumerate()
+        .fold(0, |best, (index, effect)| {
+            if effect.n_levels() > design.effects()[best].n_levels() {
+                index
+            } else {
+                best
+            }
+        });
+    let effect = design.effects()[anchor];
+    let mut binary = fallible_filled(design.nobs(), 0_u32, "unable to reserve binary graph codes")?;
+    // At most one scan and one graph per generated column, using the same
+    // N-sized code bank. No failure to propose can certify NoSeparation.
+    for column in 0..columns {
+        interrupt()?;
+        let mut levels = 0_u8;
+        for (row, code) in binary.iter_mut().enumerate() {
+            if row % 65_536 == 0 {
+                interrupt()?;
+            }
+            let raw = value(column, row)?;
+            if raw == 0. {
+                *code = 0;
+                levels |= 1;
+            } else if raw == 1. {
+                *code = 1;
+                levels |= 2;
+            } else {
+                levels = 0;
+                break;
+            }
+        }
+        if levels != 3 {
+            continue;
+        }
+        if let Some(candidate) = pair_direction(
+            [effect.codes(), &binary],
+            [effect.n_levels(), 2],
+            outcome,
+            interrupt,
+        )? {
+            // Potentials and binary scratch die before independent numerical
+            // span certification. Do not manufacture an exact FE-only proof.
+            return Ok(Some(candidate.direction));
+        }
+    }
+    Ok(None)
+}
+
+fn categorical_pair_direction(
     design: &BorrowedInterceptFeDesign<'_>,
     effects: [usize; 2],
     outcome: &[f64],
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<GraphDirection>> {
+    let left = design.effects()[effects[0]];
+    let right = design.effects()[effects[1]];
+    Ok(pair_direction(
+        [left.codes(), right.codes()],
+        [left.n_levels(), right.n_levels()],
+        outcome,
+        interrupt,
+    )?
+    .map(|candidate| GraphDirection {
+        direction: candidate.direction,
+        span: ExactInterceptSpan {
+            effects,
+            split: candidate.split,
+            potentials: candidate.potentials,
+        },
+    }))
+}
+
+fn pair_direction(
+    codes: [&[u32]; 2],
+    level_counts: [usize; 2],
+    outcome: &[f64],
+    interrupt: &mut dyn FnMut() -> Result<()>,
+) -> Result<Option<PairDirection>> {
     let invalid_outcome = || {
         crate::parallel::any_index(outcome.len(), |row| {
             !outcome[row].is_finite() || outcome[row] < 0.
         })
     };
-    if outcome.len() != design.nobs() || invalid_outcome() {
+    if codes.iter().any(|values| values.len() != outcome.len()) || invalid_outcome() {
         return Err(invalid_argument(
             "separation graph outcomes are not aligned and nonnegative",
         ));
     }
     interrupt()?;
-    let left = design.effects()[effects[0]];
-    let right = design.effects()[effects[1]];
-    let split = left.n_levels();
+    let split = level_counts[0];
     let levels = split
-        .checked_add(right.n_levels())
+        .checked_add(level_counts[1])
         .ok_or_else(|| allocation("separation graph levels overflow"))?;
+    if levels as u128 > (1_u128 << 53) {
+        return Ok(None);
+    }
+    for side in 0..2 {
+        for (row, &code) in codes[side].iter().enumerate() {
+            crate::interrupt::row_checkpoint(row)?;
+            if code as usize >= level_counts[side] {
+                return Err(invalid_argument(
+                    "separation graph code exceeds its partition",
+                ));
+            }
+        }
+    }
     let offsets = levels
         .checked_add(1)
         .ok_or_else(|| allocation("separation graph offsets overflow"))?;
@@ -186,6 +297,9 @@ fn pair_direction(
         "unable to reserve separation graph parents",
     )?;
     for (v, p) in parent.iter_mut().enumerate() {
+        if v % 65_536 == 0 {
+            interrupt()?;
+        }
         *p = v;
     }
     let mut rank = fallible_filled(levels, 0_u8, "unable to reserve separation graph ranks")?;
@@ -198,13 +312,13 @@ fn pair_direction(
             interrupt()?;
         }
         if y > 0. {
-            let pair = (left.codes()[row], right.codes()[row]);
+            let pair = (codes[0][row], codes[1][row]);
             if pair == previous {
                 continue;
             }
             previous = pair;
-            let mut a = root(&mut parent, left.codes()[row] as usize);
-            let mut b = root(&mut parent, split + right.codes()[row] as usize);
+            let mut a = root(&mut parent, codes[0][row] as usize);
+            let mut b = root(&mut parent, split + codes[1][row] as usize);
             if a != b {
                 if rank[a] < rank[b] {
                     std::mem::swap(&mut a, &mut b);
@@ -217,13 +331,16 @@ fn pair_direction(
         }
     }
     for v in 0..levels {
+        if v % 65_536 == 0 {
+            interrupt()?;
+        }
         parent[v] = root(&mut parent, v);
     }
     drop(rank);
     let endpoints = |row: usize| {
         (
-            parent[left.codes()[row] as usize],
-            parent[split + right.codes()[row] as usize],
+            parent[codes[0][row] as usize],
+            parent[split + codes[1][row] as usize],
         )
     };
     let mut forward = fallible_filled(
@@ -249,6 +366,9 @@ fn pair_direction(
         }
     }
     for v in 0..levels {
+        if v % 65_536 == 0 {
+            interrupt()?;
+        }
         forward[v + 1] += forward[v];
         reverse[v + 1] += reverse[v];
     }
@@ -330,7 +450,10 @@ fn pair_direction(
         "unable to reserve separation graph components",
     )?;
     let mut count = 0;
-    for &v in order.iter().rev() {
+    for (index, &v) in order.iter().rev().enumerate() {
+        if index % 65_536 == 0 {
+            interrupt()?;
+        }
         if component[v] != usize::MAX {
             continue;
         }
@@ -340,7 +463,10 @@ fn pair_direction(
             if a % 65_536 == 0 {
                 interrupt()?;
             }
-            for &b in &origins[reverse[a]..reverse[a + 1]] {
+            for (edge, &b) in origins[reverse[a]..reverse[a + 1]].iter().enumerate() {
+                if edge % 65_536 == 0 {
+                    interrupt()?;
+                }
                 if component[b] == usize::MAX {
                     component[b] = count;
                     stack.push(b);
@@ -375,16 +501,16 @@ fn pair_direction(
     }
     // Reuse the no-longer-needed DSU bank for the explicit level coefficients.
     // Graph traversal storage is dropped before the independent replay begins.
-    for potential in &mut parent {
+    for (level, potential) in parent.iter_mut().enumerate() {
+        if level % 65_536 == 0 {
+            interrupt()?;
+        }
         *potential = component[*potential];
     }
-    Ok(Some(GraphDirection {
+    Ok(Some(PairDirection {
         direction,
-        span: ExactInterceptSpan {
-            effects,
-            split,
-            potentials: parent,
-        },
+        split,
+        potentials: parent,
     }))
 }
 
@@ -415,6 +541,66 @@ mod tests {
                     .unwrap();
                 candidate.direction
             })
+    }
+
+    fn binary(g: &[u32], h: &[u32], y: &[f64], x: &[f64]) -> Option<Vec<f64>> {
+        let ng = *g.iter().max().unwrap() as usize + 1;
+        let nh = *h.iter().max().unwrap() as usize + 1;
+        let gi = LevelIndex::from_codes(g, ng).unwrap();
+        let hi = LevelIndex::from_codes(h, nh).unwrap();
+        let design = BorrowedInterceptFeDesign::new(
+            g.len(),
+            vec![
+                BorrowedInterceptEffect::new(g, ng, &gi).unwrap(),
+                BorrowedInterceptEffect::new(h, nh, &hi).unwrap(),
+            ],
+        )
+        .unwrap();
+        binary_direction(&design, y, 1, &mut |_, row| Ok(x[row]), &mut || Ok(())).unwrap()
+    }
+
+    #[test]
+    fn binary_control_proposes_exact_contrast_after_categorical_graph_misses() {
+        let g = [0, 0, 1, 1, 2, 2, 2, 0];
+        let h = [0, 1, 0, 1, 0, 0, 1, 0];
+        let y = [1., 1., 1., 1., 1., 0., 0., 0.];
+        let x = [0., 0., 1., 1., 1., 0., 0., 0.];
+        assert!(run(&g, &h, &y).is_none());
+        let z = binary(&g, &h, &y, &x).unwrap();
+        // Independent coefficient witness: x - 1[g=1] - 1[g=2].
+        let expected: Vec<_> = (0..8).map(|row| x[row] - f64::from(g[row] != 0)).collect();
+        assert_eq!(z, expected);
+        assert!(binary(&[0, 1, 0, 1], &[0; 4], &[1., 1., 0., 0.], &[0., 1., 1., 0.]).is_none());
+        for nonbinary in [
+            [0.; 8],
+            [1.; 8],
+            [2.; 8],
+            [0., 0., 1. + 2_f64.powi(-50), 1., 1., 0., 0., 0.],
+        ] {
+            assert!(binary(&g, &h, &y, &nonbinary).is_none());
+        }
+    }
+
+    #[test]
+    fn binary_control_polls_break_before_reading_sources() {
+        let g = [0, 1];
+        let index = LevelIndex::from_codes(&g, 2).unwrap();
+        let effect = BorrowedInterceptEffect::new(&g, 2, &index).unwrap();
+        let design = BorrowedInterceptFeDesign::new(2, vec![effect, effect]).unwrap();
+        let error = binary_direction(
+            &design,
+            &[1., 0.],
+            1,
+            &mut |_, _| panic!("interrupted proposal must not read sources"),
+            &mut || {
+                Err(crate::error::FeregError::new(
+                    crate::error::ErrorCode::Interrupted,
+                    "test Break",
+                ))
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.code, crate::error::ErrorCode::Interrupted);
     }
 
     #[test]

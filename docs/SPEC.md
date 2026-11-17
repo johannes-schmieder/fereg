@@ -1907,7 +1907,17 @@ The resulting no-drop evidence is independently replayed before publication.
 Exact categorical proposals examine the first FE pair and a star centered on
 the effect with the most levels, at most one pair per effect. Each proof binds
 its actual effect identities; failure to find a graph direction is never a
-no-separation certificate. These checks retain the existing eight-observation-
+no-separation certificate. If those proposals miss, an admitted graph scan may
+pair the same deterministic largest categorical partition with each generated
+finite column whose original active values are exactly zero or one, with both
+values present. It uses at most one scan and graph per column and reuses one
+N-element code bank; generation-zero preflight includes the virtual two-level
+partition. A binary proposal carries no exact FE-only proof: it must pass the
+unchanged independent full-original-model unit-span and sign/deletion checks.
+Its absence leaves weighted IR and the unit detector in control. This may
+produce a certified zero-iteration proposal earlier, changing the detector
+route and iteration report without granting any new no-drop authority.
+These checks retain the existing eight-observation-
 vector detector allowance and Break polling; the separately admitted slope-audit
 matrix banks cannot exceed the execution memory limit.
 Their authorized numerical scope includes corrected separation, final samples

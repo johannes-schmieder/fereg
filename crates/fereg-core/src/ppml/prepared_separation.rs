@@ -2076,30 +2076,44 @@ fn prepared_bound_iterated_rectifier(
         if let Some(budget) = linear.absorb.solver_memory_budget {
             if let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? {
                 if graph::workspace_bytes(&design)?.is_some_and(|bytes| budget.fits(bytes)) {
-                    if let Some(candidate) =
-                        graph::direction(&design, generation.outcome(), &mut || {
+                    let candidate =
+                        match graph::direction(&design, generation.outcome(), &mut || {
                             interrupt(PpmlInterruptPoint::SeparationIrIteration)
-                        })?
-                    {
-                        let scale = infinity_norm(&candidate.direction);
-                        let dropped =
-                            fallible_collect(
-                                candidate.direction.iter().enumerate().filter_map(
-                                    |(row, &value)| {
-                                        (generation.outcome()[row] == 0.0
-                                            && value < -config.tolerance * scale)
-                                            .then_some(row)
-                                    },
-                                ),
-                                candidate.direction.len(),
-                                "unable to reserve graph separation proposal",
-                            )?;
+                        })? {
+                            Some(candidate) => Some((candidate.direction, Some(candidate.span))),
+                            None => graph::binary_direction(
+                                &design,
+                                generation.outcome(),
+                                generation.fit_view().model().columns.len(),
+                                &mut |column, row| generation.fit_view().column_value(column, row),
+                                &mut || interrupt(PpmlInterruptPoint::SeparationIrIteration),
+                            )?
+                            .map(|direction| (direction, None)),
+                        };
+                    if let Some((direction, exact_span)) = candidate {
+                        let scale = infinity_norm(&direction);
+                        let dropped = fallible_collect(
+                            direction.iter().enumerate().filter_map(|(row, &value)| {
+                                (generation.outcome()[row] == 0.0
+                                    && value < -config.tolerance * scale)
+                                    .then_some(row)
+                            }),
+                            direction.len(),
+                            "unable to reserve graph separation proposal",
+                        )?;
                         let certificate = detector_direction_certificate(
                             generation.outcome(),
-                            &candidate.direction,
+                            &direction,
                             &dropped,
                             config.certificate_tolerance,
                         )?;
+                        if crate::diagnostics::solver_trace_enabled() {
+                            crate::diagnostics::emit_solver_trace(&format!(
+                                "FEREG_SOLVER_TRACE|phase=separation_graph_proposal|generation={}|rows={}|kind={}|proposed={}",
+                                generation.generation(), direction.len(),
+                                if exact_span.is_some() { "categorical" } else { "binary_finite" },
+                                dropped.len()));
+                        }
                         let mut proposal = bind_numerical_proposal(
                             generation,
                             DetectionProposal {
@@ -2109,11 +2123,11 @@ fn prepared_bound_iterated_rectifier(
                                 status: MethodStatus::Certified,
                                 certificate: Some(certificate),
                                 exact_fe_certificate: None,
-                                direction: Some(candidate.direction),
+                                direction: Some(direction),
                                 note: "prepared iterated-rectifier candidate direction".into(),
                             },
                         )?;
-                        proposal.exact_intercept_span = Some(candidate.span);
+                        proposal.exact_intercept_span = exact_span;
                         return Ok(proposal);
                     }
                 }
