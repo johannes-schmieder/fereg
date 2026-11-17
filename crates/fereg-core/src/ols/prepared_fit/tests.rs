@@ -97,6 +97,7 @@ fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
                 false,
                 false,
                 true,
+                None,
             )
         } else {
             finite::solve_one_shot(
@@ -111,6 +112,7 @@ fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
                 false,
                 false,
                 false,
+                None,
             )
         }
     };
@@ -6398,9 +6400,16 @@ fn projection_norm_handoff_preserves_fixed_leaf_scope_and_explicit_divisor_fallb
                         }));
                     }
                     let mut reservation = InjectedReservation::default();
-                    let projection =
-                        fit_projection_only_internal(&data, frame, config, &mut reservation)
-                            .unwrap();
+                    let projection = fit_projection_only_internal(
+                        &data,
+                        frame,
+                        config,
+                        &mut reservation,
+                        None,
+                        false,
+                        None,
+                    )
+                    .unwrap();
                     assert!(projection.certified());
                     assert_eq!(
                         reservation.records.iter().any(|(_, label)| *label
@@ -6411,6 +6420,75 @@ fn projection_norm_handoff_preserves_fixed_leaf_scope_and_explicit_divisor_fallb
             })
             .unwrap();
         }
+    }
+}
+
+#[test]
+fn strict_unit_design_reuses_only_regressors_for_a_new_response() {
+    let x = vec![-2., -1., 0., 1., 2., 4., 5., 7.];
+    let alias = x.iter().map(|v| 2. * v).collect();
+    let groups = [1., 1., 1., 1., 2., 2., 2., 2.];
+    let y = [1., 2., 4., 3., 2., 5., 7., 0.];
+    let other = [4., -1., 3., 1., 8., -2., 3., 5.];
+    let data = prepared(
+        &y,
+        &[x, alias],
+        &[false, false],
+        Some(&groups),
+        true,
+        TestWeights::Unit,
+    );
+    let mut config = PreparedOlsFitConfig::default();
+    config.absorb.map.tolerance = 1e-14;
+    config.absorb.lsmr.tolerance = 1e-14;
+    let original = LinearSolveFrame::from_prepared_ols(&data).unwrap();
+    let next = LinearSolveFrame::from_parts(
+        &other,
+        original.raw_weights(),
+        original.bread_weight_scale(),
+    )
+    .unwrap();
+    let mut design = None;
+    let initial = fit_prepared_weighted_linear_projection_once(
+        &data,
+        original,
+        config,
+        None,
+        false,
+        Some(&mut design),
+    )
+    .unwrap();
+    assert!(design.is_some());
+    let mut audited = 0;
+    let reused = fit_prepared_weighted_linear_projection_once(
+        &data,
+        next,
+        config,
+        Some(&mut |relations, _| {
+            audited += relations.candidates.len() - relations.selected.len();
+            Ok(())
+        }),
+        false,
+        Some(&mut design),
+    )
+    .unwrap();
+    assert!(design.is_none());
+    assert!(audited > 0);
+    let fresh =
+        fit_prepared_weighted_linear_projection_once(&data, next, config, None, false, None)
+            .unwrap();
+    assert_ne!(initial.fitted(), reused.fitted());
+    assert_eq!(
+        reused.kept_generated_columns(),
+        fresh.kept_generated_columns()
+    );
+    assert_eq!(
+        reused.dropped_generated_columns(),
+        fresh.dropped_generated_columns()
+    );
+    assert!(reused.certified() && fresh.certified());
+    for (&actual, &expected) in reused.fitted().iter().zip(fresh.fitted()) {
+        assert_close(actual, expected, 1e-12);
     }
 }
 
@@ -6430,8 +6508,15 @@ fn projection_only_matches_full_fit_without_constructing_reported_bread() {
     let config = PreparedOlsFitConfig::default();
     let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("frame");
     let full = fit_prepared_weighted_linear_once(&prepared_data, frame, config).expect("full fit");
-    let projection = fit_prepared_weighted_linear_projection_once(&prepared_data, frame, config)
-        .expect("projection-only fit");
+    let projection = fit_prepared_weighted_linear_projection_once(
+        &prepared_data,
+        frame,
+        config,
+        None,
+        false,
+        None,
+    )
+    .expect("projection-only fit");
     assert!(projection.certified());
     assert_eq!(projection.finite_rank(), full.finite_rank());
     assert_eq!(

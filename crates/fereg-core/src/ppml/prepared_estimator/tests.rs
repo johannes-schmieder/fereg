@@ -1781,11 +1781,11 @@ fn clustered_composite_uses_final_codes_and_shared_multiway_inventory() {
 
 #[test]
 fn two_way_clustered_composite_publishes_every_final_subset() {
-    let (mut request, mut loaded) = fixture(1, false, true, false, false, false);
+    let (mut request, mut loaded) = fixture(1, false, true, true, false, false);
     let second_cluster = SourceId::new(4).expect("second cluster source");
     request.ols.model.sources.push(source(second_cluster, "d"));
     request.ols.bindings.push(OlsInputBinding {
-        stata_var_position: 6,
+        stata_var_position: 7,
         role: OlsInputRole::NumericSource(second_cluster),
     });
     request.clusters.push(OlsClusterTermV1 {
@@ -1797,7 +1797,8 @@ fn two_way_clustered_composite_publishes_every_final_subset() {
         column(&[1.0, 2.0, 3.0, 1.0, 2.0, 3.0, 1.0, 2.0, 3.0, 1.0, 2.0, 3.0]),
     ));
 
-    let result = fit_prepared_ppml(request, loaded).expect("two-way clustered PPML");
+    let result =
+        fit_prepared_ppml(request.clone(), loaded.clone()).expect("two-way clustered PPML");
     assert_eq!(result.clusters().len(), 2);
     assert_eq!(
         result
@@ -1820,7 +1821,34 @@ fn two_way_clustered_composite_publishes_every_final_subset() {
         result.memory().plan.dimensions.cluster_subset_groups
             >= subsets.iter().map(|subset| subset.groups).sum()
     );
-    assert!(result.inference().vce.certificate.passed);
+    // Independent full-dummy Newton fit on [x, six group indicators].
+    // Map the FE coefficients to their W-weighted mean, and multiply the
+    // x coordinate by SD(x). The two raw eigenvalues are 4.63240631035e-4
+    // and -8.91630375333e-6. The 2x2 closed-form positive spectral projector
+    // gives the slope variance below after undoing SD(x).
+    let inference = result.inference();
+    assert!(inference.vce.certificate.passed && inference.vce.psd.standardized_repair);
+    assert_eq!(inference.vce.psd.clipped_eigenvalues, 1);
+    assert_eq!(inference.vce.psd.final_rank, 1);
+    assert!((inference.vce.psd.raw_minimum_eigenvalue + 8.91630375333e-6).abs() < 1e-12);
+    assert!((inference.vce.covariance[0] - 5.039809182014806e-5).abs() < 1e-12);
+    assert_eq!(&inference.vce.covariance[1..], &[0.0; 3]);
+    assert!((inference.wald.statistic.unwrap() - 2243.3801867466573).abs() < 1e-4);
+
+    // Each one-way cluster has a zero slope score, but their intersections
+    // have nonzero scores. The centered regressor leaves the private constant
+    // orthogonal. The CGM slope variance is negative and clips to zero.
+    loaded.ols.numeric_sources[0].1 =
+        column(&[-1., 1., -1., 1., -1., 1., -1., 1., -1., 1., -1., 1.]);
+    loaded.ols.numeric_sources[2].1 = column(&[1., 1., 1., 1., 2., 2., 2., 2., 1., 1., 2., 2.]);
+    loaded.ols.numeric_sources[3].1 = column(&[1., 1., 2., 2., 1., 1., 2., 2., 1., 1., 2., 2.]);
+    loaded.ols.probability_weight = Some(column(&[1.; 12]));
+    loaded.ols.outcome = column(&[0.5, 1.5, 1.5, 0.5, 1.5, 0.5, 0.5, 1.5, 1., 1., 1., 1.]);
+    let singular = fit_prepared_ppml(request, loaded).unwrap();
+    let inference = singular.inference();
+    assert!(inference.vce.psd.adjusted);
+    assert_eq!(inference.vce.covariance, [0.; 4]);
+    assert_eq!(inference.wald.statistic, None);
 }
 
 #[test]

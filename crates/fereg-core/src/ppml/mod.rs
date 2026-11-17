@@ -22,6 +22,7 @@ mod prepared_model;
 mod prepared_separation;
 mod profiled_intercept_curve;
 mod psd;
+mod reference_covariance;
 mod residuals;
 mod result;
 mod solver;

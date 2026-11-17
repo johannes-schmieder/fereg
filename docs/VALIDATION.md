@@ -1,5 +1,66 @@
 # Validation status
 
+## Post-0.6.1 performance and PPML covariance candidate
+
+The candidate preserves exact original-design alias checks and independently
+replays terminal separation proofs. It avoids repeat fits for exactly proved
+aliases and can use the certified unit-weight route after a weighted many-FE
+numerical stall. Categorical adjoint scheduling retains the row and reduction
+order. In a 33,001-row test with mixed signed weighted inputs and 18 effects,
+the one-worker and eight-worker kernels produce identical adjoint bits.
+
+On the private reporter extract, a fixed Mac Stata/MP 19 comparison at eight
+workers kept the exact estimation sample, rank and PPML coefficient status in
+all ten comparisons with 0.6.1. The main coefficients agreed exactly.
+The dense absorbed half fell from 68.431 to 1.335 seconds, the stacked `ibn`
+model from 895.293 to 70.666 seconds and the stacked explicit model from
+438.937 to 61.782 seconds. Each release has one timed run per cell and the
+candidate has two. Four cells ran in 0.6.0 and remain faster there. For pooled
+PPML the explicit-control times were 4.612, 14.565 and 10.562 seconds across
+0.6.0, 0.6.1 and the candidate. The absorbed-control times were 1.644, 5.936
+and 2.593 seconds. The other six cells returned errors under 0.6.0.
+Both original reporter do-files pass all 39 calls on the signed candidate,
+including the unchanged `ibn` syntax and its interacted fixed effects.
+In a separate diagnostic replay, terminal separation consumed 5.51 seconds
+in pooled explicit PPML and 1.58 seconds in pooled absorbed PPML. The
+one-response solve and fresh replay both executed. The dense half's terminal
+separation consumed 0.82 seconds after the weighted solver declined, versus
+57.63 seconds in the corresponding released diagnostic.
+
+The complete source gate passed with 371 Python tests, 1,635 core unit tests,
+213 plugin tests, 243 serial FFI tests and all 13 isolated allocator audits.
+The source gate also passed formatting, fuzz, Clippy, complexity and on-host
+static and input/output guards. The constrained-memory fixture charges the
+new alias workspace explicitly and still checks its exact admission limit.
+
+The Mac candidate passed 171 whole-tree fixtures and two staged frontend and
+native transaction fixtures. One whole-tree fixture failed and the Windows
+fixture remains to be tested. The generated weak-ring fixture
+`feppml_low_categorical.do` fails in its first Auto `memory(fast)` fit with two
+categorical effects. The trace points to a numerical elimination decline and a
+nonfinite fallback input. Published 0.6.1 gives the same `r(459)` on that Mac.
+The explicit LSMR route passes the fixture with every original topology and
+memory configuration, including the explicit-dummy coefficient and mean
+comparisons and the covariance comparison across modes.
+
+On an isolated Linux 28-core allocation, all three versions estimated the
+same generated 140,000-row weighted panel at eight native workers, with stable
+point estimates and sample counts. The three-run median PPML times were 6.936,
+12.519 and 11.197 seconds. The OLS medians were 1.000, 1.392 and 1.380 seconds.
+The candidate's native ABI, input/output guards, Clippy, and the focused
+56 memory, one projection-reuse and one adjoint-determinism test passed.
+
+On an independently checked 480-row weighted model the two packages use the
+same sample and cluster correction. The largest relative difference in the five
+main standard errors against ppmlhdfe 2.3.3 decreased from 0.20% with 0.6.1 to
+8.66e-8. With all 95 retained recipes and the scaling sample matched, the
+largest covariance difference scaled by the reference standard-error products
+was 1.48e-8 and the relative five-slope standard-error gap was 2.73e-9. The
+five-slope Wald statistics were 2.0960148630 and 2.0960148618. The complete-model
+Wald test was undefined in both fits. After multiplying one regressor by 1,000
+and dividing another by ten, the largest scaled covariance difference after
+mapping back to the original units was 5.90e-13.
+
 ## Release 0.6.1, November 17, 2026
 
 **Qualified release runtime.** The combined I2 runtime passes its

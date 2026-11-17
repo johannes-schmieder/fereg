@@ -797,9 +797,11 @@ fn simplex_preflight_charges_joint_live_design_and_kernel_ceiling() {
             * with_simplex.finite_columns as u128
             * with_simplex.finite_columns as u128
             * size_of::<f64>() as u128;
+        let aliases = with_simplex.finite_columns as u128
+            * (size_of::<usize>() + size_of::<(usize, f64)>()) as u128;
         assert_eq!(
             simplex.separation_workspace_bytes,
-            one_ceiling.max(linear_validation + certificates) + proposal,
+            one_ceiling.max(linear_validation + certificates + aliases) + proposal,
             "simplex storage and shared-linear validation are sequential method alternatives",
         );
         assert_eq!(plain.separation_workspace_bytes, 0);
@@ -1121,6 +1123,7 @@ fn fitted_start_mu_peak_retains_fit_and_detector_workspace() {
         mu_dimensions.observations as u128 * size_of::<f64>() as u128 + MU_EXPLORATION_RECORD_BYTES;
     assert_eq!(inventory.mu_exploration_retained_bytes, expected_retained,);
     let common = inventory.embedding_resident_bytes
+        + mu_dimensions.reported_coefficient_slots as u128 * size_of::<f64>() as u128
         + inventory.canonical_numeric_bytes
         + inventory.retained_base_adjustment_bytes
         + inventory.retained_raw_preseparation_probability_weight_bytes
@@ -1153,8 +1156,15 @@ fn fitted_start_mu_peak_retains_fit_and_detector_workspace() {
         * mu_dimensions.finite_columns as u128
         * mu_dimensions.finite_columns as u128
         * size_of::<f64>() as u128;
-    let mu_detection =
-        common + linear_validation + detector_vectors + proposal + certificates + expected_retained;
+    let aliases = mu_dimensions.finite_columns as u128
+        * (size_of::<usize>() + size_of::<(usize, f64)>()) as u128;
+    let mu_detection = common
+        + linear_validation
+        + detector_vectors
+        + proposal
+        + certificates
+        + aliases
+        + expected_retained;
     let mu_transaction = common
         + inventory.separation_rebase_bytes
         + inventory.separation_rebase_arc_header_bytes
@@ -1263,6 +1273,7 @@ fn row_axis_model_separates_steady_ledgers_from_atomic_rebase_overlap() {
         "only the new retained-row Arc<Vec> owns a fresh control block",
     );
     let separation_base = inventory.embedding_resident_bytes
+        + row_dimensions.reported_coefficient_slots as u128 * size_of::<f64>() as u128
         + inventory.canonical_numeric_bytes
         + inventory.retained_base_adjustment_bytes
         + inventory.retained_raw_preseparation_probability_weight_bytes
@@ -2007,7 +2018,8 @@ fn publication_phase_models_independent_psd_and_wald_validation_scratch() {
     assert_eq!(estimate.low.publication_validator_workspace_bytes, expected);
 
     let fitted_common = |inventory: PpmlMemoryInventory| {
-        inventory.canonical_numeric_bytes
+        validator_dimensions.reported_coefficient_slots as u128 * size_of::<f64>() as u128
+            + inventory.canonical_numeric_bytes
             + inventory.result_metadata_bytes
             + inventory.retained_base_adjustment_bytes
             + inventory.retained_raw_preseparation_probability_weight_bytes

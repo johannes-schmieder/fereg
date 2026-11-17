@@ -685,6 +685,7 @@ fn solve_one_shot<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         perturbations.first_coefficient,
         perturbations.finite_bread,
         true,
+        None,
     ) {
         Ok(qr) => qr,
         Err(error)

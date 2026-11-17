@@ -1767,6 +1767,9 @@ fn separation_rebase_preserves_offset_cluster_and_final_pweight_scale() {
         result.prepared.fit_view(),
         frame,
         PreparedOlsFitConfig::default(),
+        None,
+        false,
+        None,
     )
     .expect("rank-certified final generation");
     assert_eq!(fit.finite_rank(), 0);
@@ -2373,6 +2376,7 @@ fn auto_projection_keeps_every_rectifier_decision() {
                 config,
                 linear,
                 &mut |_| Ok(()),
+                false,
             )
             .unwrap();
             let outcome = detect_prepared_ppml_separation(
@@ -2702,6 +2706,7 @@ fn unit_metric_rectifier_recovers_boundary_only_control_contrast_and_singleton()
                 linear,
                 &mut |_| Ok(()),
                 DetectorAdmission::default(),
+                usize::MAX,
             )
             .unwrap() else {
                 panic!("exact separator was missed");
@@ -2735,6 +2740,7 @@ fn unit_metric_dual_certificate_rejects_zero_margin_and_full_model_moments() {
         linear,
         &mut |_| Ok(()),
         DetectorAdmission::default(),
+        usize::MAX,
     )
     .unwrap() else {
         panic!("opposed regressor cannot separate");
@@ -2839,6 +2845,7 @@ fn unit_metric_dual_never_certifies_away_a_shifted_boundary_indicator() {
                 linear,
                 &mut |_| Ok(()),
                 DetectorAdmission::default(),
+                usize::MAX,
             )
             .unwrap_or_else(|e| panic!("absorbed_slope={absorbed_slope}, shift {shift}: {e}")) else {
                 panic!("exact shifted separator was falsely certified absent at shift {shift}");
@@ -2917,6 +2924,7 @@ fn unit_metric_dual_refuses_numerically_omitted_exact_separating_contrasts() {
                 linear,
                 &mut |_| Ok(()),
                 DetectorAdmission::default(),
+                usize::MAX,
             ) {
                 Ok(stable::Resolution::Dual(_, _)) => {
                     panic!("erased exact 2^-{power} separating contrast")
@@ -2985,7 +2993,8 @@ fn unit_metric_dual_accepts_exact_finite_aliases_without_separation() {
                 config,
                 linear,
                 &mut |_| Ok(()),
-                DetectorAdmission::default()
+                DetectorAdmission::default(),
+                usize::MAX,
             )
             .unwrap(),
             stable::Resolution::Dual(_, _)
@@ -3012,6 +3021,7 @@ fn unit_metric_recovery_no_drop_replays_its_own_dual_certificate() {
         &mut |_| Ok(()),
         FeregError::new(ErrorCode::NonConvergence, "weighted projection failure"),
         DetectorAdmission::default(),
+        usize::MAX,
     )
     .unwrap();
     assert_eq!(proposal.status, MethodStatus::NoSeparation);

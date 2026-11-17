@@ -128,6 +128,7 @@ impl PreparedSeparationPhasePeaks {
 
 pub(crate) struct PreparedPpmlSeparationOutcome {
     pub(crate) prepared: PreparedPpmlModelGeneration,
+    pub(super) covariance_scales: Option<Vec<f64>>,
     pub(crate) separation: SeparationReport,
     /// Opaque, independently replayed binding between the exact requested
     /// detector policy and the terminal prepared generation.  Only this
@@ -670,6 +671,7 @@ where
     )?);
     let mut phase_allocation_peaks = PreparedSeparationPhasePeaks::default();
 
+    let mut covariance_scales = None;
     let (final_fit, final_replay) = loop {
         interrupt(PpmlInterruptPoint::SeparationGeneration)?;
         // A numerical deletion can also record an exact-FE follow-up after
@@ -879,13 +881,23 @@ where
                     }
                     final_generation_replay_mask |= replay_bit(SeparationMethod::FixedEffects);
                 }
+                // Pin the scales before the first numerical deletion. Keep
+                // their allocation inside this stable generation's phase.
+                let generation = coordinator.view().prepared;
+                if covariance_scales.is_none()
+                    && generation.cluster_design().is_some_and(|d| d.len() > 1)
+                {
+                    covariance_scales = Some(super::reference_covariance::column_scales(
+                        generation,
+                        &mut || interrupt(PpmlInterruptPoint::SeparationFixedEffects),
+                    )?);
+                }
                 Ok(false)
             },
         )?;
         if restart_after_fe {
             continue;
         }
-
         if !coordinator.view().prepared.outcome().contains(&0.0) {
             append_no_boundary_reports(
                 &mut reports,
@@ -1226,6 +1238,7 @@ where
     let certification_seal = final_replay.seal(config, &separation)?;
     let outcome = PreparedPpmlSeparationOutcome {
         prepared: outcome.prepared,
+        covariance_scales,
         separation,
         certification_seal,
         candidate_original_rows,
@@ -2134,36 +2147,82 @@ fn prepared_bound_iterated_rectifier(
             }
         }
     }
-    let (proposal, fixed_point) =
-        match prepared_iterated_rectifier(generation, ppml, config, linear, interrupt) {
-            Ok(result) => result,
-            Err(error)
-                if matches!(
-                    error.code,
-                    ErrorCode::NonConvergence | ErrorCode::InvalidData
-                ) =>
-            {
-                return stable::recover(
-                    generation,
-                    ppml,
-                    config,
-                    linear,
-                    interrupt,
-                    error,
-                    graph_admitted,
-                );
+    prepared_weighted_rectifier(generation, ppml, config, linear, graph_admitted, interrupt)
+}
+
+fn prepared_weighted_rectifier(
+    generation: &PreparedPpmlModelGeneration,
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+    admission: DetectorAdmission,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<PreparedNumericalProposal> {
+    let trial = prepared_iterated_rectifier(
+        generation,
+        ppml,
+        config,
+        linear,
+        interrupt,
+        admission.unit_projection.is_some(),
+    );
+    let weighted = match trial {
+        Err(error) if is_deferred_map_fallback(&error) => {
+            match stable::recover(
+                generation, ppml, config, linear, interrupt, error, admission, 1,
+            ) {
+                Ok(certified) => return Ok(certified),
+                Err(error) if is_deferred_map_fallback(&error) => {
+                    prepared_iterated_rectifier(generation, ppml, config, linear, interrupt, false)
+                }
+                Err(error) => return Err(error),
             }
-            Err(error) => return Err(error),
-        };
+        }
+        result => result,
+    };
+    let (proposal, fixed_point) = match weighted {
+        Ok(result) => result,
+        Err(error)
+            if matches!(
+                error.code,
+                ErrorCode::NonConvergence | ErrorCode::InvalidData
+            ) =>
+        {
+            return stable::recover(
+                generation,
+                ppml,
+                config,
+                linear,
+                interrupt,
+                error,
+                admission,
+                config.max_ir_iterations,
+            );
+        }
+        Err(error) => return Err(error),
+    };
     let mut bound = bind_numerical_proposal(generation, proposal)?;
     bound.fixed_point = fixed_point;
     if bound.status == MethodStatus::NoSeparation {
-        match stable::resolve(generation, ppml, config, linear, interrupt, graph_admitted)? {
+        match stable::resolve(
+            generation,
+            ppml,
+            config,
+            linear,
+            interrupt,
+            admission,
+            config.max_ir_iterations,
+        )? {
             stable::Resolution::Dual(dual, _) => bound.stable_dual = Some(dual),
             stable::Resolution::Direction(proposal) => return Ok(proposal),
         }
     }
     Ok(bound)
+}
+
+fn is_deferred_map_fallback(error: &FeregError) -> bool {
+    error.code == ErrorCode::NonConvergence
+        && error.message == crate::fe::session::DEFERRED_MAP_FALLBACK
 }
 
 fn prepared_iterated_rectifier(
@@ -2172,6 +2231,7 @@ fn prepared_iterated_rectifier(
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    defer_many_fe_fallback: bool,
 ) -> Result<(DetectionProposal, Option<IrFixedPointEvidence>)> {
     let outcome = generation.outcome();
     let boundary = fallible_collect(
@@ -2197,7 +2257,17 @@ fn prepared_iterated_rectifier(
     for iteration in 1..=config.max_ir_iterations {
         interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
         let mut lap = trace::IrIteration::new(generation.generation(), iteration, boundary.len());
-        let projection = prepared_project(generation, &u, &weights, ppml, config, linear)?;
+        let projection = prepared_project_with(
+            generation,
+            &u,
+            &weights,
+            ppml,
+            config,
+            linear,
+            None,
+            defer_many_fe_fallback,
+            None,
+        )?;
         lap.projected();
         let fitted = &projection.fitted;
         let assessment = assess_ir_projection(outcome, |row| fitted[row], config);
@@ -2276,18 +2346,7 @@ fn prepared_iterated_rectifier(
                 ));
             }
         }
-        let mut maximum = 0.0_f64;
-        for row in 0..u.len() {
-            u[row] = if outcome[row] > 0.0 || positive_direction[row].abs() <= threshold {
-                0.0
-            } else {
-                positive_direction[row].max(0.0)
-            };
-            maximum = maximum.max(u[row]);
-        }
-        if maximum > 0.0 {
-            u.iter_mut().for_each(|value| *value /= maximum);
-        }
+        update_ir_recurrence(&mut u, outcome, &positive_direction, threshold);
         lap.decided(trace::IrStep::Continued(trace::support(&u)));
     }
     Ok((
@@ -2306,6 +2365,26 @@ fn prepared_iterated_rectifier(
         },
         None,
     ))
+}
+
+fn update_ir_recurrence(
+    u: &mut [f64],
+    outcome: &[f64],
+    positive_direction: &[f64],
+    threshold: f64,
+) {
+    let mut maximum = 0.0_f64;
+    for row in 0..u.len() {
+        u[row] = if outcome[row] > 0.0 || positive_direction[row].abs() <= threshold {
+            0.0
+        } else {
+            positive_direction[row].max(0.0)
+        };
+        maximum = maximum.max(u[row]);
+    }
+    if maximum > 0.0 {
+        u.iter_mut().for_each(|value| *value /= maximum);
+    }
 }
 
 /// Projection weights and initial recurrence of the rectifier: unit weight
@@ -2575,7 +2654,24 @@ fn prepared_project(
     weights: &[f64],
     ppml: PpmlConfig,
     config: SeparationConfig,
+    fit_config: PreparedOlsFitConfig,
+) -> Result<PreparedProjection> {
+    prepared_project_with(
+        generation, response, weights, ppml, config, fit_config, None, false, None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prepared_project_with<'a>(
+    generation: &'a PreparedPpmlModelGeneration,
+    response: &[f64],
+    weights: &[f64],
+    ppml: PpmlConfig,
+    config: SeparationConfig,
     mut fit_config: PreparedOlsFitConfig,
+    alias_capture: crate::ols::AliasCapture<'_>,
+    defer_many_fe_fallback: bool,
+    unit_design: Option<&mut Option<crate::ols::UnitProjectionDesign<'a>>>,
 ) -> Result<PreparedProjection> {
     if response.len() != generation.original_rows().len() || weights.len() != response.len() {
         return Err(invalid_argument(
@@ -2629,8 +2725,14 @@ fn prepared_project(
         response.len(),
         generation.model().columns.len() + 1,
     );
-    let fit =
-        fit_prepared_weighted_linear_projection_once(generation.fit_view(), frame, fit_config)?;
+    let fit = fit_prepared_weighted_linear_projection_once(
+        generation.fit_view(),
+        frame,
+        fit_config,
+        alias_capture,
+        defer_many_fe_fallback,
+        unit_design,
+    )?;
     lap.fitted(&fit);
     if !fit.certified() {
         return Err(FeregError::new(
@@ -3320,7 +3422,8 @@ fn replay_numerical_no_drop(
                     prepared_simplex_proposal(generation, config, interrupt)?
                 }
                 SeparationMethod::IteratedRectifier => {
-                    prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?.0
+                    prepared_iterated_rectifier(generation, ppml, config, linear, interrupt, false)?
+                        .0
                 }
                 SeparationMethod::Mu => {
                     let exploration = mu_exploration.ok_or_else(|| {

@@ -32,6 +32,31 @@ type Declined = (
 );
 
 impl<'a> FeSession<'a> {
+    pub(super) fn require_many_fe_fallback(
+        &self,
+        fallback: &Option<(String, crate::fe::FeFallbackReason)>,
+    ) -> Result<()> {
+        if self.defer_many_fe_fallback
+            && fallback.as_ref().is_some_and(|(_, reason)| {
+                matches!(
+                    reason,
+                    crate::fe::FeFallbackReason::Nonconvergence
+                        | crate::fe::FeFallbackReason::Uncertified
+                )
+            })
+            && self
+                .binding
+                .as_ref()
+                .is_some_and(|design| design.effects().len() > 2)
+        {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                super::DEFERRED_MAP_FALLBACK,
+            ));
+        }
+        Ok(())
+    }
+
     /// Auto OLS with at least two categorical intercept effects: the exact
     /// elimination of the largest effect (two to five effects), then, for
     /// other effect counts and the elimination's declines, fedemean's full

@@ -1,6 +1,11 @@
 //! One-shot adapter to the common stateless immutable-row finite service.
 use super::*;
-use crate::ols::finite_operations::{resize, solve_factor, FactorBanks, RankRequest};
+use crate::ols::finite_operations::{
+    resize, solve_factor, BasisRelations, FactorBanks, RankRequest,
+};
+
+pub(crate) type AliasCapture<'a> =
+    Option<&'a mut (dyn FnMut(BasisRelations<'_>, &[f64]) -> Result<()> + Send)>;
 use crate::ols::finite_wls_kernel::{
     fill_finite_wls_moments, FiniteDenseRows, FiniteResponse, FiniteWorkspace,
 };
@@ -62,6 +67,7 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     perturb_first_coefficient: bool,
     perturb_bread: bool,
     build_bread: bool,
+    alias_capture: AliasCapture<'_>,
 ) -> Result<Option<FiniteFit>> {
     let rows = prepared.fit_sample().n_active();
     let columns = prepared.fit_model().columns.len();
@@ -161,6 +167,7 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             reservation,
             perturb_bread,
             build_bread,
+            alias_capture,
         )?
         else {
             return Ok(None);
@@ -245,6 +252,7 @@ fn factor_and_bread<R: FitReservation>(
     reservation: &mut R,
     perturb_bread: bool,
     build_bread: bool,
+    mut alias_capture: AliasCapture<'_>,
 ) -> Result<
     Option<(
         super::super::finite_wls_kernel::RankRevealingQrReport,
@@ -280,7 +288,10 @@ fn factor_and_bread<R: FitReservation>(
                 compression: &mut workspace.moment_partials,
             },
             reservation,
-            |_, _, _| Ok(()),
+            |relations, _, _| match &mut alias_capture {
+                Some(capture) => capture(relations, reference_norms),
+                None => Ok(()),
+            },
         )?;
         let Some(factor) = factor else {
             return Ok(None);

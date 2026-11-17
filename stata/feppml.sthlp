@@ -278,6 +278,18 @@ inclusion-exclusion, followed by one common {it:G_min}/({it:G_min}-1)
 correction and the registered positive-semidefinite repair.
 
 {pstd}
+For multiway clusters, {cmd:feppml} applies the positive-semidefinite repair
+in ppmlhdfe's standardized coordinates. Regressor scales are unweighted
+sample standard deviations (minimum 0.001) after singleton and exact
+fixed-effect pruning and before numerical separation. For an absorbed
+constant, the repair includes a private intercept formed with final weights
+{it:q_i mu_i}. {cmd:e(V)} and the joint Wald test use the resulting slope
+block in the original units. The reported normalized {cmd:_cons} has a zero
+covariance row. Different retained factor-variable bases can give different
+repaired standard errors. Robust and one-way clustered estimates use their
+usual covariance calculations.
+
+{pstd}
 Structural residual DoF are
 
 {p 8 12 2}

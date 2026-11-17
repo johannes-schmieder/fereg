@@ -1275,6 +1275,19 @@ fn encode_inference_evidence(
         PpmlPsdState::MultiwayRaw => 2.0,
         PpmlPsdState::MultiwayClipped => 3.0,
     };
+    let repair_dimension = if psd.standardized_repair {
+        if vce.cluster_dimension_groups.len() < 2
+            || !(identified_rank..=identified_rank.saturating_add(1))
+                .contains(&dof.finite_within_rank)
+        {
+            return Err(invalid(
+                "PPML standardized covariance repair dimension is inconsistent",
+            ));
+        }
+        dof.finite_within_rank
+    } else {
+        identified_rank
+    };
     let certificate_tolerance = vce.certificate.tolerance;
     let certificate_errors = [
         psd.eigensystem_reconstruction_relative_error,
@@ -1290,7 +1303,8 @@ fn encode_inference_evidence(
         || !psd.final_minimum_eigenvalue.is_finite()
         || !psd.passed
         || psd.final_rank > identified_rank
-        || psd.clipped_eigenvalues > identified_rank
+        || psd.clipped_eigenvalues > repair_dimension
+        || psd.final_rank > repair_dimension - psd.clipped_eigenvalues
         || psd.adjusted != (psd.state == PpmlPsdState::MultiwayClipped)
         || psd.adjusted != (psd.clipped_eigenvalues > 0)
         || (psd.state == PpmlPsdState::Strict && psd.clipped_eigenvalues != 0)

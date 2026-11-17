@@ -24,6 +24,7 @@ pub(super) fn reconstruct<D: PpmlInferenceDesign + Copy + Sync>(
     let rank = input.within_design.dimension();
     let design = PpmlSandwichDesign {
         source: input.within_design,
+        augment: false,
     };
     let multipliers = PpmlScoreMultipliers {
         residuals: input.score_residuals,

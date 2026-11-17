@@ -37,7 +37,7 @@ pub(super) struct FactorBanks<'a> {
     pub compression: &'a mut Vec<f64>,
 }
 
-pub(super) struct BasisRelations<'a> {
+pub(crate) struct BasisRelations<'a> {
     pub candidates: &'a [usize],
     pub selected: &'a [usize],
     pub permutation: &'a [usize],

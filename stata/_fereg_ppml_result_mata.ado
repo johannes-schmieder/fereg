@@ -25,7 +25,7 @@ real scalar _fereg_ppml_validate_result()
     real scalar sources, requestedsolvercode, absorbed_rank, action_event_values, aggregate_index
     real scalar aggregate_row, allocation_certificate_passed, audit_values, bits, cardinality
     real scalar checkpoint_family, cluster_dimension, coefficients, column, covariance_scale
-    real scalar dimension, drop_row, drop_total, effective_engine, effective_family
+    real scalar repair_dimension, dimension, drop_row, drop_total, effective_engine, effective_family
     real scalar engine_observed, executions, expected_aggregate, expected_correction, expected_method
     real scalar expected_sign, failed_attempt, finite_result, frame_count, identified_coefficients
     real scalar kind, linear_capacity_stable, list_index_0, list_index_1, mask
@@ -564,7 +564,9 @@ real scalar _fereg_ppml_validate_result()
     if (normalized_constants > 1 |  identified_coefficients + normalized_constants != dof[2,1]) {
         return(_fereg_ppml_validation_error("PPML coefficient statuses disagree with finite rank", 3499))
     }
-    if (inference[8,1] > identified_coefficients |  inference[11,1] >  identified_coefficients - inference[8,1]) {
+    repair_dimension = identified_coefficients + (clusters > 1) * normalized_constants
+    if (inference[8,1] > repair_dimension | inference[11,1] > identified_coefficients |
+        inference[11,1] > repair_dimension - inference[8,1]) {
         return(_fereg_ppml_validation_error("PPML PSD evidence exceeds the identified covariance rank", 3499))
     }
 

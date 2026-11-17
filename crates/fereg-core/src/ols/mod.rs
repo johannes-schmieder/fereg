@@ -2,7 +2,7 @@
 
 mod canonical_products;
 mod centered;
-mod finite_operations;
+pub(crate) mod finite_operations;
 mod finite_wls_kernel;
 pub(crate) use canonical_products::canonical_three_workspace_bytes;
 mod implicit_centered;
@@ -93,8 +93,8 @@ pub use prepared_fit::{
     PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };
 pub(crate) use prepared_fit::{
-    fit_prepared_weighted_linear_projection_once, CertifiedPreparedLinearProjection,
-    LinearSolveFrame,
+    fit_prepared_weighted_linear_projection_once, AliasCapture, CertifiedPreparedLinearProjection,
+    LinearSolveFrame, UnitProjectionDesign,
 };
 pub(crate) use prepared_rhs::WideRhsColumns;
 pub use prepared_rhs::{

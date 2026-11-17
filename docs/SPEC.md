@@ -1268,6 +1268,22 @@ unweighted score outer product, not f_i². Robust correction is
 one common `G_min/(G_min−1)` multiplies the complete inclusion–exclusion
 meat. No OLS residual-DoF or subset-specific multiplier applies.
 
+For PPML multiway clustering, measure each kept raw regressor in unweighted
+sample standard deviations (N−1 denominator, minimum 0.001) on the first
+sample after requested singleton and exact-FE pruning, before numerical
+separation. A finite intercept has scale one. For an absorbed normalized
+constant, augment the final within-score design with a private intercept.
+In standardized coordinates its cluster influence equals the weighted residual
+sum divided by total working weight, minus the working-weighted regressor
+means times the slope influences, using working weights `q_i mu_i`.
+Clip the complete reference covariance, undo the scales and extract the
+public identified block. Compute the joint Wald test from that published
+block. The normalized public constant and its covariance row remain exactly
+zero. Raw minimum eigenvalue and negative-direction counts describe the
+reference coordinates. Final minimum eigenvalue and rank describe the
+published identified block. Agreement with ppmlhdfe on a particular slope
+can depend on both packages retaining the same factor-variable basis.
+
 Grouping is collision-safe and deterministic. Apply the registered symmetric
 CGM PSD repair only after the complete multiway covariance has been formed;
 retain repair diagnostics, symmetry/finite/diagonal checks and independent
@@ -1893,6 +1909,10 @@ such exact copies. An unresolved omission stops the audit, so dependencies
 between omitted columns point strictly backward and cannot form a circular
 proof. The original retained basis still controls constant authority and
 projection guards; prefix-proof reuse adds no allocation.
+The canonical QR can supply proposed retained-column loadings for its omitted
+columns. Verify each proposed identity against the original values and FE
+memberships and repeat the check during independent replay. A relation that
+cannot be proved this way takes the existing individual projection path.
 Rounded integer coefficients and at most two categorical coordinate sweeps only
 propose identities: checked integer reconstruction must leave every original
 row residual exactly zero. Lost centering/scaling information without an exact
@@ -1932,10 +1952,19 @@ Generation-zero preflight resolves the detector's existing optional modified-LSM
 admission, including its established Schwarz workspace bound, for unit-metric
 primal/dual checks. When admitted, all unit projections and independent terminal
 replay use that stored policy at the unchanged strict FE tolerance and complete
-original-model certificates. Weighted iterated-rectifier projections and IRLS
-routing remain unchanged. Ineligible models or insufficient optional workspace
-retain the existing unit projector; numerical failures never become a
-NoSeparation verdict and retain the existing bounded retry/error behavior.
+original-model certificates. When a weighted Auto projection with more than
+two categorical effects declines on numerical grounds, try one unit-weight
+iteration before continuing with the original weighted path. The early result
+must satisfy the same full primal or dual certificate and independent replay.
+An inconclusive attempt restores the original weighted route with its full
+budget. With the admitted unit policy and categorical intercepts, the dual
+check can use the residualized regressor panel from the immediately preceding
+rectifier projection on the same sample and design. It absorbs the new
+response and repeats the canonical rank and certificate checks. An unsuccessful
+check retries the complete projection. Terminal replay always computes a
+fresh projection. The IRLS routing policy is unchanged. Ineligible models or
+insufficient optional workspace retain the existing unit projector. Numerical
+failure retains the existing bounded retry and error behavior.
 A proposed primal direction still passes the independent full-model deletion
 certificate above. A comfortably positive dual that fails the full-span audit
 fails promptly; repeating a truncated projector cannot certify the missing

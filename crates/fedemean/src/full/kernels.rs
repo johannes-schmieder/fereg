@@ -213,11 +213,14 @@ pub(super) fn forward<const R: usize>(
 #[inline(always)]
 fn compensated_add(sum: &mut f64, correction: &mut f64, value: f64) {
     let next = *sum + value;
-    *correction += if sum.abs() >= value.abs() {
-        (*sum - next) + value
+    // Select operands before arithmetic so the compiler can use conditional
+    // moves in the hot loop. Keep the same comparison and operation order.
+    let (large, small) = if sum.abs() >= value.abs() {
+        (*sum, value)
     } else {
-        (value - next) + *sum
+        (value, *sum)
     };
+    *correction += (large - next) + small;
     *sum = next;
 }
 
@@ -359,20 +362,23 @@ fn scatter_rows<const R: usize, const S: bool, const O: bool>(
     (effects, basis): (&[Effect<'_>], Basis<'_>),
     (src, scale): (Rows<'_>, Option<&[f64]>),
     span: std::ops::Range<usize>,
-    acc: &mut [f64],
-    correction: &mut [f64],
+    (first, last): (usize, usize),
+    (acc, correction): (&mut [f64], &mut [f64]),
 ) {
+    let first_level = st.scatter_offsets[first];
+    let scattered = &st.scattered[first..last];
+    let offsets = &st.scatter_offsets[first..last];
     for row in span {
         let mut v = src.get::<R>(row);
         let w = scale.map_or(1.0, |s| s[row]);
         for value in &mut v {
             *value *= w;
         }
-        for (&e, &base) in st.scattered.iter().zip(&st.scatter_offsets) {
+        for (&e, &base) in scattered.iter().zip(offsets) {
             if S {
                 let effect = &effects[e];
                 let code = effect.codes()[row] as usize;
-                let a = (base + code * effect.channels()) * R;
+                let a = (base - first_level + code * effect.channels()) * R;
                 let origins = if O { basis.level(e, code) } else { &[] };
                 add_channels::<R, O>(
                     (effect, origins),
@@ -383,7 +389,7 @@ fn scatter_rows<const R: usize, const S: bool, const O: bool>(
                 );
                 continue;
             }
-            let a = (base + effects[e].codes()[row] as usize) * R;
+            let a = (base - first_level + effects[e].codes()[row] as usize) * R;
             for j in 0..R {
                 compensated_add(&mut acc[a + j], &mut correction[a + j], v[j]);
             }
@@ -393,6 +399,57 @@ fn scatter_rows<const R: usize, const S: bool, const O: bool>(
 
 /// The scattered effects' part of [`adjoint`]: each fixed row block sums
 /// into its own accumulator; the accumulators are added in block order.
+/// Split disjoint effect slices of the existing accumulator. Within each
+/// effect, visit exactly the same rows and perform the same ordered summation.
+fn scatter_categorical_effects<const R: usize>(
+    st: &Structure,
+    effects: &[Effect<'_>],
+    rows: (Rows<'_>, Option<&[f64]>),
+    span: std::ops::Range<usize>,
+    (first, last): (usize, usize),
+    (acc, correction): (&mut [f64], &mut [f64]),
+) {
+    const EFFECTS_PER_TASK: usize = 8;
+    if last - first <= EFFECTS_PER_TASK || span.len() * R * (last - first) < PARALLEL_WORK {
+        scatter_rows::<R, false, false>(
+            st,
+            (effects, Basis::default()),
+            rows,
+            span,
+            (first, last),
+            (acc, correction),
+        );
+        return;
+    }
+    let middle = first + (last - first) / 2;
+    let split = (st.scatter_offsets[middle] - st.scatter_offsets[first]) * R;
+    let (left, right) = acc.split_at_mut(split);
+    let (left_correction, right_correction) = correction.split_at_mut(split);
+    let left_span = span.clone();
+    rayon::join(
+        || {
+            scatter_categorical_effects::<R>(
+                st,
+                effects,
+                rows,
+                left_span,
+                (first, middle),
+                (left, left_correction),
+            )
+        },
+        || {
+            scatter_categorical_effects::<R>(
+                st,
+                effects,
+                rows,
+                span,
+                (middle, last),
+                (right, right_correction),
+            )
+        },
+    );
+}
+
 fn scatter_pass<const R: usize>(
     st: &Structure,
     design: (&[Effect<'_>], Basis<'_>),
@@ -404,18 +461,24 @@ fn scatter_pass<const R: usize>(
     let width = st.scatter_levels() * R;
     let blocks = st.scatter_blocks();
     let rows = st.scatter_rows;
+    // Additional tasks over independent effect ranges let a wide collection
+    // of small effects use the workers even with few fixed row blocks.
+    let split_effects = blocks < rayon::current_num_threads().saturating_mul(2);
     let body = |block: usize, acc: &mut [f64]| {
         acc.fill(0.0);
         let (acc, correction) = acc.split_at_mut(width);
         let start = block * rows;
         let span = start..(start + rows).min(st.nobs);
         let lent = (src, scale);
-        match (st.sloped, design.1.offsets()) {
-            (false, _) => scatter_rows::<R, false, false>(st, design, lent, span, acc, correction),
-            (true, false) => {
-                scatter_rows::<R, true, false>(st, design, lent, span, acc, correction)
-            }
-            (true, true) => scatter_rows::<R, true, true>(st, design, lent, span, acc, correction),
+        let batch = (0, st.scattered.len());
+        if !st.sloped && split_effects {
+            scatter_categorical_effects::<R>(st, design.0, lent, span, batch, (acc, correction));
+        } else if !st.sloped {
+            scatter_rows::<R, false, false>(st, design, lent, span, batch, (acc, correction));
+        } else if design.1.offsets() {
+            scatter_rows::<R, true, true>(st, design, lent, span, batch, (acc, correction));
+        } else {
+            scatter_rows::<R, true, false>(st, design, lent, span, batch, (acc, correction));
         }
     };
     let scatter = &mut scatter[..blocks * 2 * width];
@@ -586,5 +649,64 @@ pub(super) fn gram(
         for b in 0..a {
             gram[b * ncols + a] = gram[a * ncols + b];
         }
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn categorical_effect_tasks_preserve_adjoint_bits() {
+    use crate::design::Design;
+    use crate::elimination::Cancel;
+
+    let n = 33_001;
+    let levels: Vec<_> = (3..=19).chain([1103]).collect();
+    let codes: Vec<Vec<_>> = levels
+        .iter()
+        .enumerate()
+        .map(|(column, &count)| {
+            (0..n)
+                .map(|row| ((row + column * (row / 7)) % count) as u32)
+                .collect()
+        })
+        .collect();
+    let design = Design::new(
+        n,
+        codes
+            .iter()
+            .zip(&levels)
+            .map(|(column, &count)| Effect::new(column, count))
+            .collect(),
+    )
+    .unwrap();
+    let st = Structure::build(&design, &Cancel(None)).unwrap().unwrap();
+    let src: Vec<_> = (0..n * 4)
+        .map(|i| [1e13, -1e13, 1e-9, -7.5, 2.0][(i / 3 + i % 13) % 5])
+        .collect();
+    let weights: Vec<_> = (0..n).map(|i| 1. + (i % 29) as f64 / 17.).collect();
+    let evaluate = |workers, scale| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .build()
+            .unwrap()
+            .install(|| {
+                let mut scratch = vec![0.; 4 * st.scatter_slots()];
+                let mut out = vec![0.; 4 * st.coefficients()];
+                adjoint::<4>(
+                    &st,
+                    (design.effects(), Basis::default()),
+                    Rows {
+                        data: &src,
+                        stride: 4,
+                        first: 0,
+                    },
+                    scale,
+                    &mut out,
+                    &mut scratch,
+                );
+                out.into_iter().map(f64::to_bits).collect::<Vec<_>>()
+            })
+    };
+    for scale in [None, Some(weights.as_slice())] {
+        assert_eq!(evaluate(1, scale), evaluate(8, scale));
     }
 }

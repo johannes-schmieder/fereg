@@ -28,6 +28,7 @@ pub(super) fn resolve(
     linear: PreparedOlsFitConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     admission: DetectorAdmission,
+    iteration_limit: usize,
 ) -> Result<Resolution> {
     let (ppml, linear) = admission.unit_projection.unwrap_or((ppml, linear));
     let (ppml, linear) = strict_projection_policy(ppml, linear);
@@ -35,14 +36,35 @@ pub(super) fn resolve(
     let unit = fallible_filled(outcome.len(), 1., "unable to reserve unit dual weights")?;
     let mut response =
         fallible_filled(outcome.len(), 0.0_f64, "unable to reserve dual recurrence")?;
-    for iteration in 1..=config.max_ir_iterations {
+    for iteration in 1..=iteration_limit.min(config.max_ir_iterations) {
         interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
         for (value, &y) in response.iter_mut().zip(outcome) {
             if y == 0. {
                 *value = (*value).max(1.);
             }
         }
-        let projection = prepared_project(generation, &response, &unit, ppml, config, linear)?;
+        // The categorical audit has no separate slope-matrix workspace.
+        // Move its already admitted regressor panel into the dual check only.
+        let mut design = None;
+        let retain_within = admission.unit_projection.is_some()
+            && generation.model().columns.len() > 1
+            && generation
+                .prepared()
+                .as_ref()
+                .effect_specs()
+                .iter()
+                .all(|spec| spec.slopes.is_empty());
+        let projection = prepared_project_with(
+            generation,
+            &response,
+            &unit,
+            ppml,
+            config,
+            linear,
+            None,
+            false,
+            retain_within.then_some(&mut design),
+        )?;
         // Release the previous recurrence before the independent projection.
         // Peak detector storage is eight N-vectors: the weighted evidence's
         // two, unit weights, this projection's two, and an omitted-column
@@ -59,6 +81,7 @@ pub(super) fn resolve(
             config,
             linear,
             admission.full_span_bytes,
+            design,
         )? {
             return Ok(Resolution::Dual(dual, iteration));
         }
@@ -163,17 +186,20 @@ pub(super) fn certify_dual(
         config,
         linear,
         admission.full_span_bytes,
+        None,
     )
 }
 
-fn certify_dual_with_weights(
-    generation: &PreparedPpmlModelGeneration,
+#[allow(clippy::too_many_arguments)]
+fn certify_dual_with_weights<'a>(
+    generation: &'a PreparedPpmlModelGeneration,
     dual: &[f64],
     unit: &[f64],
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
     full_span_bytes: u128,
+    mut design: Option<crate::ols::UnitProjectionDesign<'a>>,
 ) -> Result<bool> {
     let (ppml, linear) = strict_projection_policy(ppml, linear);
     if dual.len() != generation.outcome().len() || dual.iter().any(|v| !v.is_finite()) {
@@ -222,7 +248,61 @@ fn certify_dual_with_weights(
         trace_dual_check("local", margin, 0., config.projection_tolerance);
         return Ok(false);
     }
-    let checked = prepared_project(generation, dual, unit, ppml, config, linear)?;
+    if design.is_some() {
+        let reused = certify_projected_dual(
+            generation,
+            dual,
+            unit,
+            margin,
+            ppml,
+            config,
+            linear,
+            Some(&mut design),
+        );
+        match reused {
+            Ok(true) => return Ok(true),
+            Err(error)
+                if !matches!(
+                    error.code,
+                    ErrorCode::NonConvergence | ErrorCode::InvalidData
+                ) =>
+            {
+                return Err(error)
+            }
+            _ => {}
+        }
+        drop(design);
+    }
+    // A rejected single-response projection or span audit retries the original
+    // joint projection. Terminal replay always comes directly through here.
+    certify_projected_dual(generation, dual, unit, margin, ppml, config, linear, None)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn certify_projected_dual<'a>(
+    generation: &'a PreparedPpmlModelGeneration,
+    dual: &[f64],
+    unit: &[f64],
+    margin: f64,
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+    design: Option<&mut Option<crate::ols::UnitProjectionDesign<'a>>>,
+) -> Result<bool> {
+    let mut aliases = Vec::new();
+    let checked = prepared_project_with(
+        generation,
+        dual,
+        unit,
+        ppml,
+        config,
+        linear,
+        Some(&mut |relations, norms| {
+            certify_qr_aliases(generation, relations, norms, &mut aliases)
+        }),
+        false,
+        design,
+    )?;
     if stable_norm(&checked.fitted) > config.projection_tolerance * margin {
         trace_dual_check(
             "span",
@@ -236,7 +316,9 @@ fn certify_dual_with_weights(
     drop(checked.fitted);
     drop(checked.residual);
     drop(checked.coefficients);
-    certify_omitted_contrasts(generation, dual, unit, &kept, margin, ppml, config, linear)
+    certify_omitted_contrasts(
+        generation, dual, unit, &kept, &aliases, margin, ppml, config, linear,
+    )
 }
 
 /// Intercept-preserving translations must not hide an omitted model direction
@@ -296,6 +378,59 @@ fn centered_moment_ratio(generation: &PreparedPpmlModelGeneration, dual: &[f64])
     Ok(largest)
 }
 
+/// Use the QR's discarded-column loadings only as proposals. Independently
+/// prove every accepted alias from original values and FE memberships. The
+/// verification runs again when the separation coordinator replays the proof.
+fn certify_qr_aliases(
+    generation: &PreparedPpmlModelGeneration,
+    relations: crate::ols::finite_operations::BasisRelations<'_>,
+    norms: &[f64],
+    certified: &mut Vec<usize>,
+) -> Result<()> {
+    certified.clear();
+    let rank = relations.selected.len();
+    let dropped = relations.candidates.len() - rank;
+    if dropped == 0 {
+        return Ok(());
+    }
+    let fit = generation.fit_view();
+    let rows = generation.outcome().len();
+    let mut response = fallible_filled(rows, 0., "unable to reserve omitted contrast")?;
+    let mut coefficients = fallible_filled(rank, (0, 0.), "unable to reserve QR alias proposal")?;
+    certified
+        .try_reserve_exact(dropped)
+        .map_err(|_| allocation("unable to reserve verified QR aliases"))?;
+    for (position, &dropped_candidate) in relations.permutation[rank..].iter().enumerate() {
+        crate::interrupt::checkpoint()?;
+        let column = relations.candidates[dropped_candidate];
+        for (pivot, entry) in coefficients.iter_mut().enumerate() {
+            let kept = relations.candidates[relations.permutation[pivot]];
+            let gamma = relations.dropped_projection[pivot * dropped + position];
+            *entry = (kept, gamma * norms[column] / norms[kept]);
+        }
+        crate::ols::prepared_fit_view::visit_prepared_column_range(
+            fit,
+            column,
+            0..rows,
+            |row, value| {
+                crate::interrupt::row_checkpoint(row)?;
+                response[row] = value;
+                Ok(())
+            },
+        )?;
+        if exact_integer_alias(generation, &mut response, &coefficients, relations.selected)? {
+            certified.push(column);
+        }
+    }
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=separation_qr_alias|verified={}|candidates={dropped}",
+            certified.len(),
+        ));
+    }
+    Ok(())
+}
+
 /// Numerical omission is not authority to erase a direction from the cone.
 /// A projection only proposes alias coefficients. Every omitted column needs
 /// an independent exact source identity: individually small residual moments
@@ -306,6 +441,7 @@ fn certify_omitted_contrasts(
     dual: &[f64],
     unit: &[f64],
     kept: &[usize],
+    certified_aliases: &[usize],
     margin: f64,
     mut ppml: PpmlConfig,
     config: SeparationConfig,
@@ -322,6 +458,7 @@ fn certify_omitted_contrasts(
     for column in 0..fit.model().columns.len() {
         crate::interrupt::checkpoint()?;
         if kept.contains(&column)
+            || certified_aliases.contains(&column)
             || exact_absorbed_column(generation, column)?
             || exact_finite_duplicate(generation, column, kept)?
         {
@@ -470,6 +607,7 @@ fn stable_norm(values: &[f64]) -> f64 {
 /// A weighted numerical failure can lose a boundary-only direction before
 /// returning any proposal. The same unit-metric certificate is the bounded
 /// recovery; a failed recovery preserves the original numerical error.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn recover(
     generation: &PreparedPpmlModelGeneration,
     ppml: PpmlConfig,
@@ -478,8 +616,11 @@ pub(super) fn recover(
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     original: FeregError,
     admission: DetectorAdmission,
+    iterations: usize,
 ) -> Result<PreparedNumericalProposal> {
-    match resolve(generation, ppml, config, linear, interrupt, admission) {
+    match resolve(
+        generation, ppml, config, linear, interrupt, admission, iterations,
+    ) {
         Ok(Resolution::Direction(proposal)) => Ok(proposal),
         Ok(Resolution::Dual(dual, iterations)) => {
             let certificate = dual_certificate(generation, &dual);

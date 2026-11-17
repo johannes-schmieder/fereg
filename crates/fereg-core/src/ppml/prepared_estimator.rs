@@ -578,6 +578,19 @@ pub fn fit_prepared_ppml_interruptible(
     interrupt(PpmlInterruptPoint::Inference)?;
     let inference = {
         let mut poll_subset = || interrupt(PpmlInterruptPoint::InferenceSubset);
+        let reference = separation_outcome
+            .covariance_scales
+            .as_ref()
+            .map(|scales| {
+                super::reference_covariance::ReferenceCovariance::new(
+                    prepared,
+                    &fit,
+                    scales,
+                    reported_finite_rank,
+                    &mut poll_subset,
+                )
+            })
+            .transpose()?;
         compute_ppml_inference_interruptible_with_threads(
             super::PpmlInferenceInput {
                 coefficients: coefficients.values(),
@@ -599,6 +612,7 @@ pub fn fit_prepared_ppml_interruptible(
                 certificate_tolerance: request.ppml.tolerance,
             },
             resolved_linear.execution.threads,
+            reference.as_ref(),
             &mut poll_subset,
         )?
     };

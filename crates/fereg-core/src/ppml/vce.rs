@@ -1,5 +1,6 @@
 #![allow(clippy::needless_range_loop)]
 
+use super::reference_covariance::ReferenceCovariance;
 use super::wald::{compute_ppml_wald, validate_reference, PpmlWaldReference};
 use crate::data::DenseMatrix;
 use crate::data::WeightKind;
@@ -379,6 +380,9 @@ pub struct PpmlInferenceInput<'a, D = &'a DenseMatrix> {
     pub certificate_tolerance: f64,
 }
 
+/// Compute inference in the caller's supplied compact coordinates. Prepared
+/// estimation additionally knows the raw regressor scales and absorbed
+/// constant, and supplies that geometry for the public multiway repair.
 pub fn compute_ppml_inference<D>(input: PpmlInferenceInput<'_, D>) -> Result<PpmlInferenceResult>
 where
     D: PpmlInferenceDesign + Copy + Sync,
@@ -386,6 +390,7 @@ where
     compute_ppml_inference_interruptible_with_threads(
         input,
         ThreadConfig::default(),
+        None,
         &mut || Ok(()),
     )
 }
@@ -393,9 +398,10 @@ where
 /// Configured-team PPML inference boundary. The caller-owned interrupt probe
 /// remains on the caller thread; only complete robust or clustered sandwich
 /// reductions enter the bounded Rayon team.
-pub(crate) fn compute_ppml_inference_interruptible_with_threads<D>(
+pub(super) fn compute_ppml_inference_interruptible_with_threads<D>(
     input: PpmlInferenceInput<'_, D>,
     threads: ThreadConfig,
+    reference: Option<&ReferenceCovariance>,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<PpmlInferenceResult>
 where
@@ -406,13 +412,18 @@ where
     let rows = input.within_design.nrows();
     let full_dimension = input.full_dimension;
     let rank = input.within_design.dimension();
+    let augment = reference.is_some_and(|r| r.augment);
+    let score_dimension = rank + usize::from(augment);
+    let transform = reference
+        .filter(|r| r.augment)
+        .map_or(input.identified_bread, |r| r.transform.as_slice());
     let effective_kind = match input.requested_vce {
         PpmlVceRequest::Unadjusted | PpmlVceRequest::Robust => PpmlVceKind::Robust,
         PpmlVceRequest::Clustered => PpmlVceKind::Clustered,
     };
     let bread_symmetry = matrix_symmetry_error(input.identified_bread, rank)?;
     let mut reservation = SystemSandwichReservation;
-    let (production_meat, certificate_meat, cluster_subsets) = if rank == 0 {
+    let (production_meat, certificate_meat, cluster_subsets) = if score_dimension == 0 {
         let reports = if effective_kind == PpmlVceKind::Clustered {
             // The shared reducer intentionally rejects a zero-dimensional
             // design.  This is the only path that factors cluster tuples
@@ -426,6 +437,7 @@ where
     } else {
         let design = PpmlSandwichDesign {
             source: input.within_design,
+            augment,
         };
         let mode = if effective_kind == PpmlVceKind::Robust {
             PpmlScoreMode::Robust
@@ -560,46 +572,85 @@ where
         ));
     }
 
-    let (mut raw_covariance, meat_error, mut covariance_error, factor_check) = if rank == 0 {
-        (Vec::new(), 0.0, 0.0, false)
-    } else {
-        let meat_error = matrix_relative_difference(&production_meat, &certificate_meat, rank)?;
-        let production_covariance = ppml_sandwich_result(bread_meat_bread(
-            input.identified_bread,
-            &production_meat,
-            rank,
-            SandwichCorrectionPolicy::Scale(correction),
-            SandwichProductMode::CompensatedFull,
-            &mut reservation,
-        ))?;
-        interrupt()?;
-        let mut certificate_covariance = ppml_sandwich_result(bread_meat_bread(
-            input.identified_bread,
-            &certificate_meat,
-            rank,
-            SandwichCorrectionPolicy::Scale(correction),
-            SandwichProductMode::CompensatedFull,
-            &mut reservation,
-        ))?;
-        interrupt()?;
-        let covariance_error =
-            matrix_relative_difference(&production_covariance, &certificate_covariance, rank)?;
-        let factor_check = (effective_kind == PpmlVceKind::Robust || input.clusters.len() <= 1)
-            && factor_covariance::needs_factor_check(
-                &input,
+    let (mut raw_covariance, meat_error, mut covariance_error, factor_check) =
+        if score_dimension == 0 {
+            (Vec::new(), 0.0, 0.0, false)
+        } else {
+            let mut meat_error =
+                matrix_relative_difference(&production_meat, &certificate_meat, score_dimension)?;
+            if augment {
+                meat_error = meat_error.max(block_difference(
+                    &production_meat,
+                    &certificate_meat,
+                    score_dimension,
+                    rank,
+                )?);
+            }
+            let mut production_covariance = ppml_sandwich_result(bread_meat_bread(
+                transform,
                 &production_meat,
+                score_dimension,
+                SandwichCorrectionPolicy::Scale(correction),
+                SandwichProductMode::CompensatedFull,
+                &mut reservation,
+            ))?;
+            interrupt()?;
+            let mut certificate_covariance = ppml_sandwich_result(bread_meat_bread(
+                transform,
+                &certificate_meat,
+                score_dimension,
+                SandwichCorrectionPolicy::Scale(correction),
+                SandwichProductMode::CompensatedFull,
+                &mut reservation,
+            ))?;
+            interrupt()?;
+            let covariance_error = matrix_relative_difference(
                 &production_covariance,
-                &mut certificate_covariance,
-                minimum_cluster_groups.unwrap_or(rows),
-                correction,
-            );
-        (
-            production_covariance,
-            meat_error,
-            covariance_error,
-            factor_check,
-        )
-    };
+                &certificate_covariance,
+                score_dimension,
+            )?;
+            let covariance_error = if let Some(reference) = reference {
+                // The intercept column could dominate a row norm. Certify the
+                // original-unit finite block separately, then the complete
+                // standardized matrix in the actual clipping coordinates.
+                let original = if augment {
+                    block_difference(
+                        &production_covariance,
+                        &certificate_covariance,
+                        score_dimension,
+                        rank,
+                    )?
+                } else {
+                    covariance_error
+                };
+                reference.standardize(&mut production_covariance)?;
+                reference.standardize(&mut certificate_covariance)?;
+                covariance_error
+                    .max(original)
+                    .max(matrix_relative_difference(
+                        &production_covariance,
+                        &certificate_covariance,
+                        score_dimension,
+                    )?)
+            } else {
+                covariance_error
+            };
+            let factor_check = (effective_kind == PpmlVceKind::Robust || input.clusters.len() <= 1)
+                && factor_covariance::needs_factor_check(
+                    &input,
+                    &production_meat,
+                    &production_covariance,
+                    &mut certificate_covariance,
+                    minimum_cluster_groups.unwrap_or(rows),
+                    correction,
+                );
+            (
+                production_covariance,
+                meat_error,
+                covariance_error,
+                factor_check,
+            )
+        };
     drop(production_meat);
     drop(certificate_meat);
 
@@ -627,11 +678,17 @@ where
     }
     let (identified_covariance, psd) = apply_ppml_psd_policy(
         &raw_covariance,
-        rank,
+        score_dimension,
         cluster_dimensions,
         input.certificate_tolerance,
     )?;
     drop(raw_covariance);
+    let (identified_covariance, psd) = match reference {
+        Some(reference) => {
+            reference.publish(identified_covariance, psd, input.certificate_tolerance)?
+        }
+        None => (identified_covariance, psd),
+    };
     interrupt()?;
     let covariance_symmetry = matrix_symmetry_error(&identified_covariance, rank)?;
     let mut reservation = SystemSandwichReservation;
@@ -768,6 +825,7 @@ pub fn compute_ppml_dof(
 #[derive(Debug, Clone, Copy)]
 struct PpmlSandwichDesign<D> {
     source: D,
+    augment: bool,
 }
 
 impl<D> SandwichDesign for PpmlSandwichDesign<D>
@@ -783,20 +841,34 @@ where
     }
 
     fn dimension(&self) -> usize {
-        self.source.dimension()
+        self.source.dimension() + usize::from(self.augment)
     }
 
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
-        self.source.fill_row(row, output)
+        let rank = self.source.dimension();
+        if self.augment {
+            output[rank] = 1.0;
+        }
+        self.source.fill_row(row, &mut output[..rank])
     }
 
     fn visit_range(
         &self,
         rows: std::ops::Range<usize>,
         output: &mut [f64],
-        visit: impl FnMut(usize, &mut [f64]) -> Result<()>,
+        mut visit: impl FnMut(usize, &mut [f64]) -> Result<()>,
     ) -> Result<()> {
-        self.source.visit_range(rows, output, visit)
+        if !self.augment {
+            return self.source.visit_range(rows, output, visit);
+        }
+        // A scratch-backed source keeps its sequential reader for this scan.
+        let rank = self.source.dimension();
+        let mut within = filled(rank, 0.0, "unable to reserve PPML augmented score row")?;
+        self.source.visit_range(rows, &mut within, |row, values| {
+            output[..rank].copy_from_slice(values);
+            output[rank] = 1.0;
+            visit(row, output)
+        })
     }
 }
 
@@ -1061,7 +1133,7 @@ pub(crate) fn validate_weight_report(
     Ok(())
 }
 
-fn compensated_positive_sum(values: &[f64]) -> Result<f64> {
+pub(super) fn compensated_positive_sum(values: &[f64]) -> Result<f64> {
     // Fixed chunks over a fixed tree (allocation free), merged with both
     // components. An invalid chunk replays the scalar loop from the start,
     // which reports the first invalid weight or overflow in row order.
@@ -1367,12 +1439,16 @@ fn matrix_relative_difference(left: &[f64], right: &[f64], dimension: usize) -> 
             "PPML inference certificate matrices are misaligned",
         ));
     }
+    block_difference(left, right, dimension, dimension)
+}
+
+fn block_difference(left: &[f64], right: &[f64], stride: usize, dimension: usize) -> Result<f64> {
     let mut error = 0.0_f64;
     for row in 0..dimension {
         let mut row_error = 0.0_f64;
         let mut row_scale = f64::MIN_POSITIVE;
         for column in 0..dimension {
-            let position = row * dimension + column;
+            let position = row * stride + column;
             row_error += (left[position] - right[position]).abs();
             row_scale += left[position].abs().max(right[position].abs());
         }
@@ -1465,6 +1541,7 @@ mod tests {
                             certificate_tolerance: 1e-12,
                         },
                         ThreadConfig::from_requested(threads, true).unwrap(),
+                        None,
                         &mut || Ok(()),
                     )
                     .expect("rank-deficient score factors define nonnegative variances");
@@ -1690,6 +1767,7 @@ mod tests {
                         certificate_tolerance: 1e-10,
                     },
                     ThreadConfig::from_requested(threads, true).unwrap(),
+                    None,
                     &mut || Ok(()),
                 )
                 .unwrap();
@@ -1771,6 +1849,7 @@ mod tests {
                     certificate_tolerance: 1e-9,
                 },
                 ThreadConfig::from_requested(requested, true).expect("thread config"),
+                None,
                 &mut || Ok(()),
             )
             .expect("observed PPML inference");

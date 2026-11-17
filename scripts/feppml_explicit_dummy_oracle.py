@@ -24,6 +24,7 @@ import json
 import math
 import os
 from pathlib import Path
+import statistics
 import sys
 from typing import Any, Mapping, Sequence
 
@@ -536,11 +537,34 @@ def evaluate(data_path: Path, model_path: Path) -> dict[str, Any]:
             )
             if status["status_code"] == 1 and column in kept_positions
         ]
-        reported_block = [[vce[row][column] for column in identified] for row in identified]
-        repaired_block = repair_multiway_psd(reported_block)
-        for block_row, row in enumerate(identified):
-            for block_column, column in enumerate(identified):
-                vce[row][column] = repaired_block[block_row][block_column]
+        # Independent linear map from the explicit-dummy estimator to the
+        # standardized finite coefficients and the mean fitted FE contribution.
+        # The closed fixtures only drop exact zero FE levels before scaling.
+        scales = []
+        transform = []
+        for slot in identified:
+            term = model["finite_terms"][slot]
+            column = reported_columns[slot]
+            sd = 1.0 if term["column"] is None else max(
+                1e-3, statistics.stdev(row[column] for row in design)
+            )
+            scales.append(sd)
+            transform.append([sd if original == column else 0.0 for original in fit.kept_columns])
+        if any(status["status_code"] == 7 for status in model["expected_status_map"]):
+            working = [weight * mu for weight, mu in zip(weights, fit.mean)]
+            mass = math.fsum(working)
+            finite_columns = set(reported_columns)
+            transform.append([
+                0.0 if column in finite_columns else
+                math.fsum(w * row[column] for w, row in zip(working, design)) / mass
+                for column in fit.kept_columns
+            ])
+        if transform:
+            transformed = _explicit.matmul(_explicit.matmul(transform, compact_vce), list(zip(*transform)))
+            repaired_block = repair_multiway_psd(transformed)
+            for i, row in enumerate(identified):
+                for j, col in enumerate(identified):
+                    vce[row][col] = repaired_block[i][j] / (scales[i] * scales[j])
 
     finite_rank = sum(record["status_code"] in {1, 7} for record in model["expected_status_map"])
     absorbed_rank = len(fit.kept_columns) - finite_rank

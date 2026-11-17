@@ -2284,14 +2284,20 @@ fn validate_covariance_and_certificates(
         ));
     }
     let psd = inference.vce.psd;
-    let state_valid = matches!(
-        (cluster_dimensions, psd.state),
-        (0 | 1, PpmlPsdState::Strict)
-            | (
-                2..,
-                PpmlPsdState::MultiwayRaw | PpmlPsdState::MultiwayClipped
-            )
-    );
+    let private_constant = psd.standardized_repair
+        && coefficients
+            .statuses()
+            .contains(&PpmlCoefficientStatus::NormalizedStructuralConstant);
+    let repair_dimension = rank + usize::from(private_constant);
+    let state_valid = (!psd.standardized_repair || cluster_dimensions > 1)
+        && matches!(
+            (cluster_dimensions, psd.state),
+            (0 | 1, PpmlPsdState::Strict)
+                | (
+                    2..,
+                    PpmlPsdState::MultiwayRaw | PpmlPsdState::MultiwayClipped
+                )
+        );
     let report_values_valid = [
         psd.raw_minimum_eigenvalue,
         psd.final_minimum_eigenvalue,
@@ -2306,7 +2312,7 @@ fn validate_covariance_and_certificates(
         || !psd.passed
         || psd.final_rank != recomputed_psd.rank
         || psd.final_rank > rank
-        || psd.clipped_eigenvalues > rank
+        || psd.clipped_eigenvalues > repair_dimension
         || psd.eigensystem_reconstruction_relative_error < 0.0
         || psd.orthogonality_relative_error < 0.0
         || psd.clipped_reconstruction_relative_error < 0.0
@@ -2319,7 +2325,7 @@ fn validate_covariance_and_certificates(
         || (psd.state == PpmlPsdState::MultiwayClipped
             && (psd.raw_minimum_eigenvalue >= 0.0
                 || psd.clipped_eigenvalues == 0
-                || psd.final_rank > rank - psd.clipped_eigenvalues))
+                || psd.final_rank > repair_dimension - psd.clipped_eigenvalues))
         || (psd.state == PpmlPsdState::MultiwayRaw
             && (psd.raw_minimum_eigenvalue < 0.0 || psd.clipped_eigenvalues != 0))
         || (psd.state == PpmlPsdState::Strict && psd.clipped_eigenvalues != 0)
@@ -2327,7 +2333,8 @@ fn validate_covariance_and_certificates(
             < recomputed_psd.reconstruction_relative_error
         || psd.orthogonality_relative_error + 16.0 * f64::EPSILON
             < recomputed_psd.orthogonality_relative_error
-        || (psd.state != PpmlPsdState::MultiwayClipped
+        || (!psd.standardized_repair
+            && psd.state != PpmlPsdState::MultiwayClipped
             && relative_scalar_error(
                 psd.raw_minimum_eigenvalue,
                 recomputed_psd.minimum_eigenvalue,

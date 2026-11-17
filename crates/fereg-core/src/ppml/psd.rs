@@ -16,6 +16,8 @@ pub enum PpmlPsdState {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PpmlPsdReport {
     pub state: PpmlPsdState,
+    /// The raw repair spectrum uses pinned standardized reference coordinates.
+    pub standardized_repair: bool,
     pub adjusted: bool,
     pub clipped_eigenvalues: usize,
     pub raw_minimum_eigenvalue: f64,
@@ -48,6 +50,7 @@ pub(crate) fn apply_ppml_psd_policy(
         return Ok((
             Vec::new(),
             PpmlPsdReport {
+                standardized_repair: false,
                 state: if cluster_dimensions > 1 {
                     PpmlPsdState::MultiwayRaw
                 } else {
@@ -140,6 +143,7 @@ pub(crate) fn apply_ppml_psd_policy(
         output,
         PpmlPsdReport {
             state,
+            standardized_repair: false,
             adjusted: clipped > 0,
             clipped_eigenvalues: clipped,
             raw_minimum_eigenvalue: raw_minimum,

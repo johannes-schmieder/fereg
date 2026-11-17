@@ -1,4 +1,5 @@
 mod finite;
+pub(crate) use finite::AliasCapture;
 mod one_shot;
 mod raw_moment_bands;
 mod reductions;
@@ -1605,6 +1606,19 @@ fn retained_finite_predictor<P: PreparedOlsFitView + Sync + ?Sized>(
     Ok(finite_predictor)
 }
 
+/// The certified regressor part of a strict unit-weight projection. It is
+/// moved once into a second solve on the same immutable sample and model.
+/// The second solve overwrites the response lane before any finite operation.
+pub(crate) struct UnitProjectionDesign<'a> {
+    sample: &'a super::FinalizedNumericSample,
+    model: &'a super::PreparedOlsModel,
+    config: PreparedOlsFitConfig,
+    within: DenseMatrix,
+    reference_norms: Vec<f64>,
+    within_norms: Vec<f64>,
+    certificate: FeCertificate,
+}
+
 /// Canonical finite-plus-FE projection without covariance/report publication.
 /// The public OLS path never calls this boundary.
 pub(crate) fn fit_prepared_weighted_linear_projection_once<
@@ -1612,15 +1626,26 @@ pub(crate) fn fit_prepared_weighted_linear_projection_once<
     P: PreparedOlsFitView + Sync + ?Sized,
 >(
     prepared: &'a P,
-    frame: LinearSolveFrame<'a>,
+    frame: LinearSolveFrame<'_>,
     config: PreparedOlsFitConfig,
+    alias_capture: finite::AliasCapture<'_>,
+    defer_many_fe_fallback: bool,
+    unit_design: Option<&mut Option<UnitProjectionDesign<'a>>>,
 ) -> Result<CertifiedPreparedLinearProjection> {
     let team = fit_thread_team(config);
     team.install(|| {
         validate_config(prepared, config)?;
         frame.validate_for(prepared)?;
         let mut reservation = SystemFitReservation;
-        fit_projection_only_internal(prepared, frame, config, &mut reservation)
+        fit_projection_only_internal(
+            prepared,
+            frame,
+            config,
+            &mut reservation,
+            alias_capture,
+            defer_many_fe_fallback,
+            unit_design,
+        )
     })?
 }
 
@@ -1652,16 +1677,51 @@ fn projection_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     Ok((raw, reference_norms))
 }
 
-fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
-    prepared: &P,
+struct ProjectionPanel {
+    within: DenseMatrix,
+    absorption_report: SolveReport,
+    within_norms: Vec<f64>,
+    reference_norms: Vec<f64>,
+    retain: bool,
+}
+
+fn project_panel<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &'a P,
     frame: LinearSolveFrame<'_>,
     config: PreparedOlsFitConfig,
     reservation: &mut R,
-) -> Result<CertifiedPreparedLinearProjection> {
+    cmg: &mut crate::fe::FeSession<'_>,
+    unit_design: Option<&mut Option<UnitProjectionDesign<'a>>>,
+) -> Result<ProjectionPanel> {
     let weights = frame.weights();
-    let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
-    let (raw, reference_norms) = projection_inputs(prepared, frame, reservation)?;
-    let generated_columns = prepared.fit_model().columns.len();
+    if unit_design.is_some()
+        && (weights.raw_scale != 1.
+            || weights.values.is_some_and(|w| w.iter().any(|&v| v != 1.))
+            || config.absorb.map.tolerance > 1e-14
+            || config.absorb.lsmr.tolerance > 1e-14)
+    {
+        return Err(invalid_argument(
+            "unit projection design requires strict unit weights",
+        ));
+    }
+    let mut previous = unit_design.and_then(Option::take);
+    let retain = previous.is_none();
+    let (raw, reference_norms) = if let Some(design) = previous.as_mut() {
+        if !std::ptr::eq(design.model, prepared.fit_model())
+            || !std::ptr::eq(design.sample, prepared.fit_sample())
+            || design.config != config
+        {
+            return Err(invalid_argument(
+                "unit projection design changed before reuse",
+            ));
+        }
+        (
+            prepared.fit_build_rhs_block_with_response(0, 0, true, frame.response())?,
+            std::mem::take(&mut design.reference_norms),
+        )
+    } else {
+        projection_inputs(prepared, frame, reservation)?
+    };
     let mut absorbed = cmg.project_ols(weights.borrowed(), raw, config.absorb, false, false)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
@@ -1676,14 +1736,14 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     } else {
         Vec::new()
     };
-    let (within, absorption_report, _) = absorbed.into_full_parts();
+    let (mut within, mut absorption_report, _) = absorbed.into_full_parts();
     let has_cached_norms = !cached_norms.is_empty();
     let mut within_norms = if has_cached_norms {
         cached_norms
     } else {
         reserved_filled(
             reservation,
-            generated_columns + 1,
+            within.ncols(),
             0.0_f64,
             "unable to reserve prepared projection within norms",
         )?
@@ -1691,6 +1751,73 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     if !has_cached_norms {
         fast_weighted_column_norms(&within, 0, weights, &mut within_norms)?;
     }
+    if let Some(mut design) = previous {
+        let width = design.within.ncols();
+        for (row, (&value, target)) in within
+            .as_slice()
+            .iter()
+            .zip(design.within.as_mut_slice().chunks_exact_mut(width))
+            .enumerate()
+        {
+            crate::interrupt::row_checkpoint(row)?;
+            target[0] = value;
+        }
+        within = design.within;
+        design.within_norms[0] = within_norms[0];
+        within_norms = design.within_norms;
+        // The regressor and the fresh response certificates both passed on
+        // this frame. The report's timings/iteration counts describe new work.
+        let current = &mut absorption_report.certificate;
+        current.absolute_infinity_norm = current
+            .absolute_infinity_norm
+            .max(design.certificate.absolute_infinity_norm);
+        current.relative_infinity_norm = current
+            .relative_infinity_norm
+            .max(design.certificate.relative_infinity_norm);
+        current.relative_two_norm = current
+            .relative_two_norm
+            .max(design.certificate.relative_two_norm);
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(
+                "FEREG_SOLVER_TRACE|phase=separation_unit_design|response_rhs=1",
+            );
+        }
+    }
+    Ok(ProjectionPanel {
+        within,
+        absorption_report,
+        within_norms,
+        reference_norms,
+        retain,
+    })
+}
+
+fn fit_projection_only_internal<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &'a P,
+    frame: LinearSolveFrame<'_>,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    alias_capture: finite::AliasCapture<'_>,
+    defer_many_fe_fallback: bool,
+    mut unit_design: Option<&mut Option<UnitProjectionDesign<'a>>>,
+) -> Result<CertifiedPreparedLinearProjection> {
+    let weights = frame.weights();
+    let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
+    cmg.defer_many_fe_fallback = defer_many_fe_fallback;
+    let ProjectionPanel {
+        within,
+        absorption_report,
+        within_norms,
+        reference_norms,
+        retain,
+    } = project_panel(
+        prepared,
+        frame,
+        config,
+        reservation,
+        &mut cmg,
+        unit_design.as_deref_mut(),
+    )?;
     let within_outcome_norm = within_norms[0];
     let score_norms = &within_norms[1..];
     let mut qr = finite::solve_one_shot(
@@ -1705,6 +1832,7 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         false,
         false,
         false,
+        alias_capture,
     )?
     .ok_or_else(|| invalid_argument("ordinary finite projection declined its source"))?;
     if qr.bread.is_some() {
@@ -1782,6 +1910,17 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         reconstruction_certificate,
     };
     if projection.certified() {
+        if let Some(slot) = unit_design.filter(|_| retain) {
+            *slot = Some(UnitProjectionDesign {
+                sample: prepared.fit_sample(),
+                model: prepared.fit_model(),
+                config,
+                within,
+                reference_norms,
+                within_norms,
+                certificate: projection.absorption_report.certificate.clone(),
+            });
+        }
         Ok(projection)
     } else {
         Err(invalid_data(

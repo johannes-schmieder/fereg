@@ -89,6 +89,7 @@ fn check_alias_support(
         linear,
         &mut |_| Ok(()),
         DetectorAdmission::default(),
+        usize::MAX,
     );
 
     use crate::ppml::{

@@ -2037,7 +2037,16 @@ fn route_detection(
         0
     };
     let detector_certificate_bytes = if has_numerical_detector {
-        matrix_bytes::<f64>(linear.square, 2, "PPML separation certificates")?
+        checked_sum(&[
+            matrix_bytes::<f64>(linear.square, 2, "PPML separation certificates")?,
+            // QR loadings are read in place. The exact alias check reuses
+            // the omitted contrast vector and adds only finite-axis storage.
+            checked_mul(
+                axes.k,
+                (size_of::<usize>() + size_of::<(usize, f64)>()) as u128,
+                "PPML separation alias proof",
+            )?,
+        ])?
     } else {
         0
     };
@@ -2106,34 +2115,44 @@ fn route_results(
     } else {
         (1_u128 << dimensions.cluster_dimensions) - 1
     };
+    let private_constant = usize::from(axes.clusters > 1);
+    let width = dimensions
+        .finite_columns
+        .checked_add(private_constant)
+        .ok_or_else(|| allocation("PPML reference covariance width overflows"))?;
+    let k = width as u128;
+    let square = checked_mul(k, k, "PPML reference covariance square")?;
     let sandwich_inference_workspace_bytes = checked_sum(&[
         if axes.clusters == 0 {
             matrix_bytes::<f64>(linear.square, 6, "PPML sandwich square workspaces")?
         } else {
-            super::vce::clustered_score_workspace_bound(
-                dimensions.observations,
-                dimensions.finite_columns,
-            )?
-            .max(matrix_bytes::<f64>(
-                linear.square,
-                6,
-                "PPML sandwich square workspaces",
-            )?)
+            super::vce::clustered_score_workspace_bound(dimensions.observations, width)?.max(
+                matrix_bytes::<f64>(square, 6, "PPML sandwich square workspaces")?,
+            )
         },
-        matrix_bytes::<f64>(axes.subset_groups, axes.k, "PPML cluster subset scores")?,
+        matrix_bytes::<f64>(axes.subset_groups, k, "PPML cluster subset scores")?,
         checked_mul(
             cluster_subsets,
             size_of::<crate::sandwich::ClusterSubsetReduction>() as u128,
             "PPML reducer subset reports",
         )?,
-        matrix_bytes::<f64>(axes.k, axes.threads.max(1), "PPML sandwich reductions")?,
+        matrix_bytes::<f64>(k, axes.threads.max(1), "PPML sandwich reductions")?,
+        if axes.clusters > 1 {
+            checked_sum(&[
+                bytes_f64(square)?, // retained standardized bread transform
+                matrix_bytes::<f64>(
+                    k,
+                    2 + axes.threads.max(1),
+                    "PPML reference scales, working means and score rows",
+                )?,
+            ])?
+        } else {
+            0
+        },
         // Retain the prior square envelope and conservatively add the complete
         // robust partial bank, including any smaller final numerical rank.
         if axes.clusters == 0 {
-            super::vce::dense_score_partials_bound(
-                dimensions.observations,
-                dimensions.finite_columns,
-            )?
+            super::vce::dense_score_partials_bound(dimensions.observations, width)?
         } else {
             0
         },
@@ -2336,6 +2355,11 @@ fn route_iteration_peaks(
         .input_owner_bytes
         .saturating_sub(axes.embedding_resident_bytes);
     let common = checked_sum(&[
+        if axes.clusters > 1 {
+            bytes_f64(axes.reported_coefficient_slots)?
+        } else {
+            0
+        }, // scales survive separation
         dimensions.metadata.bias_workspace_bytes,
         axes.embedding_resident_bytes,
         input_owner_supplement_bytes,

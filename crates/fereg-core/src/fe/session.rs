@@ -29,6 +29,8 @@ pub(crate) struct FeSession<'a> {
     pub(crate) resident_bytes: u128,
     norm_handoff_peak: Option<u128>,
     ols_chunked_norms: bool,
+    /// A weighted separation trial may try the unit-metric proof before MAP.
+    pub(crate) defer_many_fe_fallback: bool,
     three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
     general_routing: Option<super::RoutingPreset>,
     pub(crate) structural_constant: bool,
@@ -50,6 +52,9 @@ pub(crate) struct FeSession<'a> {
     /// Auto routes as the certified fallback (SPEC §1): the request and why.
     pub(super) substituted: Option<(super::FeSolverKind, String)>,
 }
+
+pub(crate) const DEFERRED_MAP_FALLBACK: &str =
+    "weighted separation projection deferred a many-effect MAP fallback";
 
 mod elimination;
 mod fallback;
@@ -274,6 +279,7 @@ impl Default for FeSession<'_> {
             absorb_config: None,
             block_schur: Default::default(),
             block_schur_used: false,
+            defer_many_fe_fallback: false,
             full_system: super::borrowed_map::block_schur::Cache::with_plan(
                 super::borrowed_map::block_schur::Plan::auto_full(),
             ),
@@ -1085,6 +1091,7 @@ impl<'a> FeSession<'a> {
             Ok(result) => return Ok(result),
             Err(declined) => declined,
         };
+        self.require_many_fe_fallback(&fallback)?;
         let result = if let Some(p) = self.cmg.as_mut() {
             let values = values.into_values();
             if final_residual {
@@ -1915,6 +1922,8 @@ pub(crate) struct LegacyFeSession<'a> {
     pub(crate) resident_bytes: u128,
     norm_handoff_peak: Option<u128>,
     ols_chunked_norms: bool,
+    /// A weighted separation trial may try the unit-metric proof before MAP.
+    pub(crate) defer_many_fe_fallback: bool,
     three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
     general_routing: Option<super::RoutingPreset>,
     pub(crate) structural_constant: bool,

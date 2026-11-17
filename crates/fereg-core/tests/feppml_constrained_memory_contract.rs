@@ -98,6 +98,8 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     let low_scalar_increment = 7 * DEFAULT_POOLSIZE as u128 * 8;
     let parent_increment = 51 * 8;
     let result_increment = base.fast.result_metadata_bytes;
+    let alias_increment = dimensions.finite_columns as u128
+        * (std::mem::size_of::<usize>() + std::mem::size_of::<(usize, f64)>()) as u128;
     let bank = report_bank_decrement();
     assert_eq!(
         base.fast.peak_bytes,
@@ -110,7 +112,12 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     );
     assert_eq!(
         base.fast.separation_peak_bytes,
-        47_170_268_279 + workspace_increment / 2 + parent_increment + fast_scalar_increment - bank
+        47_170_268_279
+            + workspace_increment / 2
+            + parent_increment
+            + fast_scalar_increment
+            + alias_increment
+            - bank
     );
     // Low admits an 8-KiB complete-row tile instead of one 51-double row.
     assert_eq!(
@@ -124,7 +131,12 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     );
     assert_eq!(
         base.low.separation_peak_bytes,
-        24_451_320_679 + workspace_increment / 2 + parent_increment + low_scalar_increment - bank
+        24_451_320_679
+            + workspace_increment / 2
+            + parent_increment
+            + low_scalar_increment
+            + alias_increment
+            - bank
     );
     assert_eq!(
         base.fast.peak_bytes - base.low.peak_bytes,

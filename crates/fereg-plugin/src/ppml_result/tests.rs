@@ -383,6 +383,7 @@ fn inference_evidence_preserves_multiway_psd_repair_diagnostics() {
         cluster_dimension_groups: vec![3, 4],
         cluster_subsets: Vec::new(),
         psd: fereg_core::ppml::PpmlPsdReport {
+            standardized_repair: false,
             state: PpmlPsdState::MultiwayClipped,
             adjusted: true,
             clipped_eigenvalues: 1,
