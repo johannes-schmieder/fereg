@@ -111,5 +111,11 @@
     "modules_verified": 285,
     "artifact_inputs_verified": 59
   },
-  "release_notes_sha256": "499d884941c6e3e0d3ec778bf1d3cc194a2692e02cb64eec57a01b922f37115b"
+  "release_notes_sha256": "499d884941c6e3e0d3ec778bf1d3cc194a2692e02cb64eec57a01b922f37115b",
+  "retained_evidence": {
+    "root": "$HOME/research/fereg/release-v061-20261117",
+    "payload_count": 54,
+    "payload_bytes": 61104703,
+    "manifest_sha256": "8367413db5ea44ccbe56c3b5805671df9b27838506ad32ec5af7324d89631707"
+  }
 }
