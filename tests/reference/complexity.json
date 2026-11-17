@@ -1,124 +1,10 @@
 {
   "growth": [
     {
-      "after": 173,
-      "before": 172,
-      "metric": "fedemean/dispatch_candidates",
-      "reason": "Anchored weighted FE block means and exact positive-weight constant detection preserve representable slope span; independent translated cell-mean and pure-slope witnesses cover the added branch."
-    },
-    {
-      "after": 15275,
-      "before": 15253,
-      "metric": "fedemean/production_lines",
-      "reason": "Anchored weighted FE block means and exact positive-weight constant detection preserve representable slope span; independent translated cell-mean and pure-slope witnesses cover the added branch."
-    },
-    {
-      "after": 1569,
-      "before": 1550,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "0.6.1 stability repairs add bounded projected-rank recovery, affine-stable finite/FE geometry, certified offset seeds, and full-model primal/dual separation with exact alias and unresolved-direction checks; independent adversarial witnesses and transaction/memory checks cover these paths."
-    },
-    {
-      "after": 121865,
-      "before": 119397,
+      "after": 121866,
+      "before": 121865,
       "metric": "fereg-core/production_lines",
-      "reason": "0.6.1 stability repairs add bounded projected-rank recovery, affine-stable finite/FE geometry, certified offset seeds, and full-model primal/dual separation with exact alias and unresolved-direction checks; independent adversarial witnesses and transaction/memory checks cover these paths."
-    },
-    {
-      "after": 1820,
-      "before": 1804,
-      "metric": "file/crates/fereg-core/src/fe/map.rs",
-      "reason": "Stable anchored and weighted local slope geometry preserves translated and tiny-weight span in the owned MAP path."
-    },
-    {
-      "after": 3768,
-      "before": 3695,
-      "metric": "file/crates/fereg-core/src/fe/topology_slope_map.rs",
-      "reason": "Weighted anchored slope normalization, original-coordinate recovery and singular-level canonicalization preserve local span and saved effects without new workspace."
-    },
-    {
-      "after": 1924,
-      "before": 1919,
-      "metric": "file/crates/fereg-core/src/ols/canonical_products.rs",
-      "reason": "Use the same centered finite reference scales in current-weight canonical products as in initial/retained solves."
-    },
-    {
-      "after": 5971,
-      "before": 5871,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "Preserve response/configuration/retained ownership around one bounded rank-accuracy retry and use translation-stable finite projections and scales."
-    },
-    {
-      "after": 4772,
-      "before": 4740,
-      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
-      "reason": "Share stable projection inputs and centered reference norms; certify reported inverse in dimensionless coordinates without changing estimates or tolerance."
-    },
-    {
-      "after": 4010,
-      "before": 3992,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_irls.rs",
-      "reason": "Admit and initialize the bounded nonzero-offset projection seed while preserving original offsets, warm starts, and final rank authority."
-    },
-    {
-      "after": 3995,
-      "before": 3880,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Bind comprehensive unit-metric no-drop/recovery evidence and the bounded exact FE graph proposal; invalid/ambiguous evidence remains fatal."
-    },
-    {
-      "after": 171,
-      "before": 162,
-      "metric": "function/crates/fereg-core/src/fe/topology_slope_map.rs/recover_finalized_single_slope_direct_certified#1",
-      "reason": "Weighted anchored slope normalization, original-coordinate recovery and singular-level canonicalization preserve local span and saved effects without new workspace."
-    },
-    {
-      "after": 1107,
-      "before": 1102,
-      "metric": "function/crates/fereg-core/src/ols/canonical_products.rs/build#1",
-      "reason": "Use the same centered finite reference scales in current-weight canonical products as in initial/retained solves."
-    },
-    {
-      "after": 307,
-      "before": 302,
-      "metric": "function/crates/fereg-core/src/ols/canonical_products/three.rs/build#1",
-      "reason": "Use the same centered finite reference scales in current-weight canonical products as in initial/retained solves."
-    },
-    {
-      "after": 326,
-      "before": 320,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/build_full_retained_design#1",
-      "reason": "Preserve response/configuration/retained ownership around one bounded rank-accuracy retry and use translation-stable finite projections and scales."
-    },
-    {
-      "after": 187,
-      "before": 176,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/prepare_retained_solve#1",
-      "reason": "Preserve response/configuration/retained ownership around one bounded rank-accuracy retry and use translation-stable finite projections and scales."
-    },
-    {
-      "after": 761,
-      "before": 746,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/solve_full_retained_rank#1",
-      "reason": "Preserve response/configuration/retained ownership around one bounded rank-accuracy retry and use translation-stable finite projections and scales."
-    },
-    {
-      "after": 378,
-      "before": 376,
-      "metric": "function/crates/fereg-core/src/ols/prepared_fit.rs/finalize_reported_bread_and_intercept#1",
-      "reason": "Share stable projection inputs and centered reference norms; certify reported inverse in dimensionless coordinates without changing estimates or tolerance."
-    },
-    {
-      "after": 1145,
-      "before": 1125,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_irls.rs/run_prepared_ppml_irls#1",
-      "reason": "Admit and initialize the bounded nonzero-offset projection seed while preserving original offsets, warm starts, and final rank authority."
-    },
-    {
-      "after": 626,
-      "before": 625,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_separation.rs/coordinate_prepared_ppml_separation#1",
-      "reason": "Admit the complete separation-span preparation before any private audit allocation; exact-boundary and failed-plan-immutability tests cover the added admission call."
+      "reason": "Document the existing inline separation-proposal enum layout with a local Clippy allowance; preserve the admitted allocation-free representation rather than introduce heap allocation solely for a size lint."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -24746,88 +24632,88 @@
         "dispatch_candidates": [
           {
             "condition": "certify_dual_with_weights ( generation , & dual , & unit , ppml , config , linear , full_span_bytes , ) ?",
-            "line": 50
+            "line": 53
           },
           {
             "condition": "dual . len ( ) != generation . outcome ( ) . len ( ) || dual . iter ( ) . any ( | v | ! v . is_finite ( ) )",
-            "line": 170
+            "line": 173
           },
           {
             "condition": "projected . kept_columns != kept",
-            "line": 362
+            "line": 365
           },
           {
             "condition": "! allowed_columns . contains ( & column )",
-            "line": 652
+            "line": 655
           },
           {
             "condition": "constant_in_certified_span ( generation , allowed_columns ) && response . iter ( ) . all ( | value | * value == response [ 0 ] )",
-            "line": 677
+            "line": 680
           }
         ],
         "functions": {
           "centered_moment_ratio#1": {
-            "line": 236,
+            "line": 239,
             "lines": 53
           },
           "certify_dual#1": {
-            "line": 140,
+            "line": 143,
             "lines": 19
           },
           "certify_dual_with_weights#1": {
-            "line": 160,
+            "line": 163,
             "lines": 72
           },
           "certify_omitted_contrasts#1": {
-            "line": 295,
+            "line": 298,
             "lines": 103
           },
           "constant_in_certified_span#1": {
-            "line": 762,
+            "line": 765,
             "lines": 10
           },
           "dual_certificate#1": {
-            "line": 505,
+            "line": 508,
             "lines": 22
           },
           "exact_absorbed_column#1": {
-            "line": 401,
+            "line": 404,
             "lines": 48
           },
           "exact_difference#1": {
-            "line": 620,
+            "line": 623,
             "lines": 6
           },
           "exact_finite_duplicate#1": {
-            "line": 552,
+            "line": 555,
             "lines": 67
           },
           "exact_integer_alias#1": {
-            "line": 629,
+            "line": 632,
             "lines": 132
           },
           "recover#1": {
-            "line": 461,
+            "line": 464,
             "lines": 40
           },
           "resolve#1": {
-            "line": 21,
+            "line": 24,
             "lines": 114
           },
           "stable_norm#1": {
-            "line": 450,
+            "line": 453,
             "lines": 7
           },
           "strict_projection_policy#1": {
-            "line": 531,
+            "line": 534,
             "lines": 10
           },
           "trace_dual_check#1": {
-            "line": 542,
+            "line": 545,
             "lines": 7
           }
         },
-        "production_lines": 696
+        "production_lines": 697
       },
       "crates/fereg-core/src/ppml/prepared_separation/stable_alias.rs": {
         "chunk_candidates": [],
@@ -30409,7 +30295,7 @@
         "dispatch_candidates": 1569,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 121865
+        "production_lines": 121866
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

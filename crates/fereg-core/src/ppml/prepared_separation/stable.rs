@@ -13,6 +13,9 @@
 
 use super::*;
 
+// Keep the certified proposal inline: boxing would add an unadmitted heap
+// allocation and alter the detector proof's allocation/lifetime envelope.
+#[allow(clippy::large_enum_variant)]
 pub(super) enum Resolution {
     Dual(Vec<f64>, usize),
     Direction(PreparedNumericalProposal),

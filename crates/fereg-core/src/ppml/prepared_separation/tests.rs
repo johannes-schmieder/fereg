@@ -3005,7 +3005,7 @@ fn exact_integer_alias_proves_factor_bundle_and_rejects_perturbation_and_rounded
     // A proposed relation may not cite the omitted target itself as a basis.
     assert!(!stable::exact_integer_alias(
         generation,
-        &mut vec![1., 0., 0., 0., 1., 0.],
+        &mut [1., 0., 0., 0., 1., 0.],
         &[(0, 1.)],
         &[]
     )
@@ -3026,7 +3026,7 @@ fn exact_integer_alias_proves_factor_bundle_and_rejects_perturbation_and_rounded
     // The independent i128 product must refuse the >2^53 contribution.
     assert!(!stable::exact_integer_alias(
         coordinator.view().prepared,
-        &mut vec![(1_u64 << 53) as f64; 6],
+        &mut [(1_u64 << 53) as f64; 6],
         &[(0, 3002399751580331.)],
         &[0]
     )

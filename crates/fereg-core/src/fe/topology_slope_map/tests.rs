@@ -2283,11 +2283,11 @@ fn shifted_single_slope_recovery_returns_raw_channels_and_checks_cached_geometry
                     cache,
                 )
                 .unwrap();
-                for row in 0..24 {
-                    assert!((actual.absorbed_sum()[row] - target[row]).abs() < 1e-10);
+                for (row, &expected) in target.iter().enumerate() {
+                    assert!((actual.absorbed_sum()[row] - expected).abs() < 1e-10);
                     let intercept = actual.channels()[0].as_ref().unwrap()[row];
                     let contribution = actual.channels()[1].as_ref().unwrap()[row];
-                    assert!((intercept + contribution - target[row]).abs() < 1e-10);
+                    assert!((intercept + contribution - expected).abs() < 1e-10);
                     assert!(intercept < -1e14 && contribution > 1e14);
                 }
             }

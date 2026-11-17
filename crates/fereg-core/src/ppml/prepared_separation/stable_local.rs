@@ -785,12 +785,10 @@ mod tests {
                 (0..n)
                     .map(|row| {
                         let i = row / 2;
-                        if i < j {
-                            0.
-                        } else if i == j {
-                            -1.
-                        } else {
-                            1.
+                        match i.cmp(&j) {
+                            std::cmp::Ordering::Less => 0.,
+                            std::cmp::Ordering::Equal => -1.,
+                            std::cmp::Ordering::Greater => 1.,
                         }
                     })
                     .collect()
