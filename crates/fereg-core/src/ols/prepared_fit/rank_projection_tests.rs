@@ -2,6 +2,17 @@ use super::*;
 
 #[test]
 fn retained_rank_reprojects_exact_fe_dependencies_before_freezing() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    check_projected_rank_and_coefficient_truth(false);
+}
+
+#[test]
+fn established_projection_preserves_weak_direction_coefficient_truth() {
+    let _established_route = crate::fe::block_schur::disable_for_test();
+    check_projected_rank_and_coefficient_truth(true);
+}
+
+fn check_projected_rank_and_coefficient_truth(established_route: bool) {
     // Every cell has all eight Walsh rows and a constant weight. Thus s,t,u,e
     // have exactly zero FE moments, are mutually orthogonal, and unit norm
     // after division by sqrt(sum(w)). Independent algebra gives rank 2 at
@@ -72,8 +83,9 @@ fn retained_rank_reprojects_exact_fe_dependencies_before_freezing() {
                     let fit = output.frame();
                     assert_eq!(fit.finite_rank(), if gap == 0. { 2 } else { 3 });
                     assert!(fit.certified());
-                    if gap == 0. {
-                        assert!(fit.absorption_report().checkpoint_retries > 0);
+                    if gap == 0. || established_route {
+                        assert!(fit.absorption_report().checkpoint_retries > 0,
+                            "rank recheck: gap={gap} scale={scale} reverse={reverse} threads={threads}");
                     }
                     let kept = output.basis().kept_generated_columns().to_vec();
                     if let Some(prior) = &prior_kept {
@@ -95,7 +107,9 @@ fn retained_rank_reprojects_exact_fe_dependencies_before_freezing() {
                                 .unwrap()
                                 .value
                                 .unwrap();
-                            assert_close(actual, expected, 2e-8 * expected.abs().max(1e-3));
+                            let tolerance = 2e-8 * expected.abs().max(1e-3);
+                            assert!((actual-expected).abs() <= tolerance * actual.abs().max(expected.abs()).max(1.0),
+                                "gap={gap} scale={scale} reverse={reverse} threads={threads} generated={generated} actual={actual:.17e} expected={expected:.17e} tolerance={tolerance:.3e} retries={}", fit.absorption_report().checkpoint_retries);
                         }
                         let total = frame.bread_weight_scale().reference_weight_sum;
                         let expected = [
@@ -197,6 +211,78 @@ fn reported_inverse_congruence_rejects_scaled_bad_bread() {
             assert!(
                 error > 1e-4,
                 "scale={scale} reverse={reverse} error={error}"
+            );
+        }
+    }
+}
+
+#[test]
+fn coefficient_projection_goal_rejects_invalid_configuration() {
+    let data = prepared(
+        &[1., 2., 3.],
+        &[vec![0., 1., 2.]],
+        &[false],
+        None,
+        true,
+        TestWeights::Unit,
+    );
+    for goal in [0., -1., 1., f64::INFINITY, f64::NAN] {
+        let config = PreparedOlsFitConfig {
+            coefficient_tolerance: Some(goal),
+            ..PreparedOlsFitConfig::default()
+        };
+        assert_eq!(
+            validate_config(&data, config).unwrap_err().code,
+            ErrorCode::InvalidArgument
+        );
+    }
+}
+
+#[test]
+fn precise_full_design_avoids_unnecessary_coefficient_reprojection() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let x: Vec<_> = (0..48).map(|i| if i % 2 == 0 { -1. } else { 1. }).collect();
+    let g: Vec<_> = (0..48).map(|i| (i / 8) as f64).collect();
+    let h: Vec<_> = (0..48).map(|i| ((i / 2) % 4) as f64).collect();
+    let y: Vec<_> = (0..48).map(|i| 0.7 * x[i] + g[i] - 2. * h[i]).collect();
+    let data = prepared_multiway_categorical_weights(&y, &[x], &[g, h], TestWeights::Unit);
+    for mode in [
+        PreparedOlsExecutionMode::Low,
+        PreparedOlsExecutionMode::Fast,
+    ] {
+        for goal in [None, Some(1e-8)] {
+            let mut config = PreparedOlsFitConfig::default();
+            config.absorb.solver = FeSolverKind::Map;
+            config.absorb.map.tolerance = 1e-6;
+            config.absorb.lsmr.tolerance = 1e-6;
+            config.execution.mode = mode;
+            config.coefficient_tolerance = goal;
+            let started = std::time::Instant::now();
+            let mut session = CertifiedLinearSession::new_with_fe_design(
+                &data,
+                LinearSolveFrame::from_prepared_ols(&data).unwrap(),
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 0),
+                data.fit_owned_fe_design().unwrap(),
+            )
+            .unwrap();
+            let output = session.solve_fresh().unwrap();
+            let report = output.frame().absorption_report();
+            assert_eq!(report.checkpoint_retries, 0);
+            assert_close(
+                output
+                    .coefficients()
+                    .find(|c| c.generated_column_index == Some(0))
+                    .unwrap()
+                    .value
+                    .unwrap(),
+                0.7,
+                1e-12,
+            );
+            eprintln!(
+                "ordinary mode={mode:?} goal={goal:?} retries={} elapsed={:?}",
+                report.checkpoint_retries,
+                started.elapsed()
             );
         }
     }

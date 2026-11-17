@@ -3801,9 +3801,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             Err(error) if !may_recheck || !rank_projection::retryable(&error) => return Err(error),
             Ok(None) | Err(_) => {}
         }
-        // An approximate FE projection can lift an exact null direction above
-        // the rank threshold. Recheck once with the same rank/omission policy,
-        // before any basis is installed; never try to refine that false inverse.
+        // An approximate FE projection can lift an exact null direction or
+        // contaminate coefficients on a retained weak direction. Recheck once
+        // with the same rank/omission policy before installing the basis.
         self.config.absorb.map.tolerance = requested.map.tolerance.min(RANK_PROJECTION_TOLERANCE);
         self.config.absorb.lsmr.tolerance = requested.lsmr.tolerance.min(RANK_PROJECTION_TOLERANCE);
         self.projection_refresh_required = true;
@@ -3956,6 +3956,18 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             work.projection = Some(absorption_report.clone());
             work.projection_seconds = projection_seconds;
         }
+        // A newly built design aggregates the response and every finite
+        // column, including all Low-mode chunks. Reused nonfused designs can
+        // have a response-only report, so retain requested accuracy there.
+        let coefficient_projection_accuracy = if !products_reuse_storage {
+            absorption_report.certificate.relative_infinity_norm
+        } else {
+            self.config
+                .absorb
+                .map
+                .tolerance
+                .max(self.config.absorb.lsmr.tolerance)
+        };
         let candidate = match self.take_fresh_rank_failure() {
             Some(error) => Err(error),
             None => self.solve_full_retained_rank(
@@ -3964,6 +3976,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 prior_active_positions,
                 canonical_moments,
                 recheck_projection,
+                coefficient_projection_accuracy,
             ),
         };
         // `absorb_current_response` transfers the session-owned response
@@ -4782,6 +4795,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         prior_active_positions: Option<&[usize]>,
         canonical_moments: Option<CanonicalMoments>,
         recheck_projection: bool,
+        coefficient_projection_accuracy: f64,
     ) -> Result<Option<RetainedRankSolveDraft>> {
         let rows = self.response.len();
         let generated_count = self.prepared.fit_model().columns.len();
@@ -4990,6 +5004,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     .tolerance
                     .max(self.config.absorb.lsmr.tolerance),
                 candidate_count,
+                self.config.coefficient_tolerance.filter(|_| rank > 0),
+                coefficient_projection_accuracy,
             )
         {
             return Ok(None);

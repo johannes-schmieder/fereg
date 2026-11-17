@@ -1195,8 +1195,18 @@ without changing the raw-moment arithmetic or certificates.
 Before an iterative session freezes finite rank, a retained direction too
 small relative to projection accuracy, or a narrowly classified
 rank/refinement/inverse failure, receives one tighter FE reprojection at
-`min(requested tolerance, 1e-14)`. The same scaled QR and independent
-certificates decide; a frozen basis cannot silently change. Requested
+`min(requested tolerance, 1e-14)`. When an explicit coefficient accuracy goal
+is present and finite rank is nonzero, the same bounded retry also warns on
+projection accuracy amplified by the finite condition proxy and the square
+root of candidate width. A newly built design uses its independently certified
+maximum across the response and all finite columns; a reused design uses the
+requested FE tolerance because its report can cover only the response. This
+is a conservative reprojection warning, not a forward-error bound or a new
+rank authority. The requested-tolerance rank warning remains unchanged.
+Precisely projected ordinary first fits therefore need no added retry, while
+coarse reused projections with an explicit coefficient goal can receive one.
+The same scaled QR and independent certificates decide; a frozen basis cannot
+silently change. Requested
 configuration and ownership are restored on success or error and the work is
 counted. The reported/intercept-extended inverse certificate uses dimensionless
 diagonal congruence coordinates, retaining its tolerance and fail-closed

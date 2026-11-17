@@ -95,6 +95,26 @@ counting allocator checks 16 cases against the conservative workspace bound.
 The new maintained Stata fixture covers the full-size separated case and a
 matched no-separation control at workers 1 and 4. Its rebuilt-native execution,
 the full source gate and renewed platform qualification are still pending.
+
+The compensated runtime at `bfc7e296` (N), with test-only corrections through
+`fcd48ed5` (N3), passes 369 Python tests, both Clippy configurations, the
+1,619-test core suite in N2, the 108-arm LP census and worker 1/2/4/8 checks,
+213 plugin tests and 243 serial FFI tests. All 13 allocator audits pass in
+separate N3 processes; portable/static, complexity, size and mock-SPI checks
+also pass against a clean N3 snapshot. The initial audit equality failure was
+a conservative future-call admission forecast, not an exceeded memory bound;
+all actual peak/report/cap and certificate checks remain binding.
+
+A repeated N3 full gate exposed coefficient error on the established FE route
+of the retained-rank Walsh witness (0.90000226366 versus 0.9). The earlier
+accelerated-route success did not cover that path. The additional bounded
+reprojection warning now considers an explicit coefficient goal, using the
+all-column certificate on a fresh design and requested FE accuracy on reused
+designs. Both routes pass the unchanged independent oracle; seven focused
+rank tests and 64 retained-solve tests pass, with independent review approval.
+The numerical rank policy and accuracy thresholds are unchanged. This latest
+runtime still requires its full source gate and fresh native qualification;
+the earlier partial results do not constitute a full-gate pass.
 An attempted H/I performance comparison also stopped at H's uncertified LSMR
 solve before I ran; it provides no comparative timing evidence.
 

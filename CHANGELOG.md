@@ -7,8 +7,10 @@ A large public stress case prompted an additional repaired projection path;
 its full source and rebuilt-native qualification remain pending.
 See [validation](docs/VALIDATION.md) for completed checks and remaining gates.
 
-- Recheck suspicious projected rank before freezing PPML coefficients; correct
-  reported-inverse certification under changes of regressor units.
+- Recheck suspicious projected rank and projection error amplified by weak
+  directions before freezing coefficients, including explicit coefficient
+  accuracy goals; correct reported-inverse certification under changes of
+  regressor units.
 - Require independent full-model separation proofs, including absorbed slopes,
   exact aliases and small contrasts between controls and fixed effects. Use
   bounded graph proposals for exact binary controls and reuse previously proved

@@ -1,22 +1,28 @@
 {
   "growth": [
     {
-      "after": 174,
-      "before": 173,
-      "metric": "fedemean/dispatch_candidates",
-      "reason": "Compensate deterministic full-system adjoint sums and admit both scatter banks. Compose retained recurrence width, weight/output/Gram capacities and reduced-cell scratch in memory bounds; release stale Schwarz factors with their scratch and preserve the selected-width LSMR allowance through escalation."
-    },
-    {
-      "after": 15397,
-      "before": 15275,
-      "metric": "fedemean/production_lines",
-      "reason": "Compensate deterministic full-system adjoint sums and admit both scatter banks. Compose retained recurrence width, weight/output/Gram capacities and reduced-cell scratch in memory bounds; release stale Schwarz factors with their scratch and preserve the selected-width LSMR allowance through escalation."
-    },
-    {
-      "after": 122237,
-      "before": 122212,
+      "after": 122260,
+      "before": 122237,
       "metric": "fereg-core/production_lines",
-      "reason": "Compensate scalar and tiled local-span certificate dots, including product-rounding remainders, and charge the doubled full-system scatter bank in the outer modified-LSMR estimate. Normalization, rank and numerical tolerances are unchanged."
+      "reason": "Add one bounded reprojection warning for explicit coefficient accuracy goals before finite-rank publication. Fresh designs use the independent all-column projection certificate; reused response-only reports use requested FE accuracy. Existing rank arithmetic, thresholds and scientific oracles remain unchanged."
+    },
+    {
+      "after": 5989,
+      "before": 5976,
+      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
+      "reason": "Add one bounded reprojection warning for explicit coefficient accuracy goals before finite-rank publication. Fresh designs use the independent all-column projection certificate; reused response-only reports use requested FE accuracy. Existing rank arithmetic, thresholds and scientific oracles remain unchanged."
+    },
+    {
+      "after": 200,
+      "before": 187,
+      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/prepare_retained_solve#1",
+      "reason": "Add one bounded reprojection warning for explicit coefficient accuracy goals before finite-rank publication. Fresh designs use the independent all-column projection certificate; reused response-only reports use requested FE accuracy. Existing rank arithmetic, thresholds and scientific oracles remain unchanged."
+    },
+    {
+      "after": 764,
+      "before": 761,
+      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/solve_full_retained_rank#1",
+      "reason": "Add one bounded reprojection warning for explicit coefficient accuracy goals before finite-rank publication. Fresh designs use the independent all-column projection certificate; reused response-only reports use requested FE accuracy. Existing rank arithmetic, thresholds and scientific oracles remain unchanged."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -14792,7 +14798,7 @@
         "chunk_candidates": [
           {
             "condition": "rows . div_ceil ( chunk_rows ) > workspace . moment_partials . len ( ) / stored_columns",
-            "line": 5203
+            "line": 5219
           }
         ],
         "dispatch_candidates": [
@@ -14950,128 +14956,128 @@
           },
           {
             "condition": "within . storage . rows ( ) != self . response . len ( ) || within . storage . columns ( ) != within . stored_generated_columns . len ( ) || within . active_positions . len ( ) != kept . len ( ) || within . active_positions . iter ( ) . copied ( ) . zip ( kept . iter ( ) . copied ( ) ) . any ( | ( position , generated ) |",
-            "line": 4371
+            "line": 4384
           },
           {
             "condition": "kept . len ( ) != coefficients . len ( )",
-            "line": 4690
-          },
-          {
-            "condition": "within . active_positions . len ( ) != kept . len ( ) || within . reference_means . len ( ) != within . storage . columns ( )",
             "line": 4703
           },
           {
+            "condition": "within . active_positions . len ( ) != kept . len ( ) || within . reference_means . len ( ) != within . storage . columns ( )",
+            "line": 4716
+          },
+          {
             "condition": "within . stored_generated_columns . get ( position ) . copied ( ) != Some ( generated )",
-            "line": 4727
+            "line": 4740
           },
           {
             "condition": "within_response . len ( ) != rows || retained . storage . rows ( ) != rows || retained . storage . columns ( ) != retained . stored_generated_columns . len ( ) || retained . reference_norms . len ( ) != retained . storage . columns ( ) || retained . reference_means . len ( ) != retained . storage . columns ( ) || retained . within_norms . len ( ) != retained . storage . columns ( )",
-            "line": 4794
+            "line": 4808
           },
           {
             "condition": "target . capacity ( ) < stored_columns",
-            "line": 4812
+            "line": 4826
           },
           {
             "condition": "products . width != stored_columns + 1 || products . gram . len ( ) != products . width * products . width",
-            "line": 4917
+            "line": 4931
           },
           {
             "condition": "stored_columns != 0 && workers > 1",
-            "line": 5199
+            "line": 5215
           },
           {
             "condition": "prior_active_positions . windows ( 2 ) . any ( | pair | pair [ 0 ] >= pair [ 1 ] ) || prior_active_positions . last ( ) . is_some_and ( | position | * position >= stored_columns )",
-            "line": 5288
+            "line": 5304
           },
           {
             "condition": "raw . nrows ( ) != rows || raw . ncols ( ) != expected_columns",
-            "line": 5640
+            "line": 5656
           },
           {
             "condition": "self . fe_projector . as_ref ( ) . is_some_and ( FeSession :: borrows_raw_weights )",
-            "line": 6096
+            "line": 6112
           },
           {
             "condition": "self . weights . borrowed ( )",
-            "line": 6106
+            "line": 6122
           },
           {
             "condition": "! divisor . is_finite ( ) || divisor <= 0.0 || values . len ( ) != rows",
-            "line": 6110
+            "line": 6126
           },
           {
             "condition": "rows != self . response . len ( ) || prior . reference_norms . len ( ) != columns || prior . reference_means . len ( ) != columns || prior . within_norms . len ( ) != columns || with_response && ( self . frozen_workspace . response . len ( ) != rows || self . previous_response . len ( ) != rows )",
-            "line": 6168
+            "line": 6184
           },
           {
             "condition": "columns == 0 && ! with_response",
-            "line": 6186
+            "line": 6202
           },
           {
             "condition": "self . config . absorb . solver == FeSolverKind :: Map && matrix . ncols ( ) > self . reusable_map_max_rhs ( ) ?",
-            "line": 6197
+            "line": 6213
           },
           {
             "condition": "self . config . absorb . solver == FeSolverKind :: Map && block_width > self . reusable_map_max_rhs ( ) ?",
-            "line": 6246
+            "line": 6262
           },
           {
             "condition": "columns == 0",
-            "line": 6422
+            "line": 6438
           },
           {
             "condition": "columns == 0",
-            "line": 6431
+            "line": 6447
           },
           {
             "condition": "self . predictors . finite . len ( ) != rows",
-            "line": 6463
+            "line": 6479
           },
           {
             "condition": "within_response . len ( ) != rows || reference_norms . len ( ) != stored_columns || active_positions . windows ( 2 ) . any ( | pair | pair [ 0 ] >= pair [ 1 ] ) || active_positions . last ( ) . is_some_and ( | position | * position >= stored_columns )",
-            "line": 6547
+            "line": 6563
           },
           {
             "condition": "! weighted_residual_square . is_finite ( ) || workspace . residuals . iter ( ) . any ( | value | ! value . is_finite ( ) )",
-            "line": 6573
+            "line": 6589
           },
           {
             "condition": "weights",
-            "line": 6827
+            "line": 6843
           },
           {
             "condition": "weights",
-            "line": 6866
+            "line": 6882
           },
           {
             "condition": "response . len ( ) != within_residuals . len ( )",
-            "line": 6932
+            "line": 6948
           },
           {
             "condition": "source . len ( )",
-            "line": 7048
+            "line": 7064
           },
           {
             "condition": "fast",
-            "line": 7138
+            "line": 7154
           }
         ],
         "functions": {
           "absorb_current_response#1": {
-            "line": 4062,
+            "line": 4075,
             "lines": 29
           },
           "absorb_reusable_map#1": {
-            "line": 4092,
+            "line": 4105,
             "lines": 17
           },
           "absorb_reusable_map_with_norms#1": {
-            "line": 4113,
+            "line": 4126,
             "lines": 34
           },
           "absorb_slope_with_selected_norms#1": {
-            "line": 4148,
+            "line": 4161,
             "lines": 28
           },
           "absorbed_predictor#1": {
@@ -15119,11 +15125,11 @@
             "lines": 6
           },
           "build_frozen_ppml_reported_coefficients#1": {
-            "line": 4682,
+            "line": 4695,
             "lines": 95
           },
           "build_full_retained_design#1": {
-            "line": 5560,
+            "line": 5576,
             "lines": 326
           },
           "can_reuse#1": {
@@ -15155,7 +15161,7 @@
             "lines": 13
           },
           "certify_frozen_combined_predictor#1": {
-            "line": 6928,
+            "line": 6944,
             "lines": 26
           },
           "check_frozen_failure_injection#1": {
@@ -15163,7 +15169,7 @@
             "lines": 31
           },
           "checked_elements#1": {
-            "line": 6969,
+            "line": 6985,
             "lines": 8
           },
           "classify_frozen_linear_fallback#1": {
@@ -15199,11 +15205,11 @@
             "lines": 100
           },
           "compact_retained_response#1": {
-            "line": 6393,
+            "line": 6409,
             "lines": 64
           },
           "compensated_add#1": {
-            "line": 7062,
+            "line": 7078,
             "lines": 15
           },
           "constant_representation#1": {
@@ -15211,7 +15217,7 @@
             "lines": 3
           },
           "copy_short#1": {
-            "line": 7045,
+            "line": 7061,
             "lines": 11
           },
           "current_hessian_products_match#1": {
@@ -15287,7 +15293,7 @@
             "lines": 9
           },
           "expand_retained_response#1": {
-            "line": 6317,
+            "line": 6333,
             "lines": 75
           },
           "fe_design#1": {
@@ -15295,7 +15301,7 @@
             "lines": 7
           },
           "fill_reusable_map_weights#1": {
-            "line": 6095,
+            "line": 6111,
             "lines": 43
           },
           "fill_row#1": {
@@ -15343,11 +15349,11 @@
             "lines": 24
           },
           "frozen_ppml_output#1": {
-            "line": 4539,
+            "line": 4552,
             "lines": 26
           },
           "full_retained_generated_columns#1": {
-            "line": 5540,
+            "line": 5556,
             "lines": 16
           },
           "generations#1": {
@@ -15363,7 +15369,7 @@
             "lines": 3
           },
           "install_retained_stage#1": {
-            "line": 4019,
+            "line": 4032,
             "lines": 42
           },
           "into_current_products#1": {
@@ -15423,7 +15429,7 @@
             "lines": 136
           },
           "normalized_solver_weight#1": {
-            "line": 6822,
+            "line": 6838,
             "lines": 21
           },
           "nrows#1": {
@@ -15484,10 +15490,10 @@
           },
           "prepare_retained_solve#1": {
             "line": 3831,
-            "lines": 187
+            "lines": 200
           },
           "project_retained_block#1": {
-            "line": 6288,
+            "line": 6304,
             "lines": 28
           },
           "reader#1": {
@@ -15495,7 +15501,7 @@
             "lines": 9
           },
           "rebuild_predictors#1": {
-            "line": 6458,
+            "line": 6474,
             "lines": 49
           },
           "rebuild_retained_inputs_interruptible#1": {
@@ -15519,7 +15525,7 @@
             "lines": 44
           },
           "refresh_group_centered_design#1": {
-            "line": 5887,
+            "line": 5903,
             "lines": 73
           },
           "refresh_response#1": {
@@ -15543,15 +15549,15 @@
             "lines": 6
           },
           "reproject_retained_in_place#1": {
-            "line": 6141,
+            "line": 6157,
             "lines": 146
           },
           "require_newer#1": {
-            "line": 6958,
+            "line": 6974,
             "lines": 10
           },
           "resize_zeroed#1": {
-            "line": 6978,
+            "line": 6994,
             "lines": 8
           },
           "response#1": {
@@ -15579,7 +15585,7 @@
             "lines": 19
           },
           "retain_canonical_products#1": {
-            "line": 7116,
+            "line": 7132,
             "lines": 57
           },
           "retained_within_memory#1": {
@@ -15595,7 +15601,7 @@
             "lines": 10
           },
           "reusable_map_max_rhs#1": {
-            "line": 4177,
+            "line": 4190,
             "lines": 11
           },
           "reuse_report#1": {
@@ -15643,7 +15649,7 @@
             "lines": 8
           },
           "solve_frozen_internal#1": {
-            "line": 4189,
+            "line": 4202,
             "lines": 321
           },
           "solve_frozen_ppml#1": {
@@ -15651,8 +15657,8 @@
             "lines": 8
           },
           "solve_full_retained_rank#1": {
-            "line": 4778,
-            "lines": 761
+            "line": 4791,
+            "lines": 764
           },
           "solve_joint_ppml_internal#1": {
             "line": 2589,
@@ -15667,15 +15673,15 @@
             "lines": 9
           },
           "stable_norm#1": {
-            "line": 7102,
+            "line": 7118,
             "lines": 12
           },
           "stable_weighted_norm#1": {
-            "line": 6987,
+            "line": 7003,
             "lines": 54
           },
           "stream_frozen_solve#1": {
-            "line": 6534,
+            "line": 6550,
             "lines": 287
           },
           "strict_candidate#1": {
@@ -15703,7 +15709,7 @@
             "lines": 122
           },
           "update_scaled_square#1": {
-            "line": 7078,
+            "line": 7094,
             "lines": 23
           },
           "validate_one_fe_profile_basis#1": {
@@ -15727,7 +15733,7 @@
             "lines": 22
           },
           "weighted_mean_slice#1": {
-            "line": 6844,
+            "line": 6860,
             "lines": 83
           },
           "weights#1": {
@@ -15755,7 +15761,7 @@
             "lines": 94
           }
         },
-        "production_lines": 5976
+        "production_lines": 5989
       },
       "crates/fereg-core/src/ols/linear_statistics.rs": {
         "chunk_candidates": [],
@@ -20139,19 +20145,19 @@
         "dispatch_candidates": [],
         "functions": {
           "merge_into#1": {
-            "line": 48,
+            "line": 61,
             "lines": 36
           },
           "retryable#1": {
-            "line": 19,
+            "line": 32,
             "lines": 19
           },
           "unresolved#1": {
             "line": 11,
-            "lines": 7
+            "lines": 20
           }
         },
-        "production_lines": 71
+        "production_lines": 81
       },
       "crates/fereg-core/src/ols/retained_refinement.rs": {
         "chunk_candidates": [],
@@ -30383,7 +30389,7 @@
         "dispatch_candidates": 1573,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 122237
+        "production_lines": 122260
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

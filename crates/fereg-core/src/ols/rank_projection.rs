@@ -8,12 +8,25 @@ use crate::error::{ErrorCode, FeregError, Result};
 // The existing strict FE accuracy floor, not a relaxed finite-rank tolerance.
 pub(super) const RANK_PROJECTION_TOLERANCE: f64 = 1e-14;
 
-pub(super) fn unresolved(condition: f64, projection_tolerance: f64, columns: usize) -> bool {
+pub(super) fn unresolved(
+    condition: f64,
+    projection_tolerance: f64,
+    columns: usize,
+    coefficient_tolerance: Option<f64>,
+    coefficient_projection_accuracy: f64,
+) -> bool {
     // QR diagonal ratios are a cheap warning, not a rank authority or an
     // error bound for the FE projector. A combination can accumulate errors
     // from all standardized columns. Leave a factor-64 margin before trusting
     // a small retained direction; only the reprojected canonical QR decides.
-    condition * projection_tolerance * (columns.max(1) as f64).sqrt() >= 1.0 / 64.0
+    // Finite refinement alone cannot detect FE leakage in the retained design:
+    // it recomputes scores on those same approximate columns. An explicit
+    // coefficient goal therefore also limits this projection-risk warning.
+    let rank_warning = condition * projection_tolerance * (columns.max(1) as f64).sqrt();
+    rank_warning >= 1.0 / 64.0
+        || coefficient_tolerance.is_some_and(|goal| {
+            condition * coefficient_projection_accuracy * (columns.max(1) as f64).sqrt() >= goal
+        })
 }
 
 pub(super) fn retryable(error: &FeregError) -> bool {
@@ -80,5 +93,24 @@ impl RankProjectionWork {
             *seconds += self.finite_seconds;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unresolved;
+
+    #[test]
+    fn coefficient_goal_adds_a_warning_without_changing_rank_authority() {
+        // A weak retained direction can satisfy the rank margin but warrant
+        // tighter projection for an explicitly requested coefficient goal.
+        assert!(!unresolved(1e3, 1e-6, 3, None, 1e-6));
+        assert!(unresolved(1e3, 1e-6, 3, Some(1e-8), 1e-6));
+        // A measured full-design certificate can already be much more accurate
+        // than requested. An ordinary well-conditioned solve needs no retry.
+        assert!(!unresolved(1., 1e-6, 3, Some(1e-8), 1e-12));
+        // Observed coefficient accuracy never bypasses the old rank warning.
+        assert!(unresolved(1e6, 1e-6, 3, None, 0.));
+        assert!(unresolved(1e6, 1e-6, 3, Some(0.1), 0.));
     }
 }
