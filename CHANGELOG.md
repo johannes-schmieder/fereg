@@ -2,9 +2,10 @@
 
 ## 0.6.1 — locally qualified, unpublished, 2026-11-17
 
-Stability and correctness repairs. Source, native platform, canonical replay
-and private scientific checks pass locally. Final combined archives and
-package admission follow the documentation/source freeze; nothing is published.
+Stability and correctness repairs. Source, native platform, canonical replay,
+private scientific and combined-package installation checks pass locally.
+The corresponding-source and three-platform archives are verified; nothing
+is published.
 See [validation](docs/VALIDATION.md) for the exact evidence and limits.
 
 - Reproject suspicious finite directions before freezing rank and coefficients,

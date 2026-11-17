@@ -6,8 +6,9 @@
 tags and releases remain unchanged. All three native plugins were built from
 `4a7c2ae334bd45b69724c842ab54c286a32889a7` (Q), whose runtime identity is
 `7f98e1f19a1d5d75f030e4ba23e258651641d68218d5f90220d3f00aeb85bf0f`.
-Final corresponding-source and three-platform archive hashes and the combined
-package admission check will follow the documentation/source freeze.
+The corresponding-source and three-platform archives use packaging source
+`0bfe3c53810d6513e4f991b949161a74c724f02e` (R), with numerical runtime
+identical to Q. Archive verification and combined-package admission pass.
 
 **Repair scope.** The four original failures are addressed: projected exact
 FE dependencies are rechecked before finite rank is frozen; no-separation
@@ -112,6 +113,25 @@ The tested Q plugin SHA-256 values are:
 | Linux x86-64 | 24,192,904 | `5f356b908fcd936b11ba5796342c6c2d3be5ddef69b2fa924800f66aa03b6e72` |
 | Windows x86-64 | 20,591,616 | `a91af55830142c362f5d0677c0cc9a2281c44c6925bc4307f77939d0f5318f3b` |
 
+**Final archives and installation.** All corresponding-source payloads verify;
+the combined archive includes the three qualified Q plugins. The dependency
+audit bound to packaging source R has SHA-256
+`d2e72d72ce9f3e3a6654f6467491c8f10cc2652957be8828324f0feb788342b5`.
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `fereg-0.6.1-source.zip` | 34,282,581 | `45b8ead26bbd815044a56c3f72adeb844d74a5c4ad790deead6a8b882fcbbd51` |
+| `fereg-0.6.1.zip` | 25,782,752 | `6216ea062aa2122164ea29a9617467c61bb22446e3a7d628e41ec9e2cf709606` |
+
+The final combined package passes three fresh staged checks: actual plugin
+binding, OLS installation and PPML installation. An isolated local net install
+on Stata/MP 19 verifies all 38 files, including every platform's binary,
+and passes selftest plus independent OLS/PPML checks. Q's broader 12/12 staged
+coverage and Stata/MP 18 replay are reused: Q-to-R changes only the changelog
+and validation notes, and 58 frontend, Mata, manifest, fixture and runner
+inputs compare byte-identically. The Mac plugin is identical. Stata/MP 18
+was not rerun against the final three-platform archive.
+
 **Limits.** No comparative performance result is established: the attempted
 H/I comparison stopped at H's uncertified LSMR solve before I ran. The private
 stacked J trace still used 67 unit projections, so prefix-proof reuse has no
@@ -124,10 +144,8 @@ Pierre's exact Windows 11, StataNow/MP 19.5, CPython 3.13.1 and full MCP setup.
 The existing Windows loading-Break limitation remains. The two targeted Q
 Intel-slice checks under Rosetta are not native Intel-Mac hardware qualification
 or a complete Intel-slice test suite. HTTP publication and installation from
-the public release URL are not tested for this
-unpublished candidate. Final corresponding-source and three-platform archive
-hashes and combined package admission remain pending. No release, tag or push
-has been performed.
+the public release URL are not tested for this unpublished candidate. No
+release, tag or push has been performed.
 
 ## Release 0.6.0, November 11, 2026
 

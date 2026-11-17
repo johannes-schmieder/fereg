@@ -1,26 +1,26 @@
 {
   "schema": 1,
-  "version": "0.6.0",
-  "source_sha": "06a805119818d95dba71e17d9f7ba69e4759268d",
-  "runtime_sha256": "d37bd7479526acc748b4c2571e89e20777cc30fe640accafb8535ed9d58beccd",
+  "version": "0.6.1",
+  "source_sha": "0bfe3c53810d6513e4f991b949161a74c724f02e",
+  "runtime_sha256": "7f98e1f19a1d5d75f030e4ba23e258651641d68218d5f90220d3f00aeb85bf0f",
   "plugins": [
     {
       "path": "fereg_macos.plugin",
-      "source_sha": "06a805119818d95dba71e17d9f7ba69e4759268d",
-      "sha256": "07c3e9c316b8c20b3795be0935694441a4edf5abd88678cae2b52a2c50be0b18",
-      "bytes": 33655632
+      "source_sha": "4a7c2ae334bd45b69724c842ab54c286a32889a7",
+      "sha256": "72c7e7e7bb6038892cc506983aa20798264e28ed5e8abd95214c0a6b89ac24cf",
+      "bytes": 33961136
     },
     {
       "path": "fereg_linux.plugin",
-      "source_sha": "06a805119818d95dba71e17d9f7ba69e4759268d",
-      "sha256": "f41fff17b172ee7bcaac2d900bd99ab0870e4884bf616ca556b8b59b830615ff",
-      "bytes": 23981728
+      "source_sha": "4a7c2ae334bd45b69724c842ab54c286a32889a7",
+      "sha256": "5f356b908fcd936b11ba5796342c6c2d3be5ddef69b2fa924800f66aa03b6e72",
+      "bytes": 24192904
     },
     {
       "path": "fereg_windows.plugin",
-      "source_sha": "06a805119818d95dba71e17d9f7ba69e4759268d",
-      "sha256": "c72712af0373b91d81fefd45a93d9559eb68b0109287e7109f6c872ca147ecbf",
-      "bytes": 20392448
+      "source_sha": "4a7c2ae334bd45b69724c842ab54c286a32889a7",
+      "sha256": "a91af55830142c362f5d0677c0cc9a2281c44c6925bc4307f77939d0f5318f3b",
+      "bytes": 20591616
     }
   ],
   "included_platforms": [
@@ -29,14 +29,16 @@
     "macos"
   ],
   "support_caveats": [
+    "Unpublished local candidate; no HTTP installation or publication claim.",
     "Only platforms named in included_platforms are supplied by this package.",
     "The Linux binary requires glibc 2.28 or newer.",
     "Windows x86-64 Stata/MP 19 GUI supports eligible parallel input; Break during Windows loading may be delayed or unavailable.",
     "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
     "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md."
   ],
-  "corresponding_source_sha256": "fb270ec4fc9ff05503f58b8755504a70ad5a9f46e7e6a1ce8021f3d280133f78",
-  "corresponding_source_commit": "06a805119818d95dba71e17d9f7ba69e4759268d",
-  "cmg_sha": "368eceba765db91ff818815698da35889ce42ed0",
-  "performance_acceptance": "Johannes accepted the exact-elimination workstream on 2026-11-08 and the fedemean plan and addenda on 2026-11-08 to 2026-11-10. The November revision campaign on 80b6768e (runtime identical to 44cd1563) is descriptive: median default fereg time 0.572 of beta.15 over 63 matching cells. Historical performance exceptions and failures remain recorded in docs/VALIDATION.md; no adverse results were resampled."
+  "candidate": true,
+  "corresponding_source_sha256": "45b8ead26bbd815044a56c3f72adeb844d74a5c4ad790deead6a8b882fcbbd51",
+  "corresponding_source_commit": "0bfe3c53810d6513e4f991b949161a74c724f02e",
+  "native_source_commit": "4a7c2ae334bd45b69724c842ab54c286a32889a7",
+  "cmg_sha": "368eceba765db91ff818815698da35889ce42ed0"
 }
