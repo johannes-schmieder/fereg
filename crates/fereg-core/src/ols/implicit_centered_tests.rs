@@ -498,7 +498,7 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
                         let group = view.codes()[i] as usize;
                         let value = |j: usize| {
                             (prepared.fit_column_value(ids[selected[j]], i).unwrap()
-                                - prepared.fit_column_value(ids[selected[j]], 0).unwrap()
+                                - view.stats[selected[j]].origin
                                 - view.center(selected[j], group))
                                 / if scaled { scales[j] } else { 1. }
                         };

@@ -1517,3 +1517,108 @@ fn assert_slice_close(actual: &[f64], expected: &[f64], tolerance: f64) {
         assert_close(*actual, *expected, tolerance);
     }
 }
+
+#[test]
+fn translated_no_fe_map_preserves_iid_fit_statistics() {
+    let n = 32768;
+    let mut x: Vec<_> = (0..n).map(|i| if i % 4 < 2 { -1.0 } else { 1.0 }).collect();
+    let z: Vec<_> = (0..n)
+        .map(|i| if i / 4 % 2 == 0 { -1.0 } else { 1.0 })
+        .collect();
+    let y: Vec<_> = (0..n)
+        .map(|i| 3.0 + 2.0 * x[i] - 0.5 * z[i] + if i % 2 == 1 { 0.125 } else { -0.125 })
+        .collect();
+    x[2] = -1.0; // Keep the original Stata fixture's post-outcome edit.
+                 // Exact sufficient statistics of this integer/binary-fraction design,
+                 // independently inverted in the centered two-dimensional coordinates.
+    let count = n as f64;
+    let xx = count - 4.0 / count;
+    let xy = 2.0 * count - 19.0 / 4.0;
+    let zy = -count / 2.0;
+    let determinant = xx * count - 4.0;
+    let beta = (count * xy - 2.0 * zy) / determinant;
+    let gamma = (xx * zy - 2.0 * xy) / determinant;
+    let alpha = 3.0 + 2.0 * beta / count;
+    let tss = 273.0 * count / 64.0;
+    let rss = tss - beta * xy - gamma * zy;
+    let variance = rss / (count - 3.0);
+    let fractional = vec![0.125; n];
+    for shift in [0.0, 1e12, 1e15] {
+        for weights in [TestWeights::Unit, TestWeights::Analytic(&fractional)] {
+            let shifted: Vec<_> = x.iter().map(|v| v + shift).collect();
+            let data = prepared(&y, &[shifted, z.clone()], None, true, weights);
+            let mut canonical_coefficients = None;
+            let mut canonical_covariance: Option<Vec<f64>> = None;
+            for solver in [crate::fe::FeSolverKind::Map, crate::fe::FeSolverKind::Auto] {
+                for threads in [1, 4, 16] {
+                    let mut config = PreparedOlsUnadjustedConfig::default();
+                    config.fit.absorb.solver = solver;
+                    config.fit.execution.threads =
+                        crate::ThreadConfig::from_requested(threads, true).unwrap();
+                    let fit =
+                        fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None)
+                            .unwrap_or_else(|error| {
+                                panic!(
+                                    "shift={shift}, solver={solver:?}, threads={threads}: {error}"
+                                )
+                            });
+                    // The existing Stata compatibility fixture requires exact
+                    // Auto/Map coefficient agreement at this location.
+                    if shift == 1e12 {
+                        if let Some(expected) = &canonical_coefficients {
+                            assert_eq!(fit.fit().coefficients(), expected);
+                            for (actual, expected) in fit
+                                .covariance
+                                .values()
+                                .iter()
+                                .zip(canonical_covariance.as_ref().unwrap())
+                            {
+                                assert!(
+                                    (actual - expected).abs() <= 1e-12 * expected.abs().max(1e-20)
+                                );
+                            }
+                        } else {
+                            canonical_coefficients = Some(fit.fit().coefficients().to_vec());
+                            canonical_covariance = Some(fit.covariance.values().to_vec());
+                        }
+                    }
+                    for (actual, expected) in
+                        fit.fit()
+                            .coefficients()
+                            .iter()
+                            .zip([beta, gamma, alpha - beta * shift])
+                    {
+                        assert!(
+                            (actual.value.unwrap() - expected).abs()
+                                <= 1e-11 * expected.abs().max(1.0)
+                        );
+                    }
+                    for (i, actual) in fit.fit().residuals().iter().enumerate() {
+                        let expected = y[i] - alpha - beta * x[i] - gamma * z[i];
+                        assert!((actual - expected).abs() < 1e-10);
+                    }
+                    assert!((fit.statistics.rss - rss).abs() < 1e-8);
+                    let mx = shift - 2.0 / count;
+                    let bxx = count / determinant;
+                    let bxz = -2.0 / determinant;
+                    let bzz = xx / determinant;
+                    let expected = [
+                        bxx,
+                        bxz,
+                        -mx * bxx,
+                        bxz,
+                        bzz,
+                        -mx * bxz,
+                        -mx * bxx,
+                        -mx * bxz,
+                        1.0 / count + mx * mx * bxx,
+                    ];
+                    for (actual, expected) in fit.covariance.values().iter().zip(expected) {
+                        let expected = expected * variance;
+                        assert!((actual - expected).abs() <= 1e-10 * expected.abs().max(1e-20));
+                    }
+                }
+            }
+        }
+    }
+}

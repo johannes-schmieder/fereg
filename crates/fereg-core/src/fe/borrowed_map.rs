@@ -1364,6 +1364,7 @@ fn component_scaled_checkpoint_weights(
     let codes = design.effects()[0].codes();
     let component = |row: usize| components.component_by_effect_level[0][codes[row] as usize];
     for row in 0..design.nobs() {
+        crate::interrupt::row_checkpoint(row)?;
         maxima[component(row)] = maxima[component(row)].max(weights.values.map_or(1., |w| w[row]));
     }
     let mut scaled = reserved_zeros(
@@ -1372,6 +1373,7 @@ fn component_scaled_checkpoint_weights(
         "unable to reserve component-scaled checkpoint weights",
     )?;
     for (row, value) in scaled.iter_mut().enumerate() {
+        crate::interrupt::row_checkpoint(row)?;
         *value = weights.values.map_or(1., |w| w[row]) / maxima[component(row)];
     }
     Ok(Some(scaled))

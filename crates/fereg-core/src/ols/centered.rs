@@ -71,8 +71,8 @@ pub(super) fn reference_norm(
 
 /// Remove an exactly representable constant direction before FE projection.
 /// The caller keeps original means for coefficient reconstruction. Subtraction
-/// is exact for a large shared location (Sterbenz); overflow leaves the column
-/// untouched so the original validated projector retains error authority.
+/// is exact for a large shared location (Sterbenz); overflow or a nonzero
+/// rounding remainder leaves the original column untouched.
 pub(super) fn remove_location(
     values: &mut DenseMatrix,
     columns: impl Iterator<Item = usize>,
@@ -82,12 +82,12 @@ pub(super) fn remove_location(
     }
     for column in columns {
         let anchor = values[(0, column)];
-        let mut finite = true;
+        let mut exact = true;
         for row in 0..values.nrows() {
             crate::interrupt::row_checkpoint(row)?;
-            finite &= (values[(row, column)] - anchor).is_finite();
+            exact &= exact_location_difference(values[(row, column)], anchor);
         }
-        if !finite {
+        if !exact {
             continue;
         }
         for row in 0..values.nrows() {
@@ -96,6 +96,14 @@ pub(super) fn remove_location(
         }
     }
     Ok(())
+}
+
+/// An origin change must preserve the represented data, including small
+/// contrasts unrelated to the column's largest magnitude. TwoSum exposes the
+/// subtraction's rounding remainder without an accuracy tolerance.
+pub(super) fn exact_location_difference(value: f64, origin: f64) -> bool {
+    let (difference, remainder) = two_sum(value, -origin);
+    difference.is_finite() && remainder == 0.0
 }
 
 #[derive(Clone, Copy, Debug)]

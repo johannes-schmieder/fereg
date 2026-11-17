@@ -5700,3 +5700,6 @@ fn affine_no_fe_poisson_matches_two_cell_optimum() {
         assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-8);
     }
 }
+
+#[path = "component_truth_tests.rs"]
+mod component_truth_tests;

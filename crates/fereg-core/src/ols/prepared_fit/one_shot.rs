@@ -204,6 +204,36 @@ fn fill_reference_norms(
     )
 }
 
+/// Keep finite variation outside a potentially huge raw location before the
+/// structural-constant projection. The raw moments already retained by the
+/// caller still define the reported intercept and extended bread.
+fn center_structural_regressors<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    session: &crate::fe::FeSession<'_>,
+    values: crate::ols::OlsProjectionInput,
+) -> Result<crate::ols::OlsProjectionInput> {
+    if !session.structural_constant
+        || !session
+            .binding
+            .as_ref()
+            .is_some_and(|design| design.effects().is_empty())
+    {
+        return Ok(values);
+    }
+    let mut values = values.into_values();
+    super::super::centered::remove_location(
+        &mut values,
+        prepared
+            .fit_model()
+            .columns
+            .iter()
+            .enumerate()
+            .filter(|(_, column)| !matches!(column.kind, PreparedOlsColumnKind::Intercept))
+            .map(|(column, _)| column + 1),
+    )?;
+    Ok(values.into())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &'a P,
@@ -271,6 +301,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         &mut raw.values,
         DenseMatrix::from_row_major(0, 0, Vec::new())?.into(),
     );
+    let values = center_structural_regressors(prepared, cmg, values)?;
     let direct_structural = direct.is_some() && raw.moments.is_some();
     let mut absorbed = if let (Some(constant), Some(moments)) = (direct, raw.moments.as_ref()) {
         cmg.project_structural_ols(values, &moments.scales, constant + 1, config.absorb)?

@@ -519,7 +519,7 @@ impl LinearAdmission {
     ) -> Result<Option<u128>> {
         let fe_design = inputs.fe_design;
         let effective_threads = inputs.threads;
-        if !categorical_checkpoints || fe_design.effects().len() != 3 {
+        if !categorical_checkpoints {
             return Ok(None);
         }
         let estimate = crate::ols::ppml_component_checkpoint_bytes(

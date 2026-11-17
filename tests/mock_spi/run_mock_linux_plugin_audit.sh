@@ -13,7 +13,7 @@ CFLAGS=(-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototy
 "$CC_BIN" -shared -Wl,-z,relro,-z,now,--no-undefined \
   -Wl,--version-script="$ROOT/plugin/exports_linux.map" \
   "$BUILD/stplugin.o" "$BUILD/stata_bridge.o" "$BUILD/dummy_dispatch.o" \
-  -o "$BUILD/fereg_mock_linux.plugin"
+  -pthread -o "$BUILD/fereg_mock_linux.plugin"
 
 "$CC_BIN" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Werror \
   -DSYSTEM=OPUNIX -I"$ROOT/plugin" \

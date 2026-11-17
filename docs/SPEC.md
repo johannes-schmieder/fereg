@@ -1173,17 +1173,23 @@ Stability corrections (0.6.1). When the absorbed span contains a constant,
 finite FE-collinearity/reference scales use the weighted norm of the centered
 column, evaluated with anchored scaled differences. Exact constants retain
 zero/FE-collinear classification; the existing finite-rank and FE-collinearity
-thresholds remain. Finite projection inputs remove a constant location, and
-implicit one-FE centering stores that location separately. This preserves
+thresholds remain. Finite projection inputs remove an observed constant location
+only when every subtraction is finite and has zero TwoSum remainder; otherwise
+they retain the original values. This also applies before the structural
+constant projection in one-shot OLS without absorbed effects. Original moments
+still determine the reported intercept and extended bread. Implicit one-FE
+centering stores its location separately. This preserves
 identified directions under representable translations and changes low bits
 of intercepted reference scaling/projection; formerly falsely omitted
 translated regressors can become identified. Analytic PPML beta/predictor and
 OLS coefficient/residual witnesses cover the change.
 For implicit one-FE centering, if subtracting the observed location would
-overflow on any finite value, that column uses zero as its stored origin.
+overflow or round away any represented contrast, that column uses zero as its
+stored origin, using the same exact-subtraction check.
 All implicit readers use the same origin; the existing statistics reservation
 accounts for it. This permits opposite finite extremes with representable
-weighted moments, without changing the raw-moment arithmetic or certificates.
+weighted moments, and retains small contrasts across widely separated values,
+without changing the raw-moment arithmetic or certificates.
 
 Before an iterative session freezes finite rank, a retained direction too
 small relative to projection accuracy, or a narrowly classified
@@ -1672,6 +1678,17 @@ inputs, reported in the compiled solver table as
 `e(fe_fallback_reason) = nonconvergence`; a workspace beyond the admitted
 allowance is an allocation refusal. Declared scope: checkpoints the
 elimination declined (none of the bench designs).
+
+The coefficient-owner path can separately admit component-scaled strict
+checkpoints for two or three categorical effects (0.6.1 extends the existing
+three-effect admission to two effects). Within each disconnected FE component,
+weights are divided by that component's maximum for the checkpoint recurrence
+and its zero-iteration shortcut, keeping small-mass components visible.
+Acceptance still requires the original-weight certificate. The LSMR frame,
+component topology and scaling vectors are charged together before use, and
+the scaling scans poll for Break. If the optional reserve does not fit, the
+existing weighted checkpoint remains available with its existing guarantees;
+componentwise forward accuracy is not a separate stopping requirement.
 
 **Six or more effects (2026-11-09).** PPML's canonical generic owner of a
 categorical intercept design outside the elimination's range (Fast mode)

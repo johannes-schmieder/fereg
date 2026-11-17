@@ -546,8 +546,8 @@ fn refresh_raw_statistics(
     total: f64,
 ) -> Result<()> {
     // Validate the common origin while computing the existing raw moments.
-    // A representable weighted column can contain opposite finite extremes:
-    // when subtracting its first value overflows, zero is a safe origin.
+    // A representable weighted column can contain opposite finite extremes or
+    // tiny contrasts: if subtraction overflows or rounds, zero is a safe origin.
     stats
         .par_iter_mut()
         .enumerate()
@@ -567,7 +567,7 @@ fn refresh_raw_statistics(
             for (row, &w) in normalized.iter().enumerate() {
                 crate::interrupt::row_checkpoint(row)?;
                 let value = column.raw_value(row)?;
-                representable &= (value - observed).is_finite();
+                representable &= super::centered::exact_location_difference(value, observed);
                 update_scaled_square(w.sqrt() * value, &mut raw_scale, &mut raw_sum)?;
                 compensated_add(w * value, &mut sum, &mut correction)?;
             }

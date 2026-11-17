@@ -95,21 +95,26 @@ pub(crate) fn ppml_coefficient_lifetime_bytes(
         .ok_or_else(|| allocation("PPML coefficient workspace overlap overflows"))
 }
 
-/// Component scaling and its three-effect topology overlap the LSMR frame.
+/// Component scaling and its categorical topology overlap the LSMR frame.
 pub(crate) fn ppml_component_checkpoint_bytes(
     design: &FeDesign,
     rhs: usize,
     threads: usize,
 ) -> Result<u128> {
-    if design.effects().len() != 3 {
+    let effects = design.effects().len();
+    if !matches!(effects, 2 | 3) {
         return Err(invalid_argument(
-            "component checkpoint requires three effects",
+            "component checkpoint requires two or three effects",
         ));
     }
-    let levels: [usize; 3] = std::array::from_fn(|e| design.effects()[e].n_levels());
+    let mut level_bank = [0; 3];
+    for (level, effect) in level_bank.iter_mut().zip(design.effects()) {
+        *level = effect.n_levels();
+    }
+    let levels = &level_bank[..effects];
     let component =
         8 * design.nobs() as u128 + 32 * levels.iter().map(|&n| n as u128).sum::<u128>() + 512;
-    crate::ppml::estimate_checkpoint_lsmr_workspace_bytes(design.nobs(), rhs, &levels, threads)?
+    crate::ppml::estimate_checkpoint_lsmr_workspace_bytes(design.nobs(), rhs, levels, threads)?
         .checked_add(component)
         .ok_or_else(|| allocation("component checkpoint workspace overflows"))
 }
