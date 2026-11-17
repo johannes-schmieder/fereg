@@ -196,5 +196,15 @@ class StataProfileSeparationContractTests(unittest.TestCase):
         self.assertEqual(windows.count("if _rc exit 9141"), 1)
 
 
+    def test_iid_certificate_fixture_uses_current_stata_profiles(self) -> None:
+        fixture = "tests/stata/development/stability061_ols_iid_certificate.do"
+        profiles = load_profiles()
+        self.assertIn(fixture, profiles["development"]["fixtures"])
+        self.assertNotIn(fixture, profiles["older-stata"]["fixtures"])
+        windows = (ROOT / "scripts/windows_ci_runtime.do").read_text(encoding="utf-8")
+        self.assertIn(f'capture noisily do "{fixture}"\nif _rc exit 9142', windows)
+        self.assertEqual(windows.count("if _rc exit 9142"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
