@@ -83,7 +83,7 @@ foreach kind in unit aw fw {
             * stronger oracle; never compare rounded large-origin RSS as exact.
             local statistic_tolerance=1e-7
             if "`policy'"=="auto" & "`output'"=="none" local statistic_tolerance=1e-5
-            foreach workers in 1 8 {
+            foreach workers in 1 8 16 {
                 display "IID_WALSH_CASE|`kind'|`policy'|`output'|workers=`workers'"
                 quietly fereg y x `weight', absorb(g h) threads(`workers') ///
                     `options' `output_option'
