@@ -7,6 +7,7 @@ from unittest.mock import patch
 import qualify as q
 import routing
 import test_qualify
+from test_cmgschur import current_result, result
 from test_two_fe_policy_development import ACTION, build, decision
 
 
@@ -88,21 +89,31 @@ class PolicyEvidence(unittest.TestCase):
 
     def test_science_contract_follows_the_executed_candidate_policy(self):
         meta = {'absorbed_terms': 4, 'categorical_intercepts': True}
-        snapshots = {'candidate': (None, None, {'fingerprint': 'a'}),
-                     'incumbent': (None, None, {'fingerprint': 'b'})}
-        def selected(request, hidden=None):
+        def selected(raw, request, hidden=None):
+            snapshots = {'candidate': (raw, None, {'fingerprint': 'a'}),
+                         'incumbent': (copy.deepcopy(raw), None, {'fingerprint': 'b'})}
             artifacts = {'candidate': {'request': request, 'families': ['many']},
                          'incumbent': {'request': 'auto', 'families': []}}
             if hidden:
                 artifacts['hidden'] = {'request': hidden, 'families': ['many']}
             with patch.object(q.science, 'compatibility') as checked:
                 q.compare_artifacts({'scope': 'many', 'artifacts': artifacts}, meta, snapshots)
+            checked.assert_called_once()
+            self.assertIs(checked.call_args.args[1], raw)
             return checked.call_args.kwargs['selected_policy']
         geometry = routing.policy(routing.GEOMETRY_MANY)
-        self.assertEqual(selected(routing.GEOMETRY_MANY), geometry)
-        self.assertEqual(selected('auto', routing.GEOMETRY_MANY), geometry)
-        self.assertEqual(selected('incremental-many'), routing.policy(routing.PORTFOLIO_UNSEEDED))
-        self.assertEqual(selected('auto', 'incremental-many'), routing.policy(routing.PORTFOLIO_UNSEEDED))
+        historical = result()
+        current = current_result()
+        for request, hidden, expected in (
+                (routing.GEOMETRY_MANY, None, geometry),
+                ('auto', routing.GEOMETRY_MANY, geometry),
+                ('incremental-many', None, routing.policy(routing.PORTFOLIO_UNSEEDED)),
+                ('auto', 'incremental-many', routing.policy(routing.PORTFOLIO_UNSEEDED))):
+            with self.subTest(request=request, hidden=hidden):
+                self.assertEqual(selected(historical, request, hidden), expected)
+                # Current public rows retain strict ordinary route identity;
+                # the named historical policy cannot grant them route waivers.
+                self.assertIsNone(selected(current, request, hidden))
 
     def test_hidden_outside_scope_needs_no_gate_fields(self):
         self.meta['absorbed_terms'] = 0
