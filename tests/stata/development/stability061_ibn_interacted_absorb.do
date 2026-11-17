@@ -13,7 +13,10 @@ generate byte replicate = floor((_n-1)/216)
 generate double x = sin(_n*.61)+replicate/19
 generate double pw = .7+mod(_n,7)/5
 generate int cl1 = 1+mod(_n,19)
-generate int cl2 = 1+mod(floor((_n-1)/5),23)
+* Nested declared partitions give an independent PSD two-way oracle:
+* intersection=cl1, so inclusion-exclusion equals the coarse cl2 score meat.
+* General nonnested CGM eigenvalue repair has separate maintained coverage.
+generate int cl2 = 1+floor((cl1-1)/2)
 generate double y = exp(.2*x+.3*half*(c01==3)-.15*(1-half)*(c01==3) ///
     +.1*half*(c02==2)+.04*period-.03*entry+.02*family) ///
     *(.8+.1*mod(replicate,3)+.05*sin(_n/7))
@@ -118,8 +121,8 @@ foreach scenario in full missing_half separated_half separated_base {
         * Check every stripe's original source/level/base identity, including
         * vanished levels. Numerical omission markers may be added, not bases.
         forvalues j=2/`=`slots'-1' {
-            local original : word `j' of `original_names'
-            quietly _ms_parse_parts `original'
+            local original_token : word `j' of `original_names'
+            quietly _ms_parse_parts `original_token'
             local h = r(level1)
             local level = r(level2)
             local source `r(name2)'
