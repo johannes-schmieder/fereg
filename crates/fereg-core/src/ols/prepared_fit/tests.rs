@@ -10826,3 +10826,6 @@ fn affine_ols_identification_preserves_closed_form_slope_and_residuals() {
         }
     }
 }
+
+#[path = "centering_extreme_audit_tests.rs"]
+mod centering_extreme_audit_tests;

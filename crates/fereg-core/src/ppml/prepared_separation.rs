@@ -393,6 +393,10 @@ where
         retained_cg,
         lsmr.map(|admission| (admission, &plan)),
     );
+    // Unit-metric certification uses the existing independently admitted
+    // LSMR family. Weighted detection and the ordinary IRLS policy remain
+    // unchanged; absence of that optional admission retains their projector.
+    admission.unit_projection = policy.admitted_unit_projection(coordinator.view().prepared)?;
     let (mut outcome, fit) = coordinate_prepared_ppml_separation(
         coordinator,
         &policy,
@@ -555,6 +559,7 @@ mod trace;
 struct DetectorAdmission {
     graph: bool,
     full_span_bytes: u128,
+    unit_projection: Option<(PpmlConfig, PreparedOlsFitConfig)>,
 }
 
 impl From<bool> for DetectorAdmission {
@@ -562,6 +567,7 @@ impl From<bool> for DetectorAdmission {
         Self {
             graph,
             full_span_bytes: 0,
+            unit_projection: None,
         }
     }
 }
@@ -2130,7 +2136,7 @@ fn prepared_bound_iterated_rectifier(
                     linear,
                     interrupt,
                     error,
-                    graph_admitted.full_span_bytes,
+                    graph_admitted,
                 );
             }
             Err(error) => return Err(error),
@@ -2138,14 +2144,7 @@ fn prepared_bound_iterated_rectifier(
     let mut bound = bind_numerical_proposal(generation, proposal)?;
     bound.fixed_point = fixed_point;
     if bound.status == MethodStatus::NoSeparation {
-        match stable::resolve(
-            generation,
-            ppml,
-            config,
-            linear,
-            interrupt,
-            graph_admitted.full_span_bytes,
-        )? {
+        match stable::resolve(generation, ppml, config, linear, interrupt, graph_admitted)? {
             stable::Resolution::Dual(dual, _) => bound.stable_dual = Some(dual),
             stable::Resolution::Direction(proposal) => return Ok(proposal),
         }
@@ -3260,14 +3259,7 @@ fn replay_numerical_no_drop(
     {
         if observed.fixed_point.is_none() {
             if let Some(dual) = observed.stable_dual.as_deref() {
-                if stable::certify_dual(
-                    generation,
-                    dual,
-                    ppml,
-                    config,
-                    linear,
-                    graph_admitted.full_span_bytes,
-                )? {
+                if stable::certify_dual(generation, dual, ppml, config, linear, graph_admitted)? {
                     let certificate = stable::dual_certificate(generation, dual);
                     if observed.certificate.as_ref() == Some(&certificate) {
                         return Ok(Some(certificate));
@@ -3288,7 +3280,7 @@ fn replay_numerical_no_drop(
                             ppml,
                             config,
                             linear,
-                            graph_admitted.full_span_bytes,
+                            graph_admitted,
                         )? {
                             return Ok(Some(certificate));
                         }

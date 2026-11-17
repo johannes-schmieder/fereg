@@ -50,6 +50,7 @@ pub fn solve_linear_system(
     let mut rank = 0;
 
     for column in 0..dimension {
+        crate::interrupt::checkpoint()?;
         let mut pivot_row = column;
         let mut pivot_value = matrix[column * dimension + column].abs();
         for row in (column + 1)..dimension {
@@ -93,6 +94,7 @@ pub fn solve_linear_system(
     }
 
     for row in (0..dimension).rev() {
+        crate::interrupt::checkpoint()?;
         let diagonal = matrix[row * dimension + row];
         if diagonal.abs() <= threshold {
             for rhs in 0..rhs_count {
@@ -115,6 +117,37 @@ pub fn solve_linear_system(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dense_multiple_rhs_solve_observes_cancellation_during_both_stages() {
+        const CHILD: &str = "FEREG_DENSE_SOLVE_BREAK_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD, "1")
+                .args(["linalg::solve::tests::dense_multiple_rhs_solve_observes_cancellation_during_both_stages", "--exact", "--test-threads=1"])
+                .status().unwrap();
+            assert!(status.success());
+            return;
+        }
+        let dimension = 96;
+        for stop in [3, dimension + 3] {
+            let mut matrix = vec![1.; dimension * dimension];
+            let mut rhs = vec![0.; dimension * dimension];
+            for i in 0..dimension {
+                matrix[i * dimension + i] = 2.;
+                rhs[i * dimension + i] = 1.;
+            }
+            let before = matrix.clone();
+            crate::interrupt::test_polls::cancel_at(Some(stop));
+            let result = solve_linear_system(&mut matrix, &mut rhs, dimension, dimension, 1e-12);
+            crate::interrupt::test_polls::cancel_at(None);
+            assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
+            assert_ne!(
+                matrix, before,
+                "cancellation occurs after numerical work starts"
+            );
+        }
+    }
 
     #[test]
     fn solves_multiple_right_hand_sides() {

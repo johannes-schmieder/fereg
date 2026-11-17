@@ -185,6 +185,9 @@ capture noisily do "tests/stata/development/stability061_ppml_sparse_contrast.do
 if _rc exit 9135
 capture noisily do "tests/stata/development/stability061_ppml_crossed_aliases.do"
 if _rc exit 9136
+* Independent ordinary absorbed-slope PPML coefficients, covariance and predictions.
+capture noisily do "tests/stata/development/stability061_ppml_ordinary_slope.do"
+if _rc exit 9137
 * Fresh Python processes test changing host threads and native error recovery.
 shell python scripts/check_pystata_threads.py ///
     --utilities "C:/Program Files/Stata19/utilities" ///

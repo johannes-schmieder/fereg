@@ -73,15 +73,22 @@ fn check_alias_support(
     let dual: Vec<_> = (0..n)
         .map(|row| if row % 2 == 0 { 1. } else { -1. })
         .collect();
-    let dual_certified =
-        stable::certify_dual(coordinator.view().prepared, &dual, ppml, config, linear, 0).unwrap();
+    let dual_certified = stable::certify_dual(
+        coordinator.view().prepared,
+        &dual,
+        ppml,
+        config,
+        linear,
+        DetectorAdmission::default(),
+    )
+    .unwrap();
     let resolved = stable::resolve(
         coordinator.view().prepared,
         ppml,
         config,
         linear,
         &mut |_| Ok(()),
-        0,
+        DetectorAdmission::default(),
     );
 
     use crate::ppml::{

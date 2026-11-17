@@ -216,7 +216,12 @@ fn complete_certified(
 ) -> Result<bool> {
     let categorical = generation.prepared().as_ref();
     let specs = categorical.effect_specs();
-    admit_work(plan.n, plan.dimensions, plan.total, iterations)?;
+    admit_work(
+        plan.n,
+        plan.dimensions,
+        plan.total + usize::from(plan.structural),
+        iterations,
+    )?;
     let mut columns = Vec::new();
     columns
         .try_reserve_exact(plan.dimensions)
@@ -329,6 +334,7 @@ fn exact_raw_alias(
 }
 
 mod condition;
+mod recondition;
 use condition::condition_certified;
 
 struct Column<'a> {
@@ -413,13 +419,20 @@ fn audit_refusal() -> FeregError {
     )
 }
 fn audit_work(n: usize, dimensions: usize, channels: usize) -> u128 {
-    // Gram construction evaluates D² normalized basis pairs at every row;
-    // each evaluation streams D coefficients and at most S active channels.
-    let width = dimensions as u128 + (channels as u128).saturating_mul(channels as u128);
-    (n as u128 + dimensions as u128)
-        .saturating_mul(dimensions as u128)
-        .saturating_mul(dimensions as u128)
+    // Count source evaluations explicitly: extraction pivot pairs, five row
+    // scans per basis (extraction, refresh, streamed Gram), and two MGS passes
+    // evaluating both directions in every earlier/current pair. Dense updates,
+    // Gram products and inverse verification are quadratic/cubic, not D^4.
+    let (n, d, s) = (n as u128, dimensions as u128, channels as u128);
+    let width = d.saturating_add(s.saturating_mul(s));
+    let pairs = d.saturating_mul(d.saturating_sub(1));
+    let evaluations = pairs
+        .saturating_add(n.saturating_mul(d).saturating_mul(5))
+        .saturating_add(n.saturating_mul(pairs).saturating_mul(2));
+    evaluations
         .saturating_mul(width)
+        .saturating_add(n.saturating_mul(d).saturating_mul(d).saturating_mul(4))
+        .saturating_add(d.saturating_mul(d).saturating_mul(d).saturating_mul(16))
 }
 fn work_limit(n: usize, channels: usize, iterations: usize) -> u128 {
     (iterations as u128)
@@ -638,6 +651,9 @@ fn span_certified<I: Iterator<Item = usize> + Clone>(
         absolute_moments[rank] = absolute + absolute_correction;
         rank += 1;
     }
+    if !recondition::recondition(members.clone(), channels, rank, &value, dual, scratch)? {
+        return Ok(false);
+    }
     condition_certified(members, channels, rank, &value, bound, scratch)
 }
 
@@ -764,6 +780,60 @@ mod tests {
             expansion,
         )
     }
+    #[test]
+    fn crossed_worker_slopes_certify_an_independent_exact_nonzero_dual() {
+        let n = 600;
+        let worker: Vec<_> = (0..n).map(|i| (i / 6) as u32).collect();
+        let period: Vec<_> = (0..n).map(|i| (i % 6 + 1) as f64).collect();
+        let firm: Vec<_> = (0..n)
+            .map(|i| (((i / 6 + 1) * 7 + (i % 6 + 1) * 3) % 25) as u32)
+            .collect();
+        let wi = LevelIndex::from_codes(&worker, 100).unwrap();
+        let fi = LevelIndex::from_codes(&firm, 25).unwrap();
+        let mut columns = Vec::new();
+        for level in 0..100 {
+            columns.push(Column {
+                members: Some(wi.members(level)),
+                values: None,
+            });
+        }
+        for level in 0..24 {
+            columns.push(Column {
+                members: Some(fi.members(level)),
+                values: None,
+            });
+        }
+        for level in 0..100 {
+            columns.push(Column {
+                members: Some(wi.members(level)),
+                values: Some(&period),
+            });
+        }
+        // Within each worker, (1,-2,1,0,0,0) has zero sum and period
+        // moment. Firms repeat every 25 workers; opposing block signs cancel
+        // their moments. All products below are small exact integers.
+        let dual: Vec<_> = (0..n)
+            .map(|i| (if (i / 150) % 2 == 0 { 1. } else { -1. }) * [1., -2., 1., 0., 0., 0.][i % 6])
+            .collect();
+        for column in &columns {
+            assert_eq!(
+                (0..n).map(|row| column.value(row) * dual[row]).sum::<f64>(),
+                0.
+            );
+        }
+        let mut scratch = AuditScratch::new(columns.len(), 0, u128::MAX).unwrap();
+        assert!(span_certified(
+            0..n,
+            columns.len(),
+            None,
+            |c, r| columns[c].value(r),
+            &dual,
+            1e-10,
+            &mut scratch
+        )
+        .unwrap());
+    }
+
     #[test]
     fn exact_shared_slope_aliases_include_integer_power_two_and_affine_sources() {
         let left = [-1., 0., 1., 2.];
@@ -922,7 +992,7 @@ mod tests {
             AuditScratch::new(3, 0, bytes - 1).err().unwrap().code,
             ErrorCode::NonConvergence
         );
-        assert!(admit_work(48, 10, 3, 1000).is_ok());
+        assert!(admit_work(48, 10, 3, 4000).is_ok());
         assert_eq!(
             admit_work(48, 10, 3, 1).unwrap_err().code,
             ErrorCode::NonConvergence

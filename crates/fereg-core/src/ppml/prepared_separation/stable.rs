@@ -27,8 +27,9 @@ pub(super) fn resolve(
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-    full_span_bytes: u128,
+    admission: DetectorAdmission,
 ) -> Result<Resolution> {
+    let (ppml, linear) = admission.unit_projection.unwrap_or((ppml, linear));
     let (ppml, linear) = strict_projection_policy(ppml, linear);
     let outcome = generation.outcome();
     let unit = fallible_filled(outcome.len(), 1., "unable to reserve unit dual weights")?;
@@ -57,7 +58,7 @@ pub(super) fn resolve(
             ppml,
             config,
             linear,
-            full_span_bytes,
+            admission.full_span_bytes,
         )? {
             return Ok(Resolution::Dual(dual, iteration));
         }
@@ -150,8 +151,9 @@ pub(super) fn certify_dual(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    full_span_bytes: u128,
+    admission: DetectorAdmission,
 ) -> Result<bool> {
+    let (ppml, linear) = admission.unit_projection.unwrap_or((ppml, linear));
     let unit = fallible_filled(dual.len(), 1., "unable to reserve dual certificate weights")?;
     certify_dual_with_weights(
         generation,
@@ -160,7 +162,7 @@ pub(super) fn certify_dual(
         ppml,
         config,
         linear,
-        full_span_bytes,
+        admission.full_span_bytes,
     )
 }
 
@@ -472,9 +474,9 @@ pub(super) fn recover(
     linear: PreparedOlsFitConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     original: FeregError,
-    full_span_bytes: u128,
+    admission: DetectorAdmission,
 ) -> Result<PreparedNumericalProposal> {
-    match resolve(generation, ppml, config, linear, interrupt, full_span_bytes) {
+    match resolve(generation, ppml, config, linear, interrupt, admission) {
         Ok(Resolution::Direction(proposal)) => Ok(proposal),
         Ok(Resolution::Dual(dual, iterations)) => {
             let certificate = dual_certificate(generation, &dual);

@@ -2695,9 +2695,15 @@ fn unit_metric_rectifier_recovers_boundary_only_control_contrast_and_singleton()
                 fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
                 ..PreparedOlsFitConfig::default()
             };
-            let stable::Resolution::Direction(candidate) =
-                stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0).unwrap()
-            else {
+            let stable::Resolution::Direction(candidate) = stable::resolve(
+                generation,
+                ppml,
+                config,
+                linear,
+                &mut |_| Ok(()),
+                DetectorAdmission::default(),
+            )
+            .unwrap() else {
                 panic!("exact separator was missed");
             };
             assert_eq!(candidate.dropped_original_rows, &[5, 6]);
@@ -2722,22 +2728,68 @@ fn unit_metric_dual_certificate_rejects_zero_margin_and_full_model_moments() {
         fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
         ..PreparedOlsFitConfig::default()
     };
-    let stable::Resolution::Dual(dual, _) =
-        stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0).unwrap()
-    else {
+    let stable::Resolution::Dual(dual, _) = stable::resolve(
+        generation,
+        ppml,
+        config,
+        linear,
+        &mut |_| Ok(()),
+        DetectorAdmission::default(),
+    )
+    .unwrap() else {
         panic!("opposed regressor cannot separate");
     };
-    assert!(stable::certify_dual(generation, &dual, ppml, config, linear, 0).unwrap());
+    assert!(stable::certify_dual(
+        generation,
+        &dual,
+        ppml,
+        config,
+        linear,
+        DetectorAdmission::default()
+    )
+    .unwrap());
     let mut corrupt = dual.clone();
     corrupt[4] = 0.;
-    assert!(!stable::certify_dual(generation, &corrupt, ppml, config, linear, 0).unwrap());
+    assert!(!stable::certify_dual(
+        generation,
+        &corrupt,
+        ppml,
+        config,
+        linear,
+        DetectorAdmission::default()
+    )
+    .unwrap());
     corrupt[4] = f64::EPSILON;
-    assert!(!stable::certify_dual(generation, &corrupt, ppml, config, linear, 0).unwrap());
+    assert!(!stable::certify_dual(
+        generation,
+        &corrupt,
+        ppml,
+        config,
+        linear,
+        DetectorAdmission::default()
+    )
+    .unwrap());
     corrupt = dual.clone();
     corrupt[4] += 0.1;
-    assert!(!stable::certify_dual(generation, &corrupt, ppml, config, linear, 0).unwrap());
+    assert!(!stable::certify_dual(
+        generation,
+        &corrupt,
+        ppml,
+        config,
+        linear,
+        DetectorAdmission::default()
+    )
+    .unwrap());
     corrupt[4] = f64::NAN;
-    assert!(!stable::certify_dual(generation, &corrupt, ppml, config, linear, 0).unwrap());
+    assert!(!stable::certify_dual(
+        generation,
+        &corrupt,
+        ppml,
+        config,
+        linear,
+        DetectorAdmission::default()
+    )
+    .unwrap());
 }
 
 #[test]
@@ -2780,12 +2832,15 @@ fn unit_metric_dual_never_certifies_away_a_shifted_boundary_indicator() {
                 fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
                 ..PreparedOlsFitConfig::default()
             };
-            let stable::Resolution::Direction(candidate) =
-                stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0)
-                    .unwrap_or_else(|e| {
-                        panic!("absorbed_slope={absorbed_slope}, shift {shift}: {e}")
-                    })
-            else {
+            let stable::Resolution::Direction(candidate) = stable::resolve(
+                generation,
+                ppml,
+                config,
+                linear,
+                &mut |_| Ok(()),
+                DetectorAdmission::default(),
+            )
+            .unwrap_or_else(|e| panic!("absorbed_slope={absorbed_slope}, shift {shift}: {e}")) else {
                 panic!("exact shifted separator was falsely certified absent at shift {shift}");
             };
             assert_eq!(
@@ -2855,7 +2910,14 @@ fn unit_metric_dual_refuses_numerically_omitted_exact_separating_contrasts() {
                 fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
                 ..PreparedOlsFitConfig::default()
             };
-            match stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0) {
+            match stable::resolve(
+                generation,
+                ppml,
+                config,
+                linear,
+                &mut |_| Ok(()),
+                DetectorAdmission::default(),
+            ) {
                 Ok(stable::Resolution::Dual(_, _)) => {
                     panic!("erased exact 2^-{power} separating contrast")
                 }
@@ -2917,7 +2979,15 @@ fn unit_metric_dual_accepts_exact_finite_aliases_without_separation() {
             ..PreparedOlsFitConfig::default()
         };
         assert!(matches!(
-            stable::resolve(generation, ppml, config, linear, &mut |_| Ok(()), 0).unwrap(),
+            stable::resolve(
+                generation,
+                ppml,
+                config,
+                linear,
+                &mut |_| Ok(()),
+                DetectorAdmission::default()
+            )
+            .unwrap(),
             stable::Resolution::Dual(_, _)
         ));
     }
@@ -2941,7 +3011,7 @@ fn unit_metric_recovery_no_drop_replays_its_own_dual_certificate() {
         linear,
         &mut |_| Ok(()),
         FeregError::new(ErrorCode::NonConvergence, "weighted projection failure"),
-        0,
+        DetectorAdmission::default(),
     )
     .unwrap();
     assert_eq!(proposal.status, MethodStatus::NoSeparation);
@@ -3131,3 +3201,6 @@ fn complete_span_admission_boundary(mut plan: PpmlMemoryPlan) {
     assert_eq!(admit_complete_span_workspace(&mut plan, 1, 0).unwrap(), 1);
     assert_eq!(plan.separation_projection_bytes, extra);
 }
+
+#[path = "unit_policy_tests.rs"]
+mod unit_policy_tests;

@@ -228,30 +228,34 @@ fn classify(
 /// with the Auto arm's published bits and the LP-witness sample, so both
 /// cells are "same".
 ///
-/// The 0.6.1 full-model unit-dual certificate changes this census without
-/// changing its scientific witness. All 54 cells (108 arms) complete and match
-/// the independent LP retained count/hash. Between arms, every drop, reason,
-/// generation and published coefficient/covariance bit agrees; only the
-/// terminal NoSeparation IR report differs. Seeds 4/10/16 now report CG/Auto
-/// iterations 10/1, 10/1 and 12/1 in all three method configurations; the old
-/// divergent chain seeds 2/5/8/11/17 now agree at 1/1.
+/// Independent full-model unit-dual certification uses its separately
+/// admitted LSMR projector in both arms; weighted detection retains the CG
+/// versus Auto comparison. A successful weighted rectifier reports its own
+/// iteration count, while the added unit-dual check independently certifies
+/// its no-drop claim. Seeds 2/5/8/11/17 report terminal CG/Auto iterations 2/1
+/// in all three method configurations; all remaining cells agree.
 ///
-/// A traced seed-4 case explains the new retry: the CG unit dual has boundary
-/// margin 1.39556e-4 but moment 5.79423e-14, above its margin-scaled 1.39556e-14
-/// bound. The strict check rejects it and the admitted LSMR retry certifies;
-/// Auto certifies its no-drop claim with the same added full-model check.
-/// These are terminal report iterations, not total unit-dual projections.
-/// Fixed-worker repeatability and cross-worker decisions remain checked below.
+/// All 54 cells (108 arms) must complete and match the independent LP retained
+/// count/hash. Between arms, every drop, reason, generation and published
+/// coefficient/covariance bit agrees; only the terminal NoSeparation IR
+/// iteration/certificate report may differ. Fixed-worker repeatability and
+/// cross-worker decisions remain checked below.
 const DIVERGENCES: &[(usize, usize, &str)] = &[
-    (4, 0, "ir-iterations"),
-    (4, 1, "ir-iterations"),
-    (4, 2, "ir-iterations"),
-    (10, 0, "ir-iterations"),
-    (10, 1, "ir-iterations"),
-    (10, 2, "ir-iterations"),
-    (16, 0, "ir-iterations"),
-    (16, 1, "ir-iterations"),
-    (16, 2, "ir-iterations"),
+    (2, 0, "ir-iterations"),
+    (2, 1, "ir-iterations"),
+    (2, 2, "ir-iterations"),
+    (5, 0, "ir-iterations"),
+    (5, 1, "ir-iterations"),
+    (5, 2, "ir-iterations"),
+    (8, 0, "ir-iterations"),
+    (8, 1, "ir-iterations"),
+    (8, 2, "ir-iterations"),
+    (11, 0, "ir-iterations"),
+    (11, 1, "ir-iterations"),
+    (11, 2, "ir-iterations"),
+    (17, 0, "ir-iterations"),
+    (17, 1, "ir-iterations"),
+    (17, 2, "ir-iterations"),
 ];
 
 /// Independent witness per seeded design: the number of retained rows and the

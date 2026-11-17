@@ -26,55 +26,18 @@ pub(super) fn condition_certified<I: Iterator<Item = usize> + Clone>(
     let underflow = n as f64 * f64::MIN_POSITIVE;
     let gram_error = eta * (1. + eta).powi(2) / (1. - norm_error).powi(2) + underflow;
     let square = rank * rank;
+    if !fill_gram(rows, channels, rank, value, scratch)? {
+        return Ok(false);
+    }
     let AuditScratch {
-        bank,
-        scales,
         norms,
         moments,
         absolute_moments,
         gram,
         factor,
         inverse,
-        expansion,
         ..
     } = scratch;
-    for left in 0..rank {
-        crate::interrupt::checkpoint()?;
-        for right in 0..=left {
-            let (mut sum, mut correction) = (0., 0.);
-            for (position, row) in rows.clone().enumerate() {
-                crate::interrupt::row_checkpoint(position)?;
-                let Some(a) = evaluate_values(
-                    &bank[left * channels..(left + 1) * channels],
-                    value,
-                    row,
-                    expansion,
-                ) else {
-                    return Ok(false);
-                };
-                let Some(b) = evaluate_values(
-                    &bank[right * channels..(right + 1) * channels],
-                    value,
-                    row,
-                    expansion,
-                ) else {
-                    return Ok(false);
-                };
-                let Some(a) = normalized_value(a, scales[left], norms[left]) else {
-                    return Ok(false);
-                };
-                let Some(b) = normalized_value(b, scales[right], norms[right]) else {
-                    return Ok(false);
-                };
-                neumaier_add(a * b, &mut sum, &mut correction);
-            }
-            if !(sum + correction).is_finite() {
-                return Ok(false);
-            }
-            gram[left * rank + right] = sum + correction;
-            gram[right * rank + left] = sum + correction;
-        }
-    }
     factor[..square].copy_from_slice(&gram[..square]);
     inverse[..square].fill(0.);
     for i in 0..rank {
@@ -146,4 +109,122 @@ pub(super) fn condition_certified<I: Iterator<Item = usize> + Clone>(
     }
     let projected_bound = moment_bound * (rank as f64 * inverse_bound).sqrt() * (1. + arithmetic);
     Ok(projected_bound.is_finite() && projected_bound <= bound)
+}
+
+/// Stream rows once while preserving each Gram entry's original summation
+/// order. The unused inverse row holds normalized basis values; factor holds
+/// compensation until it is overwritten by the solver's Gram copy.
+fn fill_gram<I: Iterator<Item = usize>>(
+    rows: I,
+    channels: usize,
+    rank: usize,
+    value: &impl Fn(usize, usize) -> f64,
+    scratch: &mut AuditScratch,
+) -> Result<bool> {
+    let AuditScratch {
+        bank,
+        scales,
+        norms,
+        gram,
+        factor,
+        inverse,
+        expansion,
+        ..
+    } = scratch;
+    let square = rank * rank;
+    gram[..square].fill(0.);
+    factor[..square].fill(0.);
+    for (position, row) in rows.enumerate() {
+        crate::interrupt::row_checkpoint(position)?;
+        for basis in 0..rank {
+            crate::interrupt::row_checkpoint(basis)?;
+            let Some(v) = evaluate_values(
+                &bank[basis * channels..(basis + 1) * channels],
+                value,
+                row,
+                expansion,
+            )
+            .and_then(|v| normalized_value(v, scales[basis], norms[basis])) else {
+                return Ok(false);
+            };
+            inverse[basis] = v;
+        }
+        for left in 0..rank {
+            crate::interrupt::row_checkpoint(left)?;
+            for right in 0..=left {
+                let entry = left * rank + right;
+                neumaier_add(
+                    inverse[left] * inverse[right],
+                    &mut gram[entry],
+                    &mut factor[entry],
+                );
+            }
+        }
+    }
+    for left in 0..rank {
+        crate::interrupt::checkpoint()?;
+        for right in 0..=left {
+            let v = gram[left * rank + right] + factor[left * rank + right];
+            if !v.is_finite() {
+                return Ok(false);
+            }
+            gram[left * rank + right] = v;
+            gram[right * rank + left] = v;
+        }
+    }
+    Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn streamed_gram_preserves_pairwise_compensated_arithmetic_bits() {
+        let (channels, rank, n) = (7, 5, 23);
+        let mut scratch = AuditScratch::new(channels, 0, u128::MAX).unwrap();
+        for i in 0..rank {
+            for j in 0..channels {
+                scratch.bank[i * channels + j] = ((i + j * 3) as f64 - 7.) / 8.;
+            }
+            scratch.scales[i] = (i + 2) as f64;
+            scratch.norms[i] = (i + 1) as f64 / 3.;
+        }
+        let value = |c: usize, r: usize| ((c * 13 + r * 7) as f64 - 61.) / 11.;
+        let mut reference = vec![0.; rank * rank];
+        for left in 0..rank {
+            for right in 0..=left {
+                let (mut sum, mut correction) = (0., 0.);
+                for row in 0..n {
+                    let a = evaluate_values(
+                        &scratch.bank[left * channels..(left + 1) * channels],
+                        &value,
+                        row,
+                        &mut scratch.expansion,
+                    )
+                    .unwrap();
+                    let b = evaluate_values(
+                        &scratch.bank[right * channels..(right + 1) * channels],
+                        &value,
+                        row,
+                        &mut scratch.expansion,
+                    )
+                    .unwrap();
+                    let a = normalized_value(a, scratch.scales[left], scratch.norms[left]).unwrap();
+                    let b =
+                        normalized_value(b, scratch.scales[right], scratch.norms[right]).unwrap();
+                    neumaier_add(a * b, &mut sum, &mut correction);
+                }
+                reference[left * rank + right] = sum + correction;
+                reference[right * rank + left] = sum + correction;
+            }
+        }
+        assert!(fill_gram(0..n, channels, rank, &value, &mut scratch).unwrap());
+        assert_eq!(
+            scratch.gram[..rank * rank]
+                .iter()
+                .map(|v| v.to_bits())
+                .collect::<Vec<_>>(),
+            reference.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+        );
+    }
 }

@@ -16,12 +16,12 @@ use crate::ols::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum BoundColumn<'a> {
-    Numeric(&'a [f64]),
+    Numeric(&'a [f64], f64),
     Response(&'a [f64]),
-    Generated(&'a PreparedOlsData, usize),
+    Generated(&'a PreparedOlsData, usize, f64),
 }
 impl<'a> BoundColumn<'a> {
-    fn new(prepared: &'a PreparedOlsData, column: usize) -> Result<Self> {
+    fn new(prepared: &'a PreparedOlsData, column: usize, origin: f64) -> Result<Self> {
         let recipe = prepared.model().columns.get(column).ok_or_else(invalid)?;
         match recipe.kind {
             PreparedOlsColumnKind::Continuous {
@@ -36,20 +36,21 @@ impl<'a> BoundColumn<'a> {
                 if values.len() != prepared.sample().n_active() {
                     return Err(invalid());
                 }
-                Ok(Self::Numeric(values))
+                Ok(Self::Numeric(values, origin))
             }
-            _ => Ok(Self::Generated(prepared, column)),
+            _ => Ok(Self::Generated(prepared, column, origin)),
         }
     }
     #[inline]
     pub(super) fn value(self, row: usize) -> Result<f64> {
         let raw = self.raw_value(row)?;
-        if matches!(self, Self::Response(_)) {
-            return Ok(raw);
-        }
+        let origin = match self {
+            Self::Response(_) => return Ok(raw),
+            Self::Numeric(_, origin) | Self::Generated(_, _, origin) => origin,
+        };
         // Keep the location outside every group mean. Otherwise a weighted
         // mean near 1e15 loses unit-scale information before subtraction.
-        let centered = raw - self.raw_value(0)?;
+        let centered = raw - origin;
         if centered.is_finite() {
             Ok(centered)
         } else {
@@ -60,14 +61,15 @@ impl<'a> BoundColumn<'a> {
     #[inline]
     fn raw_value(self, row: usize) -> Result<f64> {
         match self {
-            Self::Numeric(values) | Self::Response(values) => Ok(values[row]),
-            Self::Generated(prepared, column) => prepared.fit_column_value(column, row),
+            Self::Numeric(values, _) | Self::Response(values) => Ok(values[row]),
+            Self::Generated(prepared, column, _) => prepared.fit_column_value(column, row),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 struct ColumnStats {
+    origin: f64,
     raw_norm: f64,
     mean: f64,
     within_norm: f64,
@@ -92,6 +94,7 @@ pub(super) struct ImplicitCenteredView<'a> {
     prepared: &'a PreparedOlsData,
     generated: &'a [usize],
     centers: &'a [f64],
+    stats: &'a [ColumnStats],
     effect: BorrowedInterceptEffect<'a>,
 }
 impl<'a> ImplicitCenteredView<'a> {
@@ -112,8 +115,12 @@ impl<'a> ImplicitCenteredView<'a> {
     }
     pub(super) fn bind_columns(self) -> Result<Vec<BoundColumn<'a>>> {
         let mut bound = reserve(self.columns())?;
-        for &column in self.generated {
-            bound.push(BoundColumn::new(self.prepared, column)?);
+        for (position, &column) in self.generated.iter().enumerate() {
+            bound.push(BoundColumn::new(
+                self.prepared,
+                column,
+                self.stats[position].origin,
+            )?);
         }
         Ok(bound)
     }
@@ -129,7 +136,8 @@ impl<'a> ImplicitCenteredView<'a> {
         let group = self.codes()[row] as usize;
         for (target, &column) in output.iter_mut().zip(selected) {
             let generated = *self.generated.get(column).ok_or_else(invalid)?;
-            *target = BoundColumn::new(self.prepared, generated)?.value(row)?
+            *target = BoundColumn::new(self.prepared, generated, self.stats[column].origin)?
+                .value(row)?
                 - self.center(column, group);
             if !target.is_finite() {
                 return Err(numerical());
@@ -143,7 +151,12 @@ impl<'a> ImplicitCenteredView<'a> {
         }
         let group = self.codes()[row] as usize;
         for (column, target) in output.iter_mut().enumerate() {
-            *target = BoundColumn::new(self.prepared, self.generated[column])?.value(row)?
+            *target = BoundColumn::new(
+                self.prepared,
+                self.generated[column],
+                self.stats[column].origin,
+            )?
+            .value(row)?
                 - self.center(column, group);
             if !target.is_finite() {
                 return Err(numerical());
@@ -190,7 +203,7 @@ impl ImplicitCenteredDesign {
             return Err(invalid());
         }
         for &column in generated {
-            BoundColumn::new(prepared, column)?;
+            BoundColumn::new(prepared, column, 0.0)?;
         }
         let mut ids = reserve(generated.len())?;
         ids.extend_from_slice(generated);
@@ -230,6 +243,7 @@ impl ImplicitCenteredDesign {
             prepared,
             generated: &self.generated,
             centers: &self.centers,
+            stats: &self.stats,
             effect,
         })
     }
@@ -362,6 +376,15 @@ impl ImplicitCenteredDesign {
                 Ok(())
             },
         )?;
+        refresh_raw_statistics(
+            &mut self.stats,
+            prepared,
+            &self.generated,
+            response,
+            normalized,
+            total,
+        )?;
+        let statistics = &self.stats;
         // Each (column, group) mean is independent; schedule them together
         // rather than one task per column, so workers stay balanced.
         let group_weights = &self.group_weights;
@@ -375,7 +398,7 @@ impl ImplicitCenteredDesign {
                 let column = if position == columns {
                     BoundColumn::Response(response)
                 } else {
-                    BoundColumn::new(prepared, generated[position])?
+                    BoundColumn::new(prepared, generated[position], statistics[position].origin)?
                 };
                 *center = group_mean(
                     column,
@@ -396,28 +419,16 @@ impl ImplicitCenteredDesign {
                 let column = if position == columns {
                     BoundColumn::Response(response)
                 } else {
-                    BoundColumn::new(prepared, generated[position])?
+                    BoundColumn::new(prepared, generated[position], stats.origin)?
                 };
-                let (mut raw_scale, mut raw_sum, mut within_scale, mut within_sum) =
-                    (0., 1., 0., 1.);
-                let (mut sum, mut correction) = (0., 0.);
+                let (mut within_scale, mut within_sum) = (0., 1.);
                 for (row, &w) in normalized.iter().enumerate() {
-                    let value = column.raw_value(row)?;
+                    crate::interrupt::row_checkpoint(row)?;
                     let centered = column.value(row)?
                         - centers[position * groups + effect.codes()[row] as usize];
-                    update_scaled_square(w.sqrt() * value, &mut raw_scale, &mut raw_sum)?;
                     update_scaled_square(w.sqrt() * centered, &mut within_scale, &mut within_sum)?;
-                    compensated_add(w * value, &mut sum, &mut correction)?;
                 }
-                *stats = ColumnStats {
-                    raw_norm: stable_norm(raw_scale, raw_sum)?,
-                    within_norm: stable_norm(within_scale, within_sum)?,
-                    mean: (sum + correction) / total,
-                    ..ColumnStats::default()
-                };
-                if !stats.mean.is_finite() {
-                    return Err(numerical());
-                }
+                stats.within_norm = stable_norm(within_scale, within_sum)?;
                 Ok(())
             })?;
         let solve_seconds = start.elapsed().as_secs_f64();
@@ -431,7 +442,7 @@ impl ImplicitCenteredDesign {
                 let column = if position == columns {
                     BoundColumn::Response(response)
                 } else {
-                    BoundColumn::new(prepared, generated[position])?
+                    BoundColumn::new(prepared, generated[position], stats.origin)?
                 };
                 let denominator = stats.raw_norm.max(stats.within_norm);
                 for group in 0..groups {
@@ -523,6 +534,56 @@ impl ImplicitCenteredDesign {
         ))
     }
 }
+
+/// Choose a representable origin while computing each raw norm and mean.
+/// Storage is already included in the design's ColumnStats reservation.
+fn refresh_raw_statistics(
+    stats: &mut [ColumnStats],
+    prepared: &PreparedOlsData,
+    generated: &[usize],
+    response: &[f64],
+    normalized: &[f64],
+    total: f64,
+) -> Result<()> {
+    // Validate the common origin while computing the existing raw moments.
+    // A representable weighted column can contain opposite finite extremes:
+    // when subtracting its first value overflows, zero is a safe origin.
+    stats
+        .par_iter_mut()
+        .enumerate()
+        .try_for_each(|(position, stats)| -> Result<()> {
+            let column = if position == generated.len() {
+                BoundColumn::Response(response)
+            } else {
+                BoundColumn::new(prepared, generated[position], 0.0)?
+            };
+            let observed = if position == generated.len() {
+                0.0
+            } else {
+                column.raw_value(0)?
+            };
+            let mut representable = true;
+            let (mut raw_scale, mut raw_sum, mut sum, mut correction) = (0., 1., 0., 0.);
+            for (row, &w) in normalized.iter().enumerate() {
+                crate::interrupt::row_checkpoint(row)?;
+                let value = column.raw_value(row)?;
+                representable &= (value - observed).is_finite();
+                update_scaled_square(w.sqrt() * value, &mut raw_scale, &mut raw_sum)?;
+                compensated_add(w * value, &mut sum, &mut correction)?;
+            }
+            *stats = ColumnStats {
+                origin: if representable { observed } else { 0.0 },
+                raw_norm: stable_norm(raw_scale, raw_sum)?,
+                mean: (sum + correction) / total,
+                ..ColumnStats::default()
+            };
+            if !stats.mean.is_finite() {
+                return Err(numerical());
+            }
+            Ok(())
+        })
+}
+
 /// Group means per scheduled task, at least, when scheduling (column, group) pairs.
 const CENTER_TASK_GROUPS: usize = 64;
 

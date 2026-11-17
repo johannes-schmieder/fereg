@@ -57,8 +57,8 @@ use super::{
 
 /// LSMR projection workspace resolved on generation zero beside the
 /// retained-CG charge; later generations only shrink. It is charged to the
-/// memory plan only when a re-execution is admitted, with fedemean's bound
-/// of its Schwarz preconditioner on the generation that re-executes.
+/// memory plan when the strict unit projection or a re-execution is admitted,
+/// with fedemean's bound of its Schwarz preconditioner on that generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct LsmrAdmission {
     /// Execution bytes below the detector projection (the plan before its
@@ -301,6 +301,16 @@ impl<'a> DetectorPolicy<'a> {
 }
 
 impl DetectorPolicy<'_> {
+    /// Resolve the existing optional LSMR workspace for the independent
+    /// unit-metric proof, before its first projection. The same policy is
+    /// retained for terminal replay; inability to admit it is not a failure.
+    pub(super) fn admitted_unit_projection(
+        &self,
+        generation: &PreparedPpmlModelGeneration,
+    ) -> Result<Option<(PpmlConfig, PreparedOlsFitConfig)>> {
+        self.admit_lsmr(&|limit| schwarz_bound(generation, limit))
+    }
+
     /// The admitted first-attempt policy.
     pub(super) const fn admitted(&self) -> (PpmlConfig, PreparedOlsFitConfig) {
         (self.ppml, self.linear)

@@ -1179,6 +1179,11 @@ identified directions under representable translations and changes low bits
 of intercepted reference scaling/projection; formerly falsely omitted
 translated regressors can become identified. Analytic PPML beta/predictor and
 OLS coefficient/residual witnesses cover the change.
+For implicit one-FE centering, if subtracting the observed location would
+overflow on any finite value, that column uses zero as its stored origin.
+All implicit readers use the same origin; the existing statistics reservation
+accounts for it. This permits opposite finite extremes with representable
+weighted moments, without changing the raw-moment arithmetic or certificates.
 
 Before an iterative session freezes finite rank, a retained direction too
 small relative to projection accuracy, or a narrowly classified
@@ -1843,11 +1848,21 @@ Absorbed slopes require an audit of the complete FE span. Equivalent partitions
 share a local audit regardless of variable names or level labels; distinct
 partitions include every level-specific intercept and slope channel. Exact
 source-coordinate elimination distinguishes aliases from represented small
-directions. A verified Gram-inverse residual bound accounts for the resulting
-basis's conditioning before its moments can bound the dual's full projection;
+directions. Two bounded modified Gram-Schmidt passes recondition that complete
+basis in source coordinates, preserving its triangular leading coefficients
+and full evaluated span. The final moments are recomputed on that basis;
+reconditioning is not itself a certificate. A verified Gram-inverse residual
+bound accounts for the resulting basis's conditioning before its moments can
+bound the dual's full projection;
 small individual moments alone cannot establish that bound. The audit's extra
 workspace is admitted explicitly, after crediting the released projection
 workspace, and its work is bounded by the configured detector/projection budget.
+The work bound includes source evaluations, both reconditioning passes,
+streamed Gram construction and inverse verification, including any structural
+intercept channel. Gram entries retain their compensated row summation order
+while sharing each evaluated basis row. These stages reuse the admitted banks
+and poll for Break, as do both elimination and back substitution in the dense
+multiple-right-hand-side solver.
 Failure to certify within those limits is an explicit numerical refusal, with
 the previous estimates preserved. The categorical-only path is unchanged by
 this additional slope audit.
@@ -1855,6 +1870,14 @@ this additional slope audit.
 The unit-weight detector uses the Dykstra recurrence
 `t[positive] = p[positive]`, `t[zero] = max(p[zero], 1)`,
 `p_new = t - P_full(t)`, with FE projection tolerance at most `1e-14`.
+Generation-zero preflight resolves the detector's existing optional modified-LSMR
+admission, including its established Schwarz workspace bound, for unit-metric
+primal/dual checks. When admitted, all unit projections and independent terminal
+replay use that stored policy at the unchanged strict FE tolerance and complete
+original-model certificates. Weighted iterated-rectifier projections and IRLS
+routing remain unchanged. Ineligible models or insufficient optional workspace
+retain the existing unit projector; numerical failures never become a
+NoSeparation verdict and retain the existing bounded retry/error behavior.
 A proposed primal direction still passes the independent full-model deletion
 certificate above. A comfortably positive dual that fails the full-span audit
 fails promptly; repeating a truncated projector cannot certify the missing
