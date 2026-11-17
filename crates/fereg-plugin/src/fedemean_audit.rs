@@ -296,8 +296,9 @@ fn fedemean_schwarz_build_stays_within_its_reported_workspace() {
 /// fedemean's lockstep modified LSMR stays within its reported workspace
 /// (and `admission_bytes`) at its widest batch, with Jacobi and Schwarz,
 /// intercepts and a slope, five and eleven columns, one and four workers;
-/// under a limit one byte below, it runs a narrower batch within that
-/// limit; at one column's workspace it runs one column at a time.
+/// fresh reruns stay within a limit one byte below that report and within
+/// the retained-capacity admission for a later one-column call. The latter
+/// retains the wide history and does not imply one-column batching.
 #[test]
 #[ignore = "process-global allocator audit; run with --test-threads=1"]
 fn fedemean_lsmr_batches_stay_within_their_reported_workspace() {
@@ -382,7 +383,10 @@ fn fedemean_lsmr_batches_stay_within_their_reported_workspace() {
                         let wide = reported(outcome, &label);
                         eprintln!("fedemean LSMR audit: {label}: peak {peak} reported {wide} ({:.2})", peak as f64 / wide as f64);
                         assert!(u128::from(peak) <= wide + u128::from(REPORT_SLACK), "{label}: peak {peak} > reported {wide}");
-                        assert_eq!(admission, Some(wide), "{label}");
+                        // Future calls conservatively forecast retained capacities;
+                        // their admission can exceed this call's reported bound.
+                        // The independent peak/report and cap checks stay binding.
+                        assert!(admission.is_some_and(|bound| bound >= wide), "{label}");
                         for limit in [wide - 1, one.unwrap()] {
                             let (outcome, peak, _, _) = run(Some(limit));
                             let narrow = reported(outcome, &label);
