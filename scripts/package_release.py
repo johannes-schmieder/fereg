@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a deterministic, exact-SHA fereg 0.6.1 source archive."""
+"""Create a deterministic, exact-SHA fereg 0.6.2 source archive."""
 from __future__ import annotations
 
 import argparse

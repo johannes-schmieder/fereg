@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.2 — 2026-11-17
+
+- Speed up PPML separation by testing a certified unit-weight no-separation
+  proof before weighted work and checking exact aliases on the original
+  model. Keep independent terminal replay and existing acceptance criteria.
+- Protect restored solver iterates after numerical breakdown and verify
+  reconstruction before writing into a fallback's input.
+- Repair multiway clustered PPML covariance in the standardized coordinate
+  system used by ppmlhdfe, including a private intercept during repair.
+  Report the slope block in the original units and preserve the public
+  constant normalization.
+- Reduce repeated QR and fixed-effect kernel scans while preserving
+  observation order and the arithmetic of each output.
+
 ## 0.6.1 — 2026-11-17
 
 Stability and correctness repairs. Full source, Mac/Linux/Windows, canonical,

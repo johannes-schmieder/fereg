@@ -202,6 +202,9 @@ if _rc exit 9141
 * Independent sparse-graph IID beta/RSS/TSS/F certificate witness.
 capture noisily do "tests/stata/development/stability061_ols_iid_certificate.do"
 if _rc exit 9142
+* Weakly connected categorical effects and Fast/Low dummy-model parity.
+capture noisily do "tests/stata/development/feppml_low_categorical.do"
+if _rc exit 9143
 * Fresh Python processes test changing host threads and native error recovery.
 shell python scripts/check_pystata_threads.py ///
     --utilities "C:/Program Files/Stata19/utilities" ///
