@@ -1,55 +1,99 @@
 # Validation status
 
-## Release 0.6.1 additional stability validation, November 17, 2026
+## Release 0.6.1 combined stability candidate, November 17, 2026
 
-**All-level factor extension: focused validation in progress; unpublished.**
-The authorized extension admits `ibn.half#i.(c01-c30)` with interacted absorption
-without changing the caller's command. OLS uses the same policy. Native admission
-accepts original indicator graphs without a declared base; it does not infer
-bases from operator spelling or select replacement bases. Existing minimum-base,
-conflicting-base and public `ib#`/`fvset` restrictions remain. Two focused Rust
-tests pass, including independent group means and robust contrast covariance
-after missingness and whole-level separation. The maintained native fixture
-adds explicit dummy OLS/Poisson, pweights, two-way clustered covariance, mixed
-`i.`/`ibn.` terms, absorbed slopes, original stripes and atomic error checks.
-The clean I1 source gate passes (370 Python, 1,625 core, 213 plugin, 243 serial
-FFI tests, 13 isolated allocator audits and the 108-arm independent separation
-census, plus compiler/static guards). A fresh universal Mac I1 build passes its
-binary, ABI and package checks. The exact private `ibn` command passes with
-29,027 observations and an identical reference sample; maximum main-coefficient
-error is 2.27e-14, relative SE error 2.73e-10 and scaled covariance error 5.45e-10.
-These are correctness checks, not controlled speed measurements. All original
-private calls and final package qualification remain in progress.
+**Unpublished.** The combined I2 runtime passes its source, private-command,
+Mac, Windows and Linux qualifications. Assembled three-platform package checks
+are pending. Native build source is
+`8c97110c137127dad01b0a4431fffbfb605e4292`; runtime identity is
+`383c30b7b17462209dd8c0f54463a1233d177c660557e618013c18d995df26da`.
+Main, public tags, releases and SSC remain unchanged.
 
-**Additional numerical repairs in qualification.** A generated sparse two-FE
-OLS witness reproduces the IID covariance/fit-statistic refusal and its tighter
-tolerance/LSMR workarounds. An independent Walsh/Decimal oracle isolates coarse
-initial within-outcome variation versus more accurate final residuals. One
-bounded same-solver stricter refit is limited to eligible failed sum/statistic
-certificates; all original acceptance checks remain unchanged. Failed owners
-are dropped before rebuilding, and work plus sequential workspace peaks are
-accounted without changing the accepted residual report. The maintained native
-fixture has 54 unit/analytic/frequency-weight, output, solver and worker 1/8/16
-cases. The reduced refusal witness requests residual output; its accepted
-no-output counterpart retains the existing accuracy policy. Restricted reporter
-data and expanded macros were not supplied, so exact-data reproduction is not
-claimed.
+**Unchanged private commands.** Both supplied do-files pass all 39 calls on
+the actual final Mac binary, including `ibn.half#i.(c01-c30)` with interacted
+absorption. Original script hashes remain unchanged. The exact `ibn` comparison
+has 29,027 observations and zero reference-sample differences; maximum main
+coefficient error is 2.27e-14, relative SE error 2.73e-10 and covariance error
+scaled by reference SE products 5.45e-10. Original slots, bases and omission
+flags remain authoritative after missingness or separation. Explicit `ib#` and
+`fvset` base overrides with interacted/sloped absorption remain unsupported.
 
-A separate generated PPML witness exposes a pre-existing pure-slope failure
-when an explicitly included control is already absorbed. The recurrence misses
-a freshly acceptable state and later takes an unstable near-null step. The
-repair changes reconstruction scheduling only; the fresh local-span gate,
-independent original-design certificate and canonical rank authority are intact.
+**IID certificate repair.** Generated sparse two-FE data reproduce the reported
+IID refusal and its tighter-tolerance/LSMR workarounds. Independent Walsh and
+70-digit Decimal witnesses isolate coarse initial within-outcome variation
+versus more accurate final residuals. One bounded stricter same-model,
+same-solver refit follows only an eligible failed sum/statistic certificate;
+every original acceptance check remains unchanged. Failed owners drop before
+rebuilding. Sequential work and workspace maxima are counted while the accepted
+residual report remains intact. Tests cover weights, Fast/Low, refusal, Break,
+resource failures, exhausted recovery and accounting overflow.
+
+The maintained native fixture passes 54 unit/analytic/frequency-weight,
+output, solver and requested-worker 1/8/16 cases on Mac and Linux. A larger
+65,600-row, 49-control native Auto/LSMR witness passes independent coefficients,
+full covariance, RSS, within/overall TSS, F, sample, DoF and residual checks on
+Mac and Linux, with maximum coefficient error 6.93e-10 and covariance diagonal
+relative error 5.50e-9. Linux job 8702889 has failed=0/exit=0 and verifies both
+requested and actual native workers=16 for Auto and LSMR. The original wrapper
+emitted a duplicate success sentinel; a later accounting-query timeout occurred
+before any further model call. Both failed attempts remain diagnostic evidence.
+One bounded Auto replay after the wrapper repair matches the original printed
+scientific metrics exactly; LSMR passes too. Three model calls ran in total,
+with unchanged models, oracles and targets. No scientific failure or adverse
+timing was resampled.
+
+The reporter's restricted data and expanded macros were not supplied. The
+reduced current-source refusal witness requests residual output; its accepted
+no-output counterpart retains the existing accuracy policy. This repairs a
+reproduced failure class, not a verified reproduction of the restricted case
+or a universal improvement to already accepted coarse no-output statistics.
+
+**Projection scheduling repair.** A generated PPML model exposes a pre-existing
+pure-slope failure when an explicit control is already absorbed. The recurrence
+misses a freshly acceptable state and then takes an unstable near-null step.
+Only reconstruction scheduling changes: fresh local-span acceptance, the
+independent original-design certificate and canonical rank policy are intact.
 Affected scalar coefficient-space stopping points and residual bits may change,
-including categorical fallback uses of that owner; the joint recurrence is
-unchanged. Weak genuine
-contrasts, coordinate changes, workers, repeatability and refusal behavior are
-being checked. Both repairs have bounded independent Astra reviews.
+including categorical fallback uses; the joint recurrence is unchanged.
+Independent weak-contrast, coordinate, worker/repeat and capacity witnesses pass.
+Both numerical repairs received bounded independent Astra extra-high review.
 
-Final clean source, actual-native, cross-platform and package qualification of
-the combined runtime are pending; the evidence below describes the preceding
-candidate. SCC exposes Stata/MP 19 but no separate 19.5 module; exact reporter
-Stata 19.5 equivalence remains unverified.
+**I2 source gate.** Clean Rust 1.85.1/Python 3.12.2 checks pass: 371 Python,
+1,633 core, 213 plugin and 243 serial FFI tests, all 13 isolated allocator
+audits, all 108 LP-backed separation arms and fixed/cross-worker checks at
+1/2/4/8. Both Clippy configurations, formatting, fuzz compilation, complexity,
+size and portable/static/mock guards pass. Source log SHA256:
+`ce361b6e04800af626f6850e1f7aa0286a842de4c7b835553df23b7af03ea3fd`.
+
+**Mac.** Fresh offline universal build, native audits, ABI and package bindings
+pass. Eight frontend/oracle/transaction fixtures and eight broader regression
+fixtures pass; six PyStata modes pass 54 calls and six rollback checks. All 14
+physical Break boundaries pass with child processes reaped. Two Rosetta fixtures
+verify the actual x86_64 slice. Twelve staged installation fixtures, an isolated
+34-file byte-verified local install with independent OLS/PPML checks, and Stata
+18 replay pass. Rosetta is not physical Intel-Mac qualification.
+
+**Linux.** Main jobs 8702722–8702724 pass application checks and scheduler
+failed=0/exit=0. Strict qualification has 2,622 Rust executions, 378 Python,
+13 isolated allocator audits, Linux mock-plugin checks, CI18 and bench482.
+The unchanged canonical panel passes 77 scientific cases/308 native outputs.
+Stata/MP 19.0 whole-tree has 172 passes and zero failures. Two extracted-package
+entries are covered separately by staged installation; the Windows-only entry
+is covered on Windows. Staged, 15.1/19 compatibility and PyStata sections pass.
+The dedicated worker comparison above records its separate wrapper recovery.
+
+**Windows.** Run `win-20261117T120735Z-ac5cdf6e` passes on exact I2 source.
+Receipt SHA256:
+`e1d7361a29c27408ec18139ca1216a3397ec8af3d4ed18f09cf4d3b2526aae27`.
+Stopped instance, deleted transient transfer objects and released lock verify.
+This is Server2022/StataMP19 coverage, not the exact Windows11/StataNow19.5/
+CPython3.13.1/full-MCP environment. Available SCC Stata is verified 19.0,
+not 19.5. No exact 19.5 host is available in these qualification environments.
+
+These runs establish correctness, not controlled speed comparisons. Public
+HTTP installation and publication have not occurred. Current evidence and
+candidate assets have their final retention location outside the repository under
+`$HOME/research/fereg/stability061-20261116/ibn-extension`.
 
 **Preceding candidate qualification.** Main, public tags and releases remain
 unchanged. All three preceding native plugins were built from
@@ -131,8 +175,9 @@ additional default absorbed fits agree at workers 1 and 8 and repeat exactly
 at 8; a separate explicit-LSMR fit also agrees with its reference. The six
 comparisons completed in 798.987 seconds and the extra checks in 121.966
 seconds; these are uncontrolled correctness-run durations, not benchmarks.
-The Q original-command replay also passes: all 38 supported commands return
-success and the unsupported `ibn` request returns the expected r(498). The
+The historical Q original-command replay passed all 38 then-supported commands;
+its then-unsupported `ibn` request returned the expected r(498). I2 above now
+passes all 39. The
 original scripts remain byte-identical; the run took 1,756.228 seconds. Q's
 private validation is complete.
 

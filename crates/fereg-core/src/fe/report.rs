@@ -408,9 +408,9 @@ pub struct SolveReport {
     pub requested_solver: FeSolverKind,
     /// Solver that produced the returned residuals.
     pub used_solver: FeSolverKind,
-    /// Iteration count reported by the selected solver.
+    /// Solver iterations, including rejected IID work in an aggregate report.
     pub iterations: usize,
-    /// Additional PPML checkpoint attempts after a rejected Schur or LSMR candidate.
+    /// Additional certification/checkpoint attempts after a rejected candidate.
     pub checkpoint_retries: usize,
     /// Modeled workspace over all attempts, excluding the caller execution base.
     pub solver_workspace_peak: crate::memory::SolverWorkspacePeak,

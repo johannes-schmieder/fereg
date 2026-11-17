@@ -4,9 +4,9 @@
 
 Stability and correctness repairs. The preceding candidate passed source,
 native platform, canonical replay, private scientific and combined-package
-installation checks locally. All-level factors and two additional numerical
-repairs are being qualified; final source, native and package checks are pending.
-Nothing is published.
+installation checks locally. The combined source, private commands and all
+native platform checks pass, including the repaired 16-worker stress harness.
+Assembled three-platform package checks are pending. Nothing is published.
 See [validation](docs/VALIDATION.md) for the exact evidence and limits.
 
 - Support all-level `ibn.` factors with interacted or sloped absorption in OLS
@@ -17,8 +17,8 @@ See [validation](docs/VALIDATION.md) for the exact evidence and limits.
   stricter fixed-effect accuracy, using the same model and requested solver.
   Require all original certificates and preserve cancellation, resource and
   request errors. Already successful fits keep their existing numerical path.
-- Check coefficient-space projections earlier when the recurrence approaches the existing
-  fresh accuracy gate, avoiding an unnecessary unstable step for redundant
+- Check coefficient-space projections earlier when the recurrence approaches
+  the existing fresh accuracy gate, avoiding an unnecessary unstable step for redundant
   controls. Fresh acceptance, original-design checks and rank policy are unchanged.
 - Reproject suspicious finite directions before freezing rank and coefficients,
   including projection error amplified against an explicit coefficient goal;
