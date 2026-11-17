@@ -61,21 +61,6 @@ pub(super) fn resolve(
         )? {
             return Ok(Resolution::Dual(dual, iteration));
         }
-        // Every exact projection residual is already in the full orthogonal
-        // complement. A comfortably positive dual failing its span audit is
-        // therefore numerical ambiguity, not a cone-feasibility iteration.
-        // Repeating the same truncated projector cannot repair that evidence.
-        let margin = outcome
-            .iter()
-            .zip(&dual)
-            .filter_map(|(&y, &value)| (y == 0.).then_some(value))
-            .fold(f64::INFINITY, f64::min);
-        if margin.is_finite() && margin > config.certificate_tolerance * stable_norm(&dual) {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                "unit-metric separation dual has unresolved full-model orthogonality",
-            ));
-        }
         let mut direction = projection.fitted;
         let scale = infinity_norm(&direction);
         if scale > f64::MIN_POSITIVE {
@@ -127,6 +112,25 @@ pub(super) fn resolve(
                     )?));
                 }
             }
+        }
+        // A nearly exact primal separator can leave a tiny, positive
+        // projection residual made only of roundoff. Test the independent
+        // primal certificate above before interpreting that residual as an
+        // unresolved dual; its relative margin alone cannot distinguish it.
+        // Every exact projection residual is already in the full orthogonal
+        // complement. A comfortably positive dual failing its span audit is
+        // therefore numerical ambiguity, not a cone-feasibility iteration.
+        // Repeating the same truncated projector cannot repair that evidence.
+        let margin = outcome
+            .iter()
+            .zip(&dual)
+            .filter_map(|(&y, &value)| (y == 0.).then_some(value))
+            .fold(f64::INFINITY, f64::min);
+        if margin.is_finite() && margin > config.certificate_tolerance * stable_norm(&dual) {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "unit-metric separation dual has unresolved full-model orthogonality",
+            ));
         }
         response = dual;
     }
