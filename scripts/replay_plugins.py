@@ -17,6 +17,7 @@ from replay_bias_reference import enrich_expected
 import replay_cmg_polish
 
 ROOT = Path(__file__).resolve().parents[1]
+PPML_ROUTE_ITERATIONS = {10, 26}  # RROUTE: two 16-column rows, iteration column 10.
 sys.path.insert(0, str(ROOT / 'crates/fereg-oracle/python'))
 from replay_ols_reference import enrich_expected as enrich_ols_expected
 
@@ -40,7 +41,7 @@ def exact_view(result: dict, poisson: bool) -> dict:
                                  else runtime[:6] + runtime[42:48] + runtime[54:60])
     solver = tables['RSOLVER']
     width = solver['columns']
-    timing = {13, 14, 15} if poisson else {8, 9}
+    timing = {13, 14, 15} if poisson else {16, 17}
     solver['bits'] = [value for index, value in enumerate(solver['bits']) if index % width not in timing]
     if 'RBDIAG' in tables:
         tables['RBDIAG']['bits'][9] = 'elapsed-seconds'
@@ -189,8 +190,8 @@ def scientific_errors(result: dict, expected: dict) -> list[str]:
 def derived_residual_errors(result: dict, expected: dict) -> list[str]:
     """A Fast OLS case without observation outputs must take the derived path.
 
-    SPEC §7: its residual solver row reports the absorption's solver, zero
-    iterations, zero pilot work and stop code 5 (derived certificate). The
+    SPEC §7: its residual solver row reports method 5 (derived), zero
+    iterations and zero pilot work. The
     dense targets then check coefficients and the residual-based covariance.
     """
     if (expected['poisson'] or set(expected['outputs']) != {'sample', 'drop_reason'}
@@ -198,8 +199,8 @@ def derived_residual_errors(result: dict, expected: dict) -> list[str]:
         return ['derived-residual case requests an observation output']
     solver = matrix(result, 'RSOLVER')
     width = result['matrices']['RSOLVER']['columns']
-    absorption, residual = solver[:width], solver[width:2 * width]
-    if (residual[3] != 5 or residual[1] != absorption[1] or residual[2] != 0
+    residual = solver[width:2 * width]
+    if (width != 22 or len(solver) != 44 or residual[1] != 5 or residual[10] != 0
             or residual[14] != 0 or residual[15] != 0):
         return ['derived residual certificate path was not taken']
     return []
@@ -236,25 +237,35 @@ def discrete_view(result: dict, expected: dict) -> dict:
     # Keep model/route decisions across workers, while numerical certificates
     # and inner work counts may vary. Read original wire positions here, not
     # the timing-stripped RSOLVER positions used by affected scopes.
-    for name in ('RFE', 'RCLUSTER', 'RSUBSET', 'RDROP', 'RSEQ', 'RREC'):
+    for name in ('RFE', 'RCLUSTER', 'RSUBSET', 'RDROP', 'RSEQ', 'RREC', 'RMARKB', 'RMARKV'):
         if name in tables:
             protected[name] = tables[name]
+    if poisson and 'RROUTE' in tables:
+        route = tables['RROUTE']
+        # Keep the complete shape and every route/formulation decision. Only
+        # inner iteration counts may differ across workers.
+        protected['RROUTE'] = {**route, 'bits': [
+            'inner-iterations' if i in PPML_ROUTE_ITERATIONS else value
+            for i, value in enumerate(route['bits'])]}
     fields = ({'RFIT': [0, 1, 2, 3, 4, 11, 13, 15, 16, 20, 21, 22, 23, 26],
                'RCERT': [15], 'RINF': [0, 1, 2, 3, 4, 5, 6, 7, 10, 14, 15],
                'RRUNTIME': [1, 3, 4, 5, 6, 7, 8, 26, 76, 77]}
               if poisson else
               {'RFIT': list(range(0, 24, 2)),
                'RCERT': list(range(0, 64, 2)) + [1, 3, 5, 7, 47, 49, 51, 53, 57, 59, 63],
-               'RRUNTIME': list(range(6)) + list(range(42, 48))})
+               'RRUNTIME': list(range(6)) + list(range(42, 48)) + [58, 59]})
     for name, indices in fields.items():
         if name in tables:
             protected[name] = {i: tables[name]['bits'][i] for i in indices}
-    for name, columns in [('RSOLVER', set(range(12)) if poisson else {0, 1, 3, 10, 11, 12, 13}),
+    for name, columns in [('RSOLVER', set(range(12)) if poisson else set(range(10)) | {11, 12, 13}),
                           ('RSEP', set(range(8)) | {12, 13})]:
         if name in tables:
             table = tables[name]
             protected[name] = {i: value for i, value in enumerate(table['bits'])
                                if i % table['columns'] in columns}
+            if name == 'RSOLVER' and not poisson:
+                protected['solver_shape'] = {key: value for key, value in table.items() if key != 'bits'}
+                protected['solver_shape']['length'] = len(table['bits'])
     status = tables['RSTATUS']
     if status.get('columns') == 4 and 'RB' in tables and 'RV' in tables:
         identified = {1.0} if poisson else {1.0, 5.0}
@@ -266,8 +277,8 @@ def discrete_view(result: dict, expected: dict) -> dict:
                                            if i // width in omitted or i % width in omitted}
     dof = result['matrices']['RDOF']['bits']
     # PPML's DoF table consists entirely of counts/flags. OLS interleaves
-    # presence flags and values; raw weight sums and correction factors float.
-    rows = [i for i in range(20) if i not in {4, 11}]
+    # presence flags and values; only the raw weight sum floats.
+    rows = [i for i in range(20) if i != 4]
     if not poisson:
         protected['dof_presence'] = dof[::2]
     dof = dof if expected['poisson'] else [dof[2*i+1] for i in rows]
@@ -366,7 +377,7 @@ def numerical_scope_indices(poisson: bool) -> dict[str, set[int] | RowColumns]:
                 'RSEP': RowColumns(SEPARATION_COLUMNS, {8, 9, 10, 11})}
     return {'RFIT': set(range(1, 24, 2)),
             'RCERT': {2 * row + 1 for row in list(range(4, 23)) + [27, 30]},
-            'RSOLVER': {14 * row + col for row in range(2) for col in [4, 5, 6, 7, 13]}}
+            'RSOLVER': {20 * row + col for row in range(2) for col in range(15, 20)}}
 
 
 def work_scope_indices(poisson: bool) -> dict[str, set[int] | RowColumns]:
@@ -375,13 +386,16 @@ def work_scope_indices(poisson: bool) -> dict[str, set[int] | RowColumns]:
     RSEP iterations (zero-based column 4) and RSEQ total iterations
     (zero-based column 7) are declarable for a scoped parent comparison only;
     they stay protected cross-worker decisions in `discrete_view`.
+    RROUTE inner iterations (column 10 in each 16-column row) are work;
+    all route, fallback and formulation decisions remain protected.
     """
     if poisson:
         return {'RFIT': {14}, 'RSOLVER': {19 * row + 12 for row in range(4)},
                 'RSEP': RowColumns(SEPARATION_COLUMNS, {4}),
                 'RSEQ': RowColumns(SEPARATION_SEQUENCE_COLUMNS, {7}),
+                'RROUTE': PPML_ROUTE_ITERATIONS,
                 'runtime_signature': {1}}  # RRUNTIME[2]: total inner iterations.
-    return {'RSOLVER': {2, 16}}
+    return {'RSOLVER': {20 * row + col for row in range(2) for col in (10, 14)}}
 
 
 def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:

@@ -176,8 +176,8 @@ def derive(path):
     bounds = {'RCERT': {str(i): [0., tolerance] for i in residual_indices}}
     if vce == 'robust': bounds['RCERT']['41'] = [0., 1. + tolerance]
     absolute_bound = tolerance * max(1., sum(weights) * max(abs(v) for c in data[1:4] for v in c))
-    bounds['RSOLVER'] = {str(row * 16 + i): [0., absolute_bound if i == 4 else tolerance]
-                         for row in range(2) for i in (4, 5, 6, 7)}
+    bounds['RSOLVER'] = {str(row * 22 + i): [0., absolute_bound if i == 18 else tolerance]
+                         for row in range(2) for i in (18, 19, 20, 21)}
     target.update(bounds=bounds, tolerance=tolerance,
                   moment_inputs={'weights': weights, 'regressors': data[2:4], 'effects': effects})
     return target

@@ -1090,8 +1090,9 @@ publication continue to apply.
 
 A Fast fit that requests no residual, xbd, d or saved-FE output may keep its
 within residual `r = y~ - X~b` instead of projecting it again, when the derived
-certificate of §16 passes; its residual solver row reports the absorption's
-method, zero iterations, zero pilot work and stop code 5. The derived residual
+certificate of §16 passes. Its internal report retains the absorption's solver
+and derived-certificate stop reason; its public route reports method `derived`,
+zero iterations and zero pilot work. The derived residual
 serves the two-FE categorical owner (decided by Johannes, 2026-10-27) and, for
 beta.10, the direct one-FE Auto route and the many-FE Auto geometry policy,
 whose routes all certify at the requested tolerance (decided by Johannes,

@@ -19,7 +19,7 @@ def fixture():
         return {'columns': columns, 'bits': [bits(0.)] * length}
     result = {'return_code': 0, 'matrices': {
         'RB': table(2), 'RV': table(4, 2), 'RFIT': table(24),
-        'RCERT': table(64), 'RSOLVER': table(32, 16), 'RRUNTIME': table(60),
+        'RCERT': table(64), 'RSOLVER': table(44, 22), 'RRUNTIME': table(60),
         'RMEMORY': table(1), 'RDOF': table(40), 'RSTATUS': table(8, 4)},
         'columns': [[bits(1.)], [bits(0.)], [bits(2.)], [bits(3.)]]}
     expected = {'poisson': False,
@@ -64,8 +64,8 @@ class SolverRoutingReplay(unittest.TestCase):
         # Missing numeric fields must not acquire a fictitious finite witness.
         result['matrices']['RCERT']['bits'][11] = bits(8.98846567431158e307)
         paths = routing_replay.numerical_paths(result, expected)
-        self.assertIn('/matrices/RSOLVER/bits/2', paths)
-        self.assertIn('/matrices/RSOLVER/bits/16', paths)
+        for index in (10, 14, 30, 34):
+            self.assertIn(f'/matrices/RSOLVER/bits/{index}', paths)
         self.assertIn('/columns/2', paths)
         self.assertIn('/columns/3', paths)
         for protected in ('/columns/0', '/columns/1', '/matrices/RSOLVER/bits/1',

@@ -82,12 +82,13 @@ class CmgNormalizedReference(unittest.TestCase):
                     'saved': [5, 6], 'saved_reference': dict(zip([5, 6], target['saved_channels'])),
                     'column_reference': {3: target['absorbed'], 4: target['xb']},
                     'cmg_diagnostics': {'targets': target['targets'], 'tolerance': 1e-10,
-                        'bounds': {'RCERT': {'13': [0., 1e-10]}, 'RSOLVER': {'5': [0., 1e-10]}},
+                        'bounds': {'RCERT': {'13': [0., 1e-10]},
+                                   'RSOLVER': {str(i): [0., 1e-10] for i in [18, 19, 20, 21, 40, 41, 42, 43]}},
                         'moment_inputs': {'regressors': x, 'weights': [1.] * 8, 'effects': effects}}}
         raw = {'return_code': 0, 'columns': [list(map(bits, c)) for c in
                [[1.] * 8, target['residual'], target['fitted'], target['absorbed'], target['xb'], *target['saved_channels']]],
                'matrices': {'RREC': table([1.]), 'RCERT': table([1.] * 64),
-                   'RFIT': table([1.] * 24), 'RSOLVER': table([0.] * 32), 'RB': table(target['beta']),
+                   'RFIT': table([1.] * 24), 'RSOLVER': table([0.] * 44), 'RB': table(target['beta']),
                    'RV': {'rows': 3, 'columns': 3, 'bits': list(map(bits, [v for row in target['covariance'] for v in row]))}}}
         for name, targets in target['targets'].items():
             for index, value in targets.items(): raw['matrices'][name]['bits'][int(index)] = bits(value)
@@ -95,7 +96,7 @@ class CmgNormalizedReference(unittest.TestCase):
         self.assertEqual(scientific_errors(raw, expected), [])
         for name, index, value, label in [('RB', 2, 4., 'coefficients'), ('RV', 2, 0., 'covariance'),
                                         ('RFIT', 11, 0., 'RFIT'), ('RCERT', 13, 1e-8, 'certificate'),
-                                        ('RSOLVER', 5, 1e-8, 'certificate')]:
+                                        *[('RSOLVER', i, 1e-8, 'certificate') for i in [18, 19, 20, 21, 40, 41, 42, 43]]]:
             bad = copy.deepcopy(raw)
             bad['matrices'][name]['bits'][index] = bits(value)
             self.assertTrue(any(label in error for error in scientific_errors(bad, expected)), (name, index))

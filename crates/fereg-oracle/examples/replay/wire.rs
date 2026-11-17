@@ -1,3 +1,6 @@
+use fereg_core::protocol::{
+    OLS_RESULT_WIRE_VERSION, PPML_REQUEST_WIRE_VERSION, PPML_RESULT_WIRE_VERSION,
+};
 use fereg_core::{
     CompiledModelSpecification, ModelWireV2, NumericWireTable, OlsInputRole, SourceEntry, SourceId,
 };
@@ -337,14 +340,19 @@ pub(super) fn configure(
     solver: &str,
     low: bool,
 ) -> Request {
+    let result_version = if poisson {
+        PPML_RESULT_WIRE_VERSION
+    } else {
+        OLS_RESULT_WIRE_VERSION
+    };
+    request.arg("result_major", result_version.major);
+    request.arg("result_minor", result_version.minor);
     for field in [
         "ado=0.6.1",
         "protocol_major=1",
         "protocol_minor=7",
         "stata=18.0",
         "plugin=0.6.1",
-        "result_major=1",
-        "result_minor=5",
         "include_intercept=1",
         "candidate_all=0",
         "input_complete=0",
@@ -466,9 +474,9 @@ fn result_layout(request: &mut Request, design: &Design, poisson: bool) {
     );
     request.result("memory", "RMEMORY", 11, 2);
     if poisson {
+        request.arg("request_major", PPML_REQUEST_WIRE_VERSION.major);
+        request.arg("request_minor", PPML_REQUEST_WIRE_VERSION.minor);
         for field in [
-            "request_major=1",
-            "request_minor=8",
             "adjustment=none",
             "adjustment_position=0",
             "residual=response",
@@ -484,6 +492,7 @@ fn result_layout(request: &mut Request, design: &Design, poisson: bool) {
             ("fit", "RFIT", 27, 1),
             ("dof", "RDOF", 12, 1),
             ("solver", "RSOLVER", 4, 22),
+            ("route", "RROUTE", 2, 16),
             ("certificate", "RCERT", 16, 1),
             ("runtime", "RRUNTIME", 108, 1),
             ("receipt", "RREC", 1, 33),
@@ -505,12 +514,82 @@ fn result_layout(request: &mut Request, design: &Design, poisson: bool) {
             ("marker_v", "RMARKV", k, k),
             ("fit", "RFIT", 12, 2),
             ("dof", "RDOF", 20, 2),
-            ("solver", "RSOLVER", 2, 16),
+            ("solver", "RSOLVER", 2, 22),
             ("certificate", "RCERT", 32, 2),
             ("runtime", "RRUNTIME", 30, 2),
             ("receipt", "RREC", 1, 16),
         ] {
             request.result(key, name, r, c);
         }
+    }
+}
+
+#[cfg(test)]
+mod request_layout_tests {
+    use super::*;
+    use fereg_oracle::designs::{generate, DesignSpec};
+
+    #[test]
+    fn ppml_request_binds_current_wire_and_both_route_rows() {
+        let design = generate(19, &DesignSpec::default()).unwrap();
+        let request = make(&design, true, "robust", "auto", false);
+        for (key, value) in [
+            ("request_major", PPML_REQUEST_WIRE_VERSION.major),
+            ("request_minor", PPML_REQUEST_WIRE_VERSION.minor),
+            ("result_major", PPML_RESULT_WIRE_VERSION.major),
+            ("result_minor", PPML_RESULT_WIRE_VERSION.minor),
+        ] {
+            let arguments: Vec<_> = request
+                .args
+                .iter()
+                .filter(|arg| arg.starts_with(&format!("{key}=")))
+                .collect();
+            assert_eq!(arguments, [&format!("{key}={value}")]);
+        }
+        assert_eq!(
+            request
+                .args
+                .iter()
+                .filter(|arg| arg.starts_with("output_route_matrix="))
+                .collect::<Vec<_>>(),
+            [&"output_route_matrix=RROUTE".to_owned()]
+        );
+        let routes: Vec<_> = request
+            .matrices
+            .iter()
+            .filter(|entry| entry.0 == "RROUTE")
+            .collect();
+        assert_eq!(routes.len(), 1);
+        assert_eq!((routes[0].1, routes[0].2), (2, 16));
+        assert_eq!(routes[0].3, vec![0.; 32]);
+    }
+
+    #[test]
+    fn ols_request_binds_current_result_without_ppml_route_bank() {
+        let design = generate(19, &DesignSpec::default()).unwrap();
+        let request = make(&design, false, "robust", "auto", false);
+        for (key, value) in [
+            ("result_major", OLS_RESULT_WIRE_VERSION.major),
+            ("result_minor", OLS_RESULT_WIRE_VERSION.minor),
+        ] {
+            let arguments: Vec<_> = request
+                .args
+                .iter()
+                .filter(|arg| arg.starts_with(&format!("{key}=")))
+                .collect();
+            assert_eq!(arguments, [&format!("{key}={value}")]);
+        }
+        let solver = request
+            .matrices
+            .iter()
+            .find(|entry| entry.0 == "RSOLVER")
+            .unwrap();
+        assert_eq!((solver.1, solver.2), (2, 22));
+        assert_eq!(solver.3, vec![0.; 44]);
+        assert!(!request
+            .args
+            .iter()
+            .any(|arg| arg.starts_with("request_") || arg.starts_with("output_route_matrix=")));
+        assert!(!request.matrices.iter().any(|entry| entry.0 == "RROUTE"));
     }
 }

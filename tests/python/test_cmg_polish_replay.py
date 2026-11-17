@@ -84,22 +84,32 @@ class TypedCmgDiagnostics(unittest.TestCase):
         bad = result()
         bad['matrices']['RSTATUS']['rows'] = 99
         with self.assertRaises(ValueError): cmg.validate_rows(bad, 'fast', 10)
+        current = result()
+        current['matrices']['RSOLVER'] = table([0.] * 44, 2, 22)
+        with self.assertRaises(ValueError): cmg.validate_rows(current, 'fast', 10)
         with self.assertRaises(ValueError): cmg.validate_rows(result(), 'fast', 10, parent=True)
 
     def test_parent_normalization_does_not_hide_other_decisions_or_worker_drift(self):
         expected = {'poisson': False, 'outputs': {'sample': 0, 'drop_reason': 1}}
+        def legacy_view(value):
+            # This hash-bound historical transition uses the former 16-column
+            # table; current native rows fail its shape guard above.
+            view = replay.discrete_view(value, expected)
+            view['protected']['RSOLVER'] = {i: v for i, v in enumerate(value['matrices']['RSOLVER']['bits'])
+                                           if i % 16 in {0, 1, 3, 10, 11, 12, 13}}
+            return view
         parent, candidate = result(parent=True), result()
-        views = [replay.discrete_view(value, expected) for value in (parent, candidate)]
+        views = [legacy_view(value) for value in (parent, candidate)]
         self.assertEqual(cmg.parent_discrete_view(views[0], 'fast'), cmg.parent_discrete_view(views[1], 'fast'))
         self.assertNotEqual(views[0], views[1])  # unchanged worker view sees concrete diagnostics
         for name, index in [('RSTATUS', 1), ('RCERT', 63), ('RDOF', 19), ('RSOLVER', 12)]:
             bad = copy.deepcopy(candidate)
             set_value(bad, name, index, 123)
-            self.assertNotEqual(cmg.parent_discrete_view(replay.discrete_view(bad, expected), 'fast'),
+            self.assertNotEqual(cmg.parent_discrete_view(legacy_view(bad), 'fast'),
                                 cmg.parent_discrete_view(views[1], 'fast'))
         bad = copy.deepcopy(candidate)
         set_value(bad, 'RSOLVER', 11, 0)
-        self.assertNotEqual(replay.discrete_view(bad, expected), views[1])
+        self.assertNotEqual(legacy_view(bad), views[1])
         self.assertTrue(replay.differences(replay.exact_view(bad, False), replay.exact_view(candidate, False)))
 
     def test_numerical_and_certificate_failures_remain_visible(self):
