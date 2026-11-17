@@ -1,47 +1,41 @@
 # Changelog
 
-## 0.6.1 — validation in progress, 2026-11-17
+## 0.6.1 — locally qualified, unpublished, 2026-11-17
 
-Stability and correctness repairs; not yet release-qualified or published.
-A large public stress case prompted an additional repaired projection path;
-its full source and rebuilt-native qualification remain pending.
-See [validation](docs/VALIDATION.md) for completed checks and remaining gates.
+Stability and correctness repairs. Source, native platform, canonical replay
+and private scientific checks pass locally. Final combined archives and
+package admission follow the documentation/source freeze; nothing is published.
+See [validation](docs/VALIDATION.md) for the exact evidence and limits.
 
-- Recheck suspicious projected rank and projection error amplified by weak
-  directions before freezing coefficients, including explicit coefficient
-  accuracy goals; correct reported-inverse certification under changes of
-  regressor units.
-- Require independent full-model separation proofs, including absorbed slopes,
-  exact aliases and small contrasts between controls and fixed effects. Use
-  bounded graph proposals for exact binary controls and reuse previously proved
-  exact aliases through an acyclic proof chain; retain the same final checks.
-- Preserve identified finite and absorbed-slope variation under large shifts
-  and changes of units. Remove an observed origin only when subtraction is
-  lossless, including OLS without absorbed effects and implicit one-FE centering.
-- Stabilize nonzero-offset initialization and admit component-scaled strict
-  checkpoints for two or three categorical effects under the existing memory
-  limits and original-weight acceptance certificates.
-- Compensate local-span certificate dots and full-system adjoint sums to retain
-  strict projection accuracy on replicated designs, including PCG, LSMR and
-  weight-mass formation, without changing rank or acceptance tolerances.
-- Charge retained wide workspaces, Gram/output capacities and reduced-cell
-  scratch on narrower reuse. Keep LSMR's selected-width allowance through
-  escalation and remove the undercharged one-lane Schwarz retry; a tighter
-  cap can decline untouched, while a fresh projector admits a smaller history.
-- Retain the initially admitted Low-mode projection bank so later strict
-  retries preserve warm transaction capacity, including a shorter tail block.
-- Allow serialized PyStata calls from different host threads while rejecting
-  concurrent/reentrant native calls and retaining numeric-window safeguards.
-- Fix long coefficient-name lists and factor metadata; include public OLS
+- Reproject suspicious finite directions before freezing rank and coefficients,
+  including projection error amplified against an explicit coefficient goal;
+  certify the reported inverse under changes of regressor units.
+- Require independent full-model separation proofs for absorbed slopes, exact
+  aliases and small contrasts. Use bounded exact-binary graph proposals and
+  acyclic reuse of previously proved aliases with unchanged final certificates.
+- Fix long coefficient-name parsing and factor metadata; include public OLS
   metadata in atomic rollback.
+- Permit serialized PyStata calls from different host threads while rejecting
+  concurrent/reentrant calls and preserving numeric-window safeguards.
+- Preserve identified variation under shifts and changes of units; remove an
+  origin only when subtraction is lossless. Cover ordinary OLS, implicit
+  one-FE centering and complete absorbed-slope spans.
+- Stabilize nonzero-offset initialization and admit component-scaled strict
+  checkpoints for two or three categorical effects within existing controls.
+- Compensate local-span certificate dots and full-system adjoint sums, including
+  PCG, LSMR and weight-mass formation, without relaxing rank or accuracy targets.
+- Charge doubled scatter storage, retained wide workspaces, Gram/output
+  capacities and reduced-cell scratch. Preserve the selected-width LSMR
+  allowance during escalation; a lower cap may require a fresh projector.
+- Retain the admitted Low-mode projection bank through shorter tail blocks so
+  later strict retries preserve warm transaction capacity.
 - Evaluate weighted candidate restrictions once, accept explicit continuous
-  omission operators, and support prediction with an empty coefficient axis.
-- Align canonical replay and benchmark checkers with the current wire and solver
-  tables. Protect separation drop counts, route decisions, DoF, determinism and
-  omission markers; preserve historical input-bound contracts separately.
+  omission operators and support prediction with an empty coefficient axis.
+- Align canonical replay and benchmark checkers with current wire/solver tables;
+  protect drop counts, route decisions, DoF, determinism and omission markers.
+  Keep historical input-bound contracts separate and fail-closed.
 - Add independent mathematical, memory-boundary, rollback and native regression
-  tests, including a 77-case actual-plugin corpus with repeated worker checks.
-
+  coverage, including replicated-binary separation and its finite control.
 
 ## 0.6.0 — 2026-11-11
 
