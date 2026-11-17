@@ -1,26 +1,26 @@
 {
   "schema": 1,
   "version": "0.6.1",
-  "source_sha": "0bfe3c53810d6513e4f991b949161a74c724f02e",
-  "runtime_sha256": "7f98e1f19a1d5d75f030e4ba23e258651641d68218d5f90220d3f00aeb85bf0f",
+  "source_sha": "b470575ca315c8d1c015195af6d98474feeea4fb",
+  "runtime_sha256": "383c30b7b17462209dd8c0f54463a1233d177c660557e618013c18d995df26da",
   "plugins": [
     {
       "path": "fereg_macos.plugin",
-      "source_sha": "4a7c2ae334bd45b69724c842ab54c286a32889a7",
-      "sha256": "72c7e7e7bb6038892cc506983aa20798264e28ed5e8abd95214c0a6b89ac24cf",
-      "bytes": 33961136
+      "source_sha": "8c97110c137127dad01b0a4431fffbfb605e4292",
+      "sha256": "c1c42cb3a5ba3c1725a81aba5a1ca4eb229a3a42089ce22149302602c4739537",
+      "bytes": 33994768
     },
     {
       "path": "fereg_linux.plugin",
-      "source_sha": "4a7c2ae334bd45b69724c842ab54c286a32889a7",
-      "sha256": "5f356b908fcd936b11ba5796342c6c2d3be5ddef69b2fa924800f66aa03b6e72",
-      "bytes": 24192904
+      "source_sha": "8c97110c137127dad01b0a4431fffbfb605e4292",
+      "sha256": "2f5f7aa423cad353877e32ea4bb545bf6cf9f470451f76f6a551a21b12f26c5f",
+      "bytes": 24201752
     },
     {
       "path": "fereg_windows.plugin",
-      "source_sha": "4a7c2ae334bd45b69724c842ab54c286a32889a7",
-      "sha256": "a91af55830142c362f5d0677c0cc9a2281c44c6925bc4307f77939d0f5318f3b",
-      "bytes": 20591616
+      "source_sha": "8c97110c137127dad01b0a4431fffbfb605e4292",
+      "sha256": "f133ca0dda13d9ab5f8468e783828ccf2dafec4b68164efa62b7d0b4110ef49f",
+      "bytes": 20602880
     }
   ],
   "included_platforms": [
@@ -37,8 +37,8 @@
     "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md."
   ],
   "candidate": true,
-  "corresponding_source_sha256": "45b8ead26bbd815044a56c3f72adeb844d74a5c4ad790deead6a8b882fcbbd51",
-  "corresponding_source_commit": "0bfe3c53810d6513e4f991b949161a74c724f02e",
-  "native_source_commit": "4a7c2ae334bd45b69724c842ab54c286a32889a7",
+  "corresponding_source_sha256": "7557bedf95412bf2c8b20899a8f5750061a0d3f5755dfbaf5fba9a6885a849c5",
+  "corresponding_source_commit": "b470575ca315c8d1c015195af6d98474feeea4fb",
+  "native_source_commit": "8c97110c137127dad01b0a4431fffbfb605e4292",
   "cmg_sha": "368eceba765db91ff818815698da35889ce42ed0"
 }

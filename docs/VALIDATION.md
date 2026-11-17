@@ -2,9 +2,9 @@
 
 ## Release 0.6.1 combined stability candidate, November 17, 2026
 
-**Unpublished.** The combined I2 runtime passes its source, private-command,
-Mac, Windows and Linux qualifications. Assembled three-platform package checks
-are pending. Native build source is
+**Qualified local candidate; unpublished.** The combined I2 runtime passes its
+source, private-command, Mac, Windows, Linux and assembled-package checks.
+Native build source is
 `8c97110c137127dad01b0a4431fffbfb605e4292`; runtime identity is
 `383c30b7b17462209dd8c0f54463a1233d177c660557e618013c18d995df26da`.
 Main, public tags, releases and SSC remain unchanged.
@@ -90,10 +90,36 @@ This is Server2022/StataMP19 coverage, not the exact Windows11/StataNow19.5/
 CPython3.13.1/full-MCP environment. Available SCC Stata is verified 19.0,
 not 19.5. No exact 19.5 host is available in these qualification environments.
 
+**Combined package.** Clean packaging source
+`b470575ca315c8d1c015195af6d98474feeea4fb` is production-identical to I2 across
+285 runtime modules and 59 artifact inputs. All three actual native build
+commits remain I2. Fresh source-bound dependency audit, corresponding-source
+payload/license checks and native/root bindings pass. Three fresh staged tests
+and an isolated local installation pass selftest and independent OLS/PPML
+comparisons; every one of 38 installed files matches its source bytes. Reuse
+of the earlier 12 installation fixtures and Stata18 replay is supported by
+27 byte-identical frontend files and the identical Mac plugin.
+
+- Three-platform ZIP: SHA256
+  `d20bf75d6ea1f9c85a2ea00e1cb82b86fdb4e6a3d27107c428ee77ac4f1243e7`,
+  25,801,266 bytes.
+- Corresponding-source ZIP: SHA256
+  `7557bedf95412bf2c8b20899a8f5750061a0d3f5755dfbaf5fba9a6885a849c5`,
+  34,302,949 bytes. The exact native I2 build-source ZIP is separately retained,
+  SHA256 `4f2522e67e6f7bcba1e4ee60ac1ed00b30403b20338b4b2eee9d073c67678b1a`.
+- Combined qualification summary: SHA256
+  `63ff7bfc9e406c352e93873e451dc01ba5da87f9a7a902c494f118e97cee4821`.
+- Linux qualification summary: SHA256
+  `3cd13d60691ffbe22e36c5dfb55120a7ed68cf586d9940962a82707bca9ac463`.
+
 These runs establish correctness, not controlled speed comparisons. Public
 HTTP installation and publication have not occurred. Current evidence and
-candidate assets have their final retention location outside the repository under
-`$HOME/research/fereg/stability061-20261116/ibn-extension`.
+candidate assets are retained outside the repository under
+`$HOME/research/fereg/stability061-20261116/ibn-extension`: 10,109 payloads,
+1,514,498,557 bytes, independently rehashed. Retention manifest SHA256 is
+`223ab337972bc29a62b349ce01f5354857cb551e4a1ec0d4839e8c8cfb726841`.
+No Stata datasets or symlinks were copied; supplied private inputs stay in their
+original locations. Disposable build caches and source clones are excluded.
 
 **Preceding candidate qualification.** Main, public tags and releases remain
 unchanged. All three preceding native plugins were built from
@@ -177,8 +203,8 @@ comparisons completed in 798.987 seconds and the extra checks in 121.966
 seconds; these are uncontrolled correctness-run durations, not benchmarks.
 The historical Q original-command replay passed all 38 then-supported commands;
 its then-unsupported `ibn` request returned the expected r(498). I2 above now
-passes all 39. The
-original scripts remain byte-identical; the run took 1,756.228 seconds. Q's
+passes all 39. The original scripts remain byte-identical; the Q run took
+1,756.228 seconds. Q's
 private validation is complete.
 
 Linux Q passes build/ELF/ABI checks and the strict entrypoint: 2,612 Rust
