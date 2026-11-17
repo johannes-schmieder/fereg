@@ -1,24 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 122083,
-      "before": 122045,
-      "metric": "fereg-core/production_lines",
-      "reason": "Require lossless observed-origin subtraction and apply it before no-FE structural OLS projection; extend the existing optional component-scaled PPML checkpoint admission and workspace estimate from three categorical effects to two or three, with Break polling in both scaling scans. Independent translated and tiny-contrast OLS witnesses, component-MLE fits, and exact-cap admission tests cover these scoped corrections."
-    },
-    {
-      "after": 7987,
-      "before": 7985,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Add one Break checkpoint to each existing row scan that finds component weight maxima and forms scaled checkpoint weights; no new solver, allocation, or arithmetic."
-    },
-    {
-      "after": 5976,
-      "before": 5971,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "Generalize the existing component checkpoint byte estimate from exactly three to two or three effects using a fixed three-entry level bank and the actual effect-count slice; retain the same overlapping workspace formula and checked additions."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {

@@ -958,6 +958,10 @@ fn bias_fixture(saved: bool) -> (Vec<String>, FakeSpi) {
 fn bias_publication_and_every_store_failure_are_atomic() {
     let (args, mut spi) = bias_fixture(true);
     estimate_ppml(&args, &mut spi).unwrap();
+    assert_eq!(
+        spi.matrices["RSOLVER"][0][5],
+        f64::from(PpmlSolverFamily::Lsmr.code())
+    );
     assert_eq!(spi.matrices["RBDIAG"][0][0], 1.);
     assert_eq!(spi.matrices["RBDIAG"][1][0], 16.);
     assert_eq!(spi.matrices["RBSUPPORT"][0][1], 2.);
@@ -1598,32 +1602,37 @@ fn structural_checkpoint_publication_accepts_both_storage_modes() {
             .decode_and_validate(&mut spi)
             .unwrap();
         let term = action.request.absorbed_terms[0].clone();
-        action.request.absorbed_terms = vec![term; 3];
-        for request in [PpmlSolverFamily::Auto, PpmlSolverFamily::Map] {
-            action.solver = request;
-            for row in 0..SOLVER_ROWS {
-                shadow.solver[row * SOLVER_COLUMNS..row * SOLVER_COLUMNS + 6].copy_from_slice(&[
-                    f64::from(request.code()),
-                    2.,
-                    1.,
-                    2.,
-                    1.,
-                    3.,
-                ]);
-            }
-            for selected in [1., 2.] {
-                shadow.runtime[5] = selected;
-                for memory in [MemoryMode::Auto, MemoryMode::Fast, MemoryMode::Low] {
-                    action.memory.requested = memory;
-                    validate_solver_evidence(&action, shadow).unwrap();
+        for effects in [2, 3] {
+            action.request.absorbed_terms = vec![term.clone(); effects];
+            for request in [PpmlSolverFamily::Auto, PpmlSolverFamily::Map] {
+                action.solver = request;
+                for row in 0..SOLVER_ROWS {
+                    shadow.solver[row * SOLVER_COLUMNS..row * SOLVER_COLUMNS + 6]
+                        .copy_from_slice(&[f64::from(request.code()), 2., 1., 2., 1., 3.]);
                 }
+                for selected in [1., 2.] {
+                    shadow.runtime[5] = selected;
+                    for memory in [MemoryMode::Auto, MemoryMode::Fast, MemoryMode::Low] {
+                        action.memory.requested = memory;
+                        validate_solver_evidence(&action, shadow).unwrap();
+                    }
+                }
+                shadow.solver[1] = 3.;
+                assert!(validate_solver_evidence(&action, shadow).is_err());
+                shadow.solver[1] = 2.;
             }
-            shadow.solver[1] = 3.;
+            action.request.absorbed_terms[0].intercept = false;
             assert!(validate_solver_evidence(&action, shadow).is_err());
-            shadow.solver[1] = 2.;
+            action.request.absorbed_terms[0].intercept = true;
+            action.request.absorbed_terms[0]
+                .slope_sources
+                .push(SourceId::new(1).unwrap());
+            assert!(validate_solver_evidence(&action, shadow).is_err());
         }
-        action.request.absorbed_terms.pop();
-        assert!(validate_solver_evidence(&action, shadow).is_err());
+        for effects in [0, 1, 4] {
+            action.request.absorbed_terms = vec![term.clone(); effects];
+            assert!(validate_solver_evidence(&action, shadow).is_err());
+        }
     });
 }
 

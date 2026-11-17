@@ -1763,7 +1763,7 @@ fn validate_solver_evidence(
             && (expected_selected == f64::from(PpmlSolverFamily::Lsmr.code())
                 || expected_selected == f64::from(PpmlSolverFamily::Cmg.code())
                 || (expected_selected == f64::from(PpmlSolverFamily::Map.code())
-                    && action.request.absorbed_terms.len() == 3
+                    && matches!(action.request.absorbed_terms.len(), 2 | 3)
                     && action
                         .request
                         .absorbed_terms
