@@ -68,8 +68,8 @@ be overwritten. To remove an installed package, run `ado uninstall fereg`.
 ## CMG dependency
 
 Version 0.6.1 retains the upstream CMG 0.3.0 release (`368eceba`) introduced
-in 0.6.0, including its native MIT metadata. Its branch-free edge sort and team application of the
-hierarchy levels leave results unchanged bit for bit. Corresponding-source
+in 0.6.0, including its native MIT metadata. Its branch-free edge sort and team
+application of the hierarchy levels leave results unchanged bit for bit. Corresponding-source
 packaging verifies the exact locked dependency and its complete vendored file
 inventory without modifying its license or code.
 

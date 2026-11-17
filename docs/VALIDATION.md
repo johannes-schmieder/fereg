@@ -8,8 +8,20 @@ Native build source is
 `8c97110c137127dad01b0a4431fffbfb605e4292`; runtime identity is
 `383c30b7b17462209dd8c0f54463a1233d177c660557e618013c18d995df26da`.
 The release promotes the qualified candidate without changing native binaries
-or archives. Public installation verification is recorded after publication;
-SSC submission is a separate action.
+or archives. Published tag `v0.6.1` resolves to
+`a74f9fffd4037f7a8f2e0cc2724fb6d97c7e4ae0`. SSC submission is a separate action.
+
+**Public installation.** All five release assets were downloaded anonymously
+and matched the qualified originals, including the embedded dependency audit.
+Fresh local, tag, main and `github install` runs verify all 38 installed files,
+native selftest and independent OLS/PPML fits. A fifth run sets `maxvar=2048`
+to reproduce Stata BE's `c(macrolen)=264392`; the helper and both fits pass.
+The actual single-line Stata release-list response is 263,596 bytes. Only the
+new release's notes were shortened to meet that limit; older release bodies
+and assets remain unchanged. Native binaries and both qualified archives are
+unchanged. Exact public evidence is in the
+[publication record](../bench/results/v061-publication-20261117.json) and under
+`$HOME/research/fereg/release-v061-20261117`.
 
 **Unchanged private commands.** Both supplied do-files pass all 39 calls on
 the actual final Mac binary, including `ibn.half#i.(c01-c30)` with interacted

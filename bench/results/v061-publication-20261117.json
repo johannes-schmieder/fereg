@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "version": "0.6.1",
+  "tag": "v0.6.1",
+  "url": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.6.1",
+  "published_at_utc": "2026-11-17T14:01:07Z",
+  "release_commit": "a74f9fffd4037f7a8f2e0cc2724fb6d97c7e4ae0",
+  "qualified_candidate_commit": "1c2a5302f0c49c68ce54ff148fbf6d4a66453b5d",
+  "native_source_sha": "8c97110c137127dad01b0a4431fffbfb605e4292",
+  "packaging_source_sha": "b470575ca315c8d1c015195af6d98474feeea4fb",
+  "runtime_sha256": "383c30b7b17462209dd8c0f54463a1233d177c660557e618013c18d995df26da",
+  "native_binaries_unchanged": true,
+  "qualified_archives_unchanged": true,
+  "is_latest_stable": true,
+  "assets": [
+    {
+      "name": "fereg-0.6.1-source.zip",
+      "bytes": 34302949,
+      "sha256": "7557bedf95412bf2c8b20899a8f5750061a0d3f5755dfbaf5fba9a6885a849c5",
+      "url": "https://github.com/johannes-schmieder/fereg/releases/download/v0.6.1/fereg-0.6.1-source.zip",
+      "asset_id": 759278158
+    },
+    {
+      "name": "fereg-0.6.1-source.zip.sha256",
+      "bytes": 89,
+      "sha256": "ea9beb37198819cc2940722288a33845e813008d5fd04c2ef893d0a664e21a0b",
+      "url": "https://github.com/johannes-schmieder/fereg/releases/download/v0.6.1/fereg-0.6.1-source.zip.sha256",
+      "asset_id": 759278151
+    },
+    {
+      "name": "fereg-0.6.1.zip",
+      "bytes": 25801266,
+      "sha256": "d20bf75d6ea1f9c85a2ea00e1cb82b86fdb4e6a3d27107c428ee77ac4f1243e7",
+      "url": "https://github.com/johannes-schmieder/fereg/releases/download/v0.6.1/fereg-0.6.1.zip",
+      "asset_id": 759278153
+    },
+    {
+      "name": "fereg-0.6.1.zip.sha256",
+      "bytes": 82,
+      "sha256": "e2177aa4b2fbc298b5285f7b0722003a52056577edeb17c3cf0e6e447f6eaa6a",
+      "url": "https://github.com/johannes-schmieder/fereg/releases/download/v0.6.1/fereg-0.6.1.zip.sha256",
+      "asset_id": 759278150
+    },
+    {
+      "name": "macos_source_build.md",
+      "bytes": 2826,
+      "sha256": "15b24f6d664748434490872e9ae3c5c16e8bc4a67e05c806949deeb58c993ae5",
+      "url": "https://github.com/johannes-schmieder/fereg/releases/download/v0.6.1/macos_source_build.md",
+      "asset_id": 759278154
+    }
+  ],
+  "installations": [
+    {
+      "route": "local",
+      "status": "passed",
+      "files_verified": 38,
+      "selftest": "passed",
+      "independent_ols_ppml": "passed",
+      "result_sha256": "66356f31898531428e0143c1eae98d84ecac9b8437df40ca90ac45adc6e7a9f2"
+    },
+    {
+      "route": "tag",
+      "status": "passed",
+      "files_verified": 38,
+      "selftest": "passed",
+      "independent_ols_ppml": "passed",
+      "result_sha256": "b53f6fe4751deedd3617f5034ee729c1de0064619336e39c41e8754e64b65325"
+    },
+    {
+      "route": "main",
+      "status": "passed",
+      "files_verified": 38,
+      "selftest": "passed",
+      "independent_ols_ppml": "passed",
+      "result_sha256": "6836149375bcaaa8a8a3de64a98daefa3f020b14d1e17c15f81541aa2c620781"
+    },
+    {
+      "route": "github",
+      "status": "passed",
+      "files_verified": 38,
+      "selftest": "passed",
+      "independent_ols_ppml": "passed",
+      "result_sha256": "6fd263e40ef8e373630cb36e3cc0bde750f79e7c7d6d80986a5125418535a8a2"
+    },
+    {
+      "route": "github-be",
+      "status": "passed",
+      "files_verified": 38,
+      "selftest": "passed",
+      "independent_ols_ppml": "passed",
+      "result_sha256": "ed6d0634039f0ffbdae97ad2d3d66f8aaf34f1b1c422189be9fc1bddd2a713ed"
+    }
+  ],
+  "github_BE_macro_test": {
+    "status": "passed",
+    "maxvar": 2048,
+    "macrolen": 264392,
+    "actual_stata_response_bytes": 263596,
+    "actual_longest_line_bytes": 263596,
+    "response_sha256": "7319824fbe523a3fbc5018ccc4ecb081c9f34ef57efbb6cf29610121e4a9e8d9",
+    "new_release_notes_shortened_only": true,
+    "older_releases_unchanged": true,
+    "pretty_http_response_bytes": 312265,
+    "compact_response_bytes": 263596,
+    "headroom_bytes": 796
+  },
+  "scope": "GitHub release and main/tag package publication; no SSC submission or email",
+  "verified_at_utc": "2026-11-17T14:15:07.556841+00:00",
+  "runtime_production_identity": {
+    "status": "unchanged_from_qualified_candidate",
+    "modules_verified": 285,
+    "artifact_inputs_verified": 59
+  },
+  "release_notes_sha256": "499d884941c6e3e0d3ec778bf1d3cc194a2692e02cb64eec57a01b922f37115b"
+}

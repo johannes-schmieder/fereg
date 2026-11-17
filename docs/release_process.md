@@ -110,6 +110,13 @@ line, which Stata truncates at `c(macrolen)` (645,200 characters on SE/MP with t
 default `maxvar`, 264,392 on BE); about 50 per-file assets per release had made
 the list 906,445 characters by beta.11, and `github install` failed with `r(132)`.
 Keep that response below 264,392 characters and check it after publishing.
+Measure the compact response actually returned to Stata: other HTTP clients
+may receive pretty-printed JSON whose larger total size is not a single macro
+input. Test the helper at the BE limit with `set maxvar 2048` and verify
+`c(macrolen)==264392` in a fresh SE/MP session. The 0.6.1 publication record
+retains both response formats and that installation check; its remaining
+compact-response headroom is only 796 bytes, so the next release needs the
+same guard before promotion.
 Versioned installation uses the release tag,
 `https://raw.githubusercontent.com/johannes-schmieder/fereg/<tag>/`: tag the
 commit whose `dist/` holds that release's plugins, so the tagged root package
