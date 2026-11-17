@@ -2828,3 +2828,6 @@ fn exact_joint_sections_keep_every_bit_at_one_to_eight_workers() {
         assert_eq!(outputs[0], outputs[1], "{threads} workers");
     }
 }
+
+#[path = "coefficient_stability_tests.rs"]
+mod coefficient_stability_tests;

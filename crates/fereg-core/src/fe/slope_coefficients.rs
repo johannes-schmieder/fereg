@@ -616,7 +616,10 @@ impl Worker {
         self.direction.copy_from_slice(&self.residual);
         let mut square = dot(&self.residual, &self.residual);
         for iteration in 0..=config.max_iterations {
-            if square.sqrt() <= config.tolerance * 0.25 || iteration == config.max_iterations {
+            // The recurrence only schedules a fresh check. Requiring extra
+            // recurrence accuracy can enter a null direction after the actual
+            // residual already satisfies the unchanged local-moment gate.
+            if square.sqrt() <= config.tolerance * 0.5 || iteration == config.max_iterations {
                 if !self.reconstruct(op, original) {
                     return Err(invalid());
                 }
