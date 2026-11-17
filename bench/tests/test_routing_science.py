@@ -69,7 +69,7 @@ class PortfolioAutoScope(unittest.TestCase):
                 self.compare(raw)
                 scope = set(science.portfolio_scope(self.raw(), raw, self.META, 'auto',
                             routing.policy(routing.PORTFOLIO_V1)))
-                old = set(science.replay_scope(raw, 'auto', self.META))
+                old = set(science.replay_scope(raw, 'auto', self.META, historical=True))
                 self.assertEqual(scope - old, {f'/matrices/RSOLVER/bits/{14*r+c}'
                     for r in range(2) for c in [1, 8, 9, 10, 11, 12]})
                 self.assertEqual(raw, before)
@@ -115,7 +115,7 @@ class PortfolioAutoScope(unittest.TestCase):
                 {**self.META, 'categorical_intercepts': False}]:
             with self.subTest(meta=meta), self.assertRaises(ValueError):
                 self.compare(raw, meta=meta)
-        with patch.object(science.cmgschur, 'scientific_comparison'), self.assertRaisesRegex(ValueError, 'unaffected field'):
+        with patch.object(science.cmgschur, 'scientific_comparison'), self.assertRaisesRegex(ValueError, 'current OLS'):
             science.compatibility(self.raw(), raw, None, None, self.META, 'auto')
         for policy in [routing.policy('prefix-map4'), routing.policy('h16-k0'),
                        {**routing.policy(routing.PORTFOLIO_V1), 'certificate': 'requested'}]:
@@ -134,7 +134,7 @@ class PortfolioAutoScope(unittest.TestCase):
         meta = {**self.META, 'absorbed_terms': 2}
         selected = routing.policy(routing.PORTFOLIO_V1)
         self.assertEqual(science.portfolio_scope(raw, raw, meta, 'auto', selected),
-                         science.replay_scope(raw, 'auto', meta))
+                         science.replay_scope(raw, 'auto', meta, historical=True))
         # Changed native iteration work already belongs to the old h/k scope.
         changed = copy.deepcopy(raw)
         changed['matrices']['RSOLVER']['bits'][2] = bits(12.)
@@ -156,7 +156,7 @@ class PortfolioAutoScope(unittest.TestCase):
         after['matrices']['RSOLVER']['bits'][5] = bits(5e-9)
         self.compare(after, reference=before, meta=meta)
         scope = set(science.portfolio_scope(before, after, meta, 'auto', routing.policy(routing.PORTFOLIO_V1)))
-        self.assertEqual(scope - set(science.replay_scope(after, 'auto', meta)),
+        self.assertEqual(scope - set(science.replay_scope(after, 'auto', meta, historical=True)),
                          {'/matrices/RSOLVER/bits/1', '/matrices/RSOLVER/bits/15'})
         for which, row, column, value in [('after', 0, 2, 1.), ('after', 0, 5, 2e-8),
                 ('after', 1, 5, 2e-14), ('before', 0, 1, 3.), ('before', 0, 14, 1.)] + [
@@ -188,7 +188,7 @@ class UnseededPortfolioScope(unittest.TestCase):
                     self.compare(raw, reference=reference)
                     scope = set(science.portfolio_scope(reference, raw, self.META, 'auto',
                                 routing.policy(routing.PORTFOLIO_UNSEEDED)))
-                    self.assertEqual(scope - set(science.replay_scope(raw, 'auto', self.META)),
+                    self.assertEqual(scope - set(science.replay_scope(raw, 'auto', self.META, historical=True)),
                         {f'/matrices/RSOLVER/bits/{14*r+c}' for r in range(2) for c in [1,8,9,10,11,12]})
         # A workspace decline before LSMR produces no attempted-report fallback
         # bit. Its certified original-input MAP can still take positive work.
@@ -292,7 +292,7 @@ class GeometryPortfolioScope(unittest.TestCase):
                     self.compare(raw, reference=reference)
                     scope = set(science.portfolio_scope(reference, raw, self.META, 'auto',
                                 routing.policy(routing.GEOMETRY_MANY)))
-                    self.assertEqual(scope - set(science.replay_scope(raw, 'auto', self.META)),
+                    self.assertEqual(scope - set(science.replay_scope(raw, 'auto', self.META, historical=True)),
                         {f'/matrices/RSOLVER/bits/{14*r+c}' for r in range(2) for c in [1,8,9,10,11,12]})
         # The incumbent contract still requires Auto's private hundredth.
         raw = self.raw(); raw['matrices']['RSOLVER']['bits'][5] = bits(5e-9)
@@ -388,7 +388,8 @@ class ModelDiscreteSignature(unittest.TestCase):
         original = science.model_discrete_sha256(raw)
         changes = [(name,0) for name in ('RSTATUS','RFE','RCLUSTER','RSUBSET','RMARKB','RMARKV','RREC')]
         changes += [(name,0) for name in ('RFIT','RDOF','RCERT')]
-        changes += [('RDOF',2*row+1) for row in range(20) if row not in {4,11}]
+        changes += [('RCERT', i) for i in (1,3,5,7,47,49,51,53,57,59)]
+        changes += [('RDOF',2*row+1) for row in range(20) if row not in {4}]
         for name,index in changes:
             changed = copy.deepcopy(raw);changed['matrices'][name]['bits'][index] = bits(2.)
             with self.subTest(name=name,index=index):
@@ -398,7 +399,7 @@ class ModelDiscreteSignature(unittest.TestCase):
         raw = result('auto')
         raw['matrices']['RDOF']['bits'][3] = bits(0.)
         changed = copy.deepcopy(raw)
-        for name,index in [('RFIT',1),('RCERT',1),('RDOF',9),('RDOF',23),('RSOLVER',1),('RRUNTIME',39),('RB',0)]:
+        for name,index in [('RFIT',1),('RCERT',9),('RDOF',9),('RSOLVER',1),('RRUNTIME',39),('RB',0)]:
             changed['matrices'][name]['bits'][index] = bits(2.)
         changed['matrices']['RDOF']['bits'][3] = bits(-0.)
         self.assertEqual(science.model_discrete_sha256(raw),science.model_discrete_sha256(changed))

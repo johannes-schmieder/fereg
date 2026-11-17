@@ -718,9 +718,10 @@ def read_native(target, log, meta, check_reference=True):
 
 
 def worker_signature(raw):
-    solver = numbers(raw['matrices']['RSOLVER'])
+    from native_io import current_ols_rows
+    rows = current_ols_rows(raw)
     return routing.identity({'model': science.model_discrete_sha256(raw),
-        'solver': [[solver[16 * row + i] for i in (0, 1, 3, 10, 11, 12, 13, 14)] for row in range(2)]})
+        'solver': [[row[i] for i in (*range(10), 11, 12, 13, 14)] for row in rows]})
 
 
 def affected(meta, families):
@@ -793,7 +794,8 @@ def compare_artifacts(manifest, meta, snapshots):
             selected = (routing.GEOMETRY_MANY if resource_policy(manifest, 'candidate', meta) == routing.GEOMETRY_MANY
                         else routing.PORTFOLIO_UNSEEDED)
             science.compatibility(reference[0], candidate[0], reference[1], candidate[1], meta, 'auto',
-                                  selected_policy=routing.policy(selected))
+                                  selected_policy=(None if candidate[0]['matrices']['RSOLVER']['columns'] == 22
+                                                   else routing.policy(selected)))
 
 
 def orders(arms, blocks, seed):
@@ -1038,8 +1040,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         phase = 'science'
                         raw, columns, detail = read_native(target, log, meta, role not in snapshots)
                         requested = requests[role]['solver']
-                        expected = 8 if requested == 'cmgschur' else cmgschur.EXPECTED_SOLVER[requested]
-                        require(detail['solver_rows'][0][0] == expected, 'requested solver identity mismatch')
+                        science.validate_ols_request(raw, requested)
                         if role in snapshots:
                             require(detail['fingerprint'] == snapshots[role][2]['fingerprint'], 'fixed-worker repeat changed')
                         if traced and manifest['scope'] == science.WITHIN_MIGRATION:

@@ -10,26 +10,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import qualify
 import routing
 import routing_science as science
-from test_cmgschur import bits
-from test_routing_science import PortfolioAutoScope
+from test_cmgschur import bits, current_result
 
 LEAF = '/matrices/RSOLVER/bits/{}'.format
 
 
 def set_row(raw, index, fields):
     for column, value in fields.items():
-        raw['matrices']['RSOLVER']['bits'][16 * index + column] = bits(float(value))
+        raw['matrices']['RSOLVER']['bits'][22 * index + column] = bits(float(value))
 
 
 def projected():
     """Both rows certified projections of the two-FE direct route (used 2)."""
-    return PortfolioAutoScope.raw('prefix')
+    raw = current_result()
+    for index, value in ((45, 1e-8), (47, 100.)):
+        raw['matrices']['RRUNTIME']['bits'][index] = bits(value)
+    return raw
 
 
 def derived(reference=None):
     raw = copy.deepcopy(projected() if reference is None else reference)
-    set_row(raw, 1, {1: 2, 2: 0, 3: 5, 4: 1e-16, 5: 2e-16, 6: 1e-16, 7: 0,
-                     10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0})
+    set_row(raw, 1, {i: 5 if i == 1 else 0 for i in range(16)})
+    set_row(raw, 1, {18: 1e-16, 19: 2e-16, 20: 1e-16, 21: 0})
     return raw
 
 
@@ -41,10 +43,10 @@ def meta(terms=1, **outputs):
 class DerivedResidualRows(unittest.TestCase):
     def test_leaves_name_only_the_route_fields_of_the_residual_row(self):
         before, after = projected(), derived()
-        self.assertEqual(science.derived_residual_leaves(before, after, meta()), [LEAF(17)])
+        self.assertEqual(science.derived_residual_leaves(before, after, meta()), [LEAF(20), LEAF(21), LEAF(23)])
         changed_method = copy.deepcopy(before)
-        set_row(changed_method, 1, {1: 4})
-        self.assertEqual(science.derived_residual_leaves(changed_method, after, meta()), [LEAF(15), LEAF(17)])
+        set_row(changed_method, 1, {1: 2, 3: 0})
+        self.assertEqual(science.derived_residual_leaves(changed_method, after, meta()), [LEAF(20), LEAF(21)])
         self.assertEqual(science.derived_residual_leaves(before, before, meta()), [])
         self.assertEqual(science.derived_residual_leaves(after, after, meta()), [])
         self.assertEqual(science.derived_residual_leaves({}, after, meta()), [])
@@ -54,12 +56,12 @@ class DerivedResidualRows(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'certified projection'):
             science.derived_residual_leaves(after, before, meta())  # a projection replacing a derived row
         for label, mutate in [
-                ('iterations', lambda r: set_row(r, 1, {2: 1})),
-                ('method differs from absorption', lambda r: set_row(r, 1, {1: 3})),
-                ('stop code 3', lambda r: set_row(r, 1, {3: 3})),
+                ('iterations', lambda r: set_row(r, 1, {10: 1})),
+                ('method is not derived', lambda r: set_row(r, 1, {1: 3})),
+                ('preconditioner 3', lambda r: set_row(r, 1, {3: 3})),
                 ('pilot work', lambda r: set_row(r, 1, {14: 1})),
-                ('fallback', lambda r: set_row(r, 1, {10: 1})),
-                ('certificate above tolerance', lambda r: set_row(r, 1, {5: 2e-8})),
+                ('fallback', lambda r: set_row(r, 1, {11: 1, 12: 3})),
+                ('certificate above tolerance', lambda r: set_row(r, 1, {19: 2e-8})),
                 ('return code', lambda r: r.update(return_code=430))]:
             changed = copy.deepcopy(after)
             mutate(changed)
@@ -72,24 +74,11 @@ class DerivedResidualRows(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'output metadata'):
             science.derived_residual_leaves(before, after, {'absorbed_terms': 1})
 
-    def test_direct_and_geometry_scopes_admit_the_validated_row(self):
+    def test_historical_direct_and_geometry_scopes_reject_current_rows(self):
         before, after = projected(), derived()
-        two = meta(2)
-        scope = science.portfolio_scope(before, after, two, 'auto', routing.policy(routing.PORTFOLIO_UNSEEDED))
-        self.assertEqual(set(scope) - set(science.replay_scope(after, 'auto', two)), {LEAF(17)})
-        three = meta(3)
-        scope = science.portfolio_scope(before, after, three, 'auto', routing.policy(routing.GEOMETRY_MANY))
-        self.assertIn(LEAF(17), scope)
-        for current in (two, three):
-            with patch.object(science.cmgschur, 'scientific_comparison') as checked:
-                science.compatibility(before, after, None, None, current, 'auto',
-                                      selected_policy=routing.policy(routing.GEOMETRY_MANY if current is three
-                                                                     else routing.PORTFOLIO_UNSEEDED))
-                checked.assert_called_once()
-        invalid = copy.deepcopy(after)
-        set_row(invalid, 1, {2: 3})
-        with self.assertRaises(ValueError):
-            science.portfolio_scope(before, invalid, two, 'auto', routing.policy(routing.PORTFOLIO_UNSEEDED))
+        for terms, policy in ((2, routing.PORTFOLIO_UNSEEDED), (3, routing.GEOMETRY_MANY)):
+            with self.subTest(terms=terms), self.assertRaisesRegex(ValueError, 'historical OLS'):
+                science.portfolio_scope(before, after, meta(terms), 'auto', routing.policy(policy))
 
     def test_derived_only_requires_every_other_leaf_exact(self):
         before, after = projected(), derived()
@@ -99,7 +88,7 @@ class DerivedResidualRows(unittest.TestCase):
         changed['matrices']['RB']['bits'][0] = bits(2.)
         self.assertFalse(science.derived_residual_only(before, changed, meta()))
         changed = copy.deepcopy(after)
-        set_row(changed, 0, {2: 7})
+        set_row(changed, 0, {10: 7})
         self.assertFalse(science.derived_residual_only(before, changed, meta()))
 
     def test_compare_artifacts_accepts_the_row_only_with_identical_columns(self):

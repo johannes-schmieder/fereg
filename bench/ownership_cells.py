@@ -412,8 +412,8 @@ def controls(config_path, output, *, execute=None):
                                      str(q.resolve(manifest, artifacts[arm]['path'])), '--replay',
                                      str(requests[cell]), str(target)], log, min(120, deadline.check()))
                 raw, columns, detail = q.read_native(target, log, meta)
-                require(detail['seconds'] <= 120 and detail['solver_rows'][0][0] == q.cmgschur.EXPECTED_SOLVER['auto'],
-                        'control timeout/requested Auto identity changed')
+                require(detail['seconds'] <= 120, 'control timeout')
+                q.science.validate_ols_request(raw, 'auto')
                 detail.update(worker_signature=q.worker_signature(raw), model_signature=q.science.model_discrete_sha256(raw),
                               **q.science.resource_diagnostics(log.read_text(), None, False, {}))
                 base = output / cell / ('reference-' + arm)
@@ -671,7 +671,7 @@ def run(manifest, output, *, diagnostic=False, scored_result=None, preflight_res
                     finish = time.monotonic_ns()
                     raw, columns, detail = q.read_native(target, log, meta)
                     require(detail['seconds'] <= 120, 'complete native timer exceeds call cap')
-                    require(detail['solver_rows'][0][0] == q.cmgschur.EXPECTED_SOLVER['auto'], 'requested Auto identity changed')
+                    q.science.validate_ols_request(raw, 'auto')
                     detail.update(worker_signature=q.worker_signature(raw), model_signature=q.science.model_discrete_sha256(raw))
                     if traced:
                         evidence = q.science.resource_diagnostics(log.read_text(), None, False, {})

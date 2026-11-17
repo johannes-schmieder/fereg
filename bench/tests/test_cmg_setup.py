@@ -166,10 +166,10 @@ class SetupDiagnostic(unittest.TestCase):
         self.assertIn('input identity mismatch', record['failures'][-1]['error'])
 
     def test_two_fe_existing_scope_allows_iteration_changes(self):
-        from test_cmgschur import result
+        from test_cmgschur import current_result as result
         scope = q.science.replay_scope(result(), 'auto', self.meta)
-        self.assertIn('/matrices/RSOLVER/bits/2', scope)
-        self.assertNotIn('/matrices/RSOLVER/bits/3', scope)  # stopping decision
+        self.assertIn('/matrices/RSOLVER/bits/10', scope)
+        self.assertNotIn('/matrices/RSOLVER/bits/3', scope)  # preconditioner decision
 
     def test_same_current_binary_required(self):
         (self.root / (setup.PUBLIC + '.plugin')).write_bytes(b'wrong current artifact')
@@ -278,10 +278,10 @@ class SetupCandidateDiagnostic(unittest.TestCase):
         self.assertFalse(record['retry_cells'])
 
     def test_iteration_change_is_exact_failure(self):
-        from test_cmgschur import result, bits
+        from test_cmgschur import current_result as result, bits
         value = self.plan()
         raw, changed = result(), result()
-        changed['matrices']['RSOLVER']['bits'][2] = bits(123.)
+        changed['matrices']['RSOLVER']['bits'][10] = bits(123.)
         def snapshot(head):
             return (head, None, {'fingerprint': q.routing.identity(q.exact_view(head, False))})
         with self.assertRaisesRegex(ValueError, 'exact science/solver fingerprint'):
@@ -295,7 +295,7 @@ class SetupCandidateDiagnostic(unittest.TestCase):
                 setup.resource_diagnostics(log, role, self.config['artifacts'][role]['revision'])
 
     def test_valid_route_and_hierarchy_changes_fail_with_unchanged_science(self):
-        from test_cmgschur import result
+        from test_cmgschur import current_result as result
         from test_routing_science import RouteHierarchyTrace as traces
         value = self.plan()
         action = HistoricalTraceDiagnostics.PRIMARY.replace('setup_work=794664056|setup_limit=977928192|', '')
@@ -323,7 +323,7 @@ class SetupCandidateDiagnostic(unittest.TestCase):
                 setup.SETUP: snapshot(traces.REFUSED.replace('Some(MemoryBudget)', 'Some(Unused)'))})
 
     def test_equal_empty_routes_pass_but_missing_evidence_fails(self):
-        from test_cmgschur import result
+        from test_cmgschur import current_result as result
         value = self.plan()
         snapshot = (result(), None, {'fingerprint': 'same', 'route_trace': [], 'route_hierarchy': []})
         setup.compare_science(value, self.meta, {setup.ACCEPTED: snapshot, setup.SETUP: snapshot})
@@ -437,7 +437,7 @@ class PivotDiagnostic(unittest.TestCase):
         self.assertEqual(setup.roles(setup.CANDIDATE_MODE), setup.CANDIDATE_ARMS)
 
     def test_both_references_require_exact_science_routes_and_hierarchy(self):
-        from test_cmgschur import result
+        from test_cmgschur import current_result as result
         value = self.plan()
         snapshot = (result(), None, {'fingerprint': 'same', 'route_trace': [], 'route_hierarchy': []})
         snapshots = {role: copy.deepcopy(snapshot) for role in setup.PIVOT_ARMS}

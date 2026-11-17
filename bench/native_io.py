@@ -1,6 +1,7 @@
 """Bounded replay transport and diagnostic readers for native benchmarks."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -177,7 +178,7 @@ def validate_result(result):
             raise ValueError(f'{name} did not certify completion')
 
 
-def diagnostics(result, poisson):
+def diagnostics(result, poisson, *, legacy_ols=False):
     tables = result['matrices']
     required = {'RINF', 'RDROP', 'RSEP', 'RSEQ'} if poisson else {'RMARKB', 'RMARKV'}
     if not required.issubset(tables):
@@ -186,7 +187,7 @@ def diagnostics(result, poisson):
     shape = lambda table: (table['rows'], table['columns'])
     if shape(runtime) != ((108, 1) if poisson else (30, 2)):
         raise ValueError('unsupported RRUNTIME layout')
-    if shape(solver) != ((4, 22) if poisson else (2, 16)):
+    if shape(solver) != ((4, 22) if poisson else (2, 16 if legacy_ols else 22)):
         raise ValueError('unsupported RSOLVER layout')
     values = numbers(runtime)
     times = ({'total_s': values[0]} if poisson else
@@ -200,6 +201,77 @@ def diagnostics(result, poisson):
     # Preserve every solver row, including counters and timings, without rounding.
     return {**times, 'timing_field': 'total_s' if poisson else 'native_s',
             'solver_rows': [decoded[i:i+width] for i in range(0, len(decoded), width)]}
+
+
+def current_ols_rows(result):
+    """Decode and validate the public 22-column OLS route vocabulary."""
+    table = result['matrices']['RSOLVER']
+    if (type(table['rows']) is not int or type(table['columns']) is not int
+            or (table['rows'], table['columns'], len(table['bits'])) != (2, 22, 44)):
+        raise ValueError('current OLS solver contract requires 2 x 22 rows')
+    values = numbers(table)
+    rows = [values[:22], values[22:]]
+    code = lambda v, maximum: v.is_integer() and 0 <= v <= maximum
+    for row in rows:
+        if (not all(math.isfinite(v) and v >= 0 for v in row)
+                or not all(code(row[i], limit) for i, limit in
+                           ((0, 2), (1, 5), (2, 3), (3, 4), (9, 2**32-1),
+                            (10, 2**53), (11, 1), (12, 4), (13, 2**53), (14, 2**53)))
+                or (row[11] == 0) != (row[12] == 0)
+                or (row[2] != 0 and row[1] != 2)
+                or any(not code(v, 2**32-1 if row[3] == 3 else 3) for v in row[4:9])
+                or (row[3] not in (2, 3) and any(row[4:9]))
+                or (row[3] == 2 and not any(row[4:9]))):
+            raise ValueError('invalid current OLS route/counter tuple')
+    return rows
+
+
+def validate_ols_request(result, requested):
+    """Check actual public methods beside the caller's bound input request.
+
+    Requested solver identity is not an output field in current RSOLVER.
+    Historical private solver names require their own frozen contract.
+    """
+    validate_result(result)
+    rows = current_ols_rows(result)
+    if requested not in {'auto', 'map', 'lsmr', 'lsmr-reference', 'cmg'}:
+        raise ValueError('historical solver request requires its frozen contract')
+    row = rows[0]
+    method = {'map': 2, 'lsmr': 4, 'lsmr-reference': 4, 'cmg': 3}.get(requested)
+    # NoFixedEffects publishes an empty route even for an explicit request.
+    empty = not any(row[:16])
+    # Explicit LSMR and CMG can continue on Auto's certified routes. The
+    # public row records the route that finished, including single-intercept
+    # Direct, elimination/full CG and MAP. Do not reconstruct private policy
+    # from it; retain every route/fallback field in comparison signatures.
+    fallback = (requested in {'lsmr', 'lsmr-reference', 'cmg'}
+                and row[0] in {1, 2} and row[1] in {1, 2, 3, 4}
+                and row[11] == 1 and row[12] in {1, 2, 3, 4})
+    used = method is None or row[1] == method
+    if requested == 'cmg':
+        # report.rs::from_labels: CMG is full CG/CMG; CmgRoute::Direct
+        # publishes the exact single-intercept projection instead.
+        used = (row[:4] == [1, 3, 0, 4]
+                or (row[:4] == [1, 1, 0, 0] and not any(row[4:10])
+                    and row[11] == row[12] == 0))
+    if not used and not (empty or fallback):
+        raise ValueError('explicit solver was not used or replaced by a certified fallback')
+    return rows
+
+
+def legacy_ols_view(result):
+    """Frozen 16-column historical view; never applied to current route rows."""
+    table = result['matrices']['RSOLVER']
+    if (type(table['rows']) is not int or type(table['columns']) is not int
+            or (table['rows'], table['columns'], len(table['bits'])) != (2, 16, 32)):
+        raise ValueError('historical OLS solver contract requires 2 x 16 rows')
+    # Build the common exact view before replacing only the historical solver
+    # timing projection. The current helper deliberately knows only current22.
+    view = exact_view(result, False)
+    view['matrices']['RSOLVER'] = copy.deepcopy(table)
+    view['matrices']['RSOLVER']['bits'] = [
+        value for i, value in enumerate(table['bits']) if i % 16 not in (8, 9)]
+    return view
 
 
 def exact_differences(reference, candidate, poisson):

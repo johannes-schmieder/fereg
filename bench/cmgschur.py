@@ -27,7 +27,7 @@ import numpy as np
 
 from cmgschur_cases import scratch
 from native import run_process
-from native_io import ROOT, case_header, diagnostics, digest, numbers, validate_result
+from native_io import ROOT, case_header, diagnostics, digest, numbers, validate_result, legacy_ols_view
 from replay_plugins import exact_view
 from time_exact import compare
 
@@ -166,7 +166,7 @@ def scientific_comparison(reference, candidate, reference_columns, columns, meta
             raise ValueError(f'{name}: presence flags changed')
     ld, rd = numbers(left['RDOF']), numbers(right['RDOF'])
     for row in range(20):
-        if row not in {4, 11} and ld[2*row+1] != rd[2*row+1]:
+        if row not in {4} and ld[2*row+1] != rd[2*row+1]:
             raise ValueError(f'RDOF/{row}: discrete scientific decision changed')
     close(numbers(right['RB']), numbers(left['RB']), 'coefficients', 1e-7, 1e-10)
     close(numbers(right['RV']), numbers(left['RV']), 'covariance', 1e-6, 1e-10)
@@ -240,7 +240,7 @@ def read_run(result_path, log, meta, arm):
     if raw.pop('columns') != []:
         raise ValueError('timing harness must return binary columns')
     validate_result(raw)
-    record = diagnostics(raw, False)
+    record = diagnostics(raw, False, legacy_ols=True)
     match = re.search(r'NATIVE_SECONDS=([0-9.]+)', log.read_text())
     if match is None or float(match[1]) <= 0:
         raise ValueError('missing/invalid monotonic native timing')
@@ -252,7 +252,7 @@ def read_run(result_path, log, meta, arm):
         raise ValueError('requested solver identity mismatch')
     if arm != 'auto' and record['solver_rows'][0][1] != EXPECTED_SOLVER[arm]:
         raise ValueError('explicit solver was not used')
-    signature = exact_view(raw, False)
+    signature = legacy_ols_view(raw)
     signature['columns_sha256'] = digest(columns)
     record['science_sha256'] = hashlib.sha256(json.dumps(signature, sort_keys=True).encode()).hexdigest()
     return raw, record

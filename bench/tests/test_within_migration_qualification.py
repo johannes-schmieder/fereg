@@ -12,7 +12,7 @@ import qualify
 import routing_science as science
 import test_qualify
 import test_routing_science
-from test_cmgschur import bits
+from test_cmgschur import bits, current_result
 
 
 ACTION = ('FEREG_SOLVER_TRACE|phase=routing_action|preset=routing_many_geometry_v1|'
@@ -32,7 +32,9 @@ class MigrationScience(unittest.TestCase):
         self.columns = self.root / 'columns'
         self.data = np.array([[1., 1.], [.2, -.2], [0., 0.], [.3, .4], [.5, .2], [.2, -.2]])
         self.data.tofile(self.columns)
-        self.raw = test_routing_science.PortfolioAutoScope.raw()
+        self.raw = current_result()
+        for index, value in ((45, 1e-8), (47, 100.)):
+            self.raw['matrices']['RRUNTIME']['bits'][index] = bits(value)
 
     def snapshot(self, raw, trace=ACTION + RHS, columns=None, meta=None):
         columns = columns or self.columns
@@ -50,8 +52,8 @@ class MigrationScience(unittest.TestCase):
         changed = copy.deepcopy(self.raw)
         for table, index in [('RB', 0), ('RV', 0), ('RFIT', 1)]:
             changed['matrices'][table]['bits'][index] = bits(1. + 1e-12)
-        changed['matrices']['RSOLVER']['bits'][2] = bits(11.)
-        changed['matrices']['RSOLVER']['bits'][5] = bits(2e-15)
+        changed['matrices']['RSOLVER']['bits'][10] = bits(11.)
+        changed['matrices']['RSOLVER']['bits'][19] = bits(2e-15)
         columns = self.root / 'changed.columns'
         data = self.data.copy()
         data[1, 0] += 1e-12
@@ -64,7 +66,7 @@ class MigrationScience(unittest.TestCase):
     def test_model_discretes_routes_and_tolerances_are_never_waived(self):
         for table, index in [('RSTATUS', 1), ('RFE', 0), ('RDOF', 3), ('RREC', 0),
                              ('RCERT', 0), ('RRUNTIME', 45)] + [
-                ('RSOLVER', index) for index in (0, 1, 3, 10, 11, 12, 13, 14)]:
+                ('RSOLVER', index) for index in (*range(10), 11, 12, 13)]:
             changed = copy.deepcopy(self.raw)
             changed['matrices'][table]['bits'][index] = bits(9.)
             with self.subTest(table=table, index=index), self.assertRaises(ValueError):
@@ -76,7 +78,7 @@ class MigrationScience(unittest.TestCase):
             data.tofile(target)
             with self.subTest(column=column), self.assertRaisesRegex(ValueError, 'input/sample/drop'):
                 self.compare(self.raw, columns=target)
-        for index, value in [(2, 101.), (5, 2e-8), (21, 2e-14)]:
+        for index, value in [(10, 101.), (19, 2e-8), (41, 2e-14)]:
             changed = copy.deepcopy(self.raw)
             changed['matrices']['RSOLVER']['bits'][index] = bits(value)
             with self.subTest(index=index, value=value), self.assertRaises(ValueError):
@@ -114,7 +116,7 @@ class MigrationScience(unittest.TestCase):
 
     def test_derived_residual_route_is_not_implicitly_declared(self):
         changed = copy.deepcopy(self.raw)
-        changed['matrices']['RSOLVER']['bits'][19] = bits(5.)
+        changed['matrices']['RSOLVER']['bits'][23] = bits(5.)
         with self.assertRaises(ValueError):
             self.compare(changed)
 
@@ -133,7 +135,10 @@ class MigrationRunner(unittest.TestCase):
 
     def execute(self, command, log, timeout):
         resources = test_qualify.Qualification.execute(self, command, log, timeout)
-        qualify.write(Path(command[-1]), {**test_routing_science.PortfolioAutoScope.raw(), 'columns': []})
+        raw = current_result()
+        for index, value in ((45, 1e-8), (47, 100.)):
+            raw['matrices']['RRUNTIME']['bits'][index] = bits(value)
+        qualify.write(Path(command[-1]), {**raw, 'columns': []})
         if 'FEREG_SOLVER_TRACE=1' in command:
             with log.open('a') as stream:
                 stream.write(self.trace)

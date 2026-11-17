@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import qualify as q
 import qualify_ownership as o
 import routing
-from test_cmgschur import case_bytes, result, bits
+from test_cmgschur import case_bytes, current_result as result, bits
 import test_qualify as historical
 
 
@@ -118,7 +118,7 @@ class Contracts(unittest.TestCase):
             value=manifest(request=request)
             meta=dict(categorical_intercepts=True,absorbed_terms=2)
             before=result();after=copy.deepcopy(before)
-            after['matrices']['RSOLVER']['bits'][2]=bits(7.)
+            after['matrices']['RSOLVER']['bits'][10]=bits(7.)
             def snapshot(raw, fingerprint, hierarchy=None):
                 return (raw,None,dict(fingerprint=fingerprint,gate_events=[],
                         action_resources=[dict(final='0',preset='routing_two_gates_v1',iterations_used=15,

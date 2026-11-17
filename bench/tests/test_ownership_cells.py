@@ -13,7 +13,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import ownership_cells as o
 import qualify as q
-from test_cmgschur import result, case_bytes, bits
+from test_cmgschur import current_result as result, case_bytes, bits
 
 
 class Monitor:

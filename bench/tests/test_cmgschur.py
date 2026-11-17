@@ -38,6 +38,13 @@ def result(arm='auto'):
     return {'schema': 1, 'return_code': 0, 'matrices': tables, 'error': ''}
 
 
+def current_result():
+    raw = result()
+    row = [1., 4., 0., 1.] + [0.] * 6 + [10., 0., 0., 0., 0., 0., 0., 0., 0., 1e-15, 1e-15, 1e-15]
+    raw['matrices']['RSOLVER'] = {'rows': 2, 'columns': 22, 'bits': [bits(v) for v in row * 2]}
+    return raw
+
+
 def case_bytes(arguments=None):
     arguments = arguments or [b'estimate-ols', b'threads=1', b'solver=auto', b'preconditioner=auto']
     return f'FEREG_REPLAY_V1\n2 6 {len(arguments)} 1 0\n'.encode() + b''.join(

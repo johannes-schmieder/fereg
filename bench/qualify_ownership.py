@@ -349,7 +349,8 @@ def compare_artifacts(manifest, meta, snapshots):
             require(a == b, 'cell operator changed original CMG hierarchy when both built')
     if q.affected(meta, ['many', 'two']):
         science.compatibility(original[0], candidate[0], original[1], candidate[1], meta, 'auto',
-                              selected_policy=routing.policy(routing.PORTFOLIO_UNSEEDED))
+                              selected_policy=(None if candidate[0]['matrices']['RSOLVER']['columns'] == 22
+                                               else routing.policy(routing.PORTFOLIO_UNSEEDED)))
     else:
         require(original[2]['fingerprint'] == candidate[2]['fingerprint'], 'unaffected original-public science changed')
 

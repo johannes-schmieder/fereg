@@ -11,6 +11,7 @@ import numpy as np
 import cmgschur
 import routing
 import routing_oracle
+from native_io import current_ols_rows, legacy_ols_view, validate_ols_request
 from replay_plugins import (allowed_difference, differences, exact_view,
                             numerical_scope_indices, scientific_errors, work_scope_indices)
 
@@ -48,6 +49,26 @@ def within_migration_trace(log, meta):
     return detail
 
 
+def validate_current_projection(raw, meta):
+    rows = current_ols_rows(raw)
+    runtime = cmgschur.numbers(raw['matrices']['RRUNTIME'])
+    tolerance, cap = runtime[45], runtime[47]
+    if (type(raw.get('return_code')) is not int or raw['return_code'] != 0
+            or runtime[44] != 1 or runtime[46] != 1
+            or not math.isfinite(tolerance) or tolerance <= 0
+            or not math.isfinite(cap) or cap < 1 or not cap.is_integer()):
+        raise ValueError('invalid current projection policy')
+    for index, row in enumerate(rows):
+        target = tolerance if index == 0 else min(tolerance, 1e-14)
+        if row[1] == 5:
+            if index != 1:
+                raise ValueError('only the final residual may be derived')
+            validate_derived_request(raw, row, meta)
+            target = tolerance  # SPEC: derived certificate uses the original request.
+        if row[10] > cap or row[14] > row[10] or row[19] > target:
+            raise ValueError('current projection work/certificate exceeds request')
+
+
 def within_migration_comparison(reference, candidate, meta):
     """Permit numerical/inner-work changes only when both actual calls used within.
 
@@ -59,7 +80,7 @@ def within_migration_comparison(reference, candidate, meta):
         for raw, _, _ in (reference, candidate):
             # Reuse the accepted policy's cap/certificate checks, but never
             # its broader route-difference allowance.
-            portfolio_scope(raw, raw, meta, 'auto', routing.policy(routing.GEOMETRY_MANY))
+            validate_current_projection(raw, meta)
     executed = eligible and all(
         snapshot[2].get('within_migration', {}).get('executed') is True
         for snapshot in (reference, candidate))
@@ -70,11 +91,18 @@ def within_migration_comparison(reference, candidate, meta):
     compatibility(reference[0], candidate[0], reference[1], candidate[1], meta, 'auto')
 
 
-def replay_scope(raw, arm='auto', meta=None):
+def replay_scope(raw, arm='auto', meta=None, *, historical=False):
     if arm != 'auto':
         raise ValueError('qualification scope applies to Auto only')
-    view = exact_view(raw, False)
+    if historical:
+        view = legacy_ols_view(raw)
+    else:
+        current_ols_rows(raw)
+        view = exact_view(raw, False)
     numerical, work = numerical_scope_indices(False), work_scope_indices(False)
+    if historical:
+        numerical['RSOLVER'] = {14 * row + col for row in range(2) for col in range(4, 8)}
+        work['RSOLVER'] = {2, 16}
     scope = []
     for name, table in view['matrices'].items():
         indices = (range(len(table['bits'])) if name in {'RB', 'RV'} else
@@ -105,10 +133,11 @@ def cmg_polish_limits(raw, label='CMG'):
     return mode, (primary, 0 if mode == 1 else 1)
 
 
-DERIVED_RESIDUAL_LEAVES = tuple(f'/matrices/RSOLVER/bits/{14 + column}' for column in (1, 2, 3, 4, 5, 6, 7))
+DERIVED_RESIDUAL_LEAVES = tuple(f'/matrices/RSOLVER/bits/{20 + column}'
+    for column in range(20))
 
 
-def derived_residual_leaves(reference, raw, meta):
+def legacy_derived_residual_leaves(reference, raw, meta):
     """Leaves a derived residual row may change against a certified projection.
 
     SPEC §7/§16: a Fast fit that requests no residual, xbd, absorbed or saved-FE
@@ -153,6 +182,37 @@ def derived_residual_leaves(reference, raw, meta):
     return [f'/matrices/RSOLVER/bits/{14 + column}' for column in ([1] if projected[1] != derived[1] else []) + [3]]
 
 
+def validate_derived_request(raw, row, meta):
+    if not isinstance(meta, dict) or not isinstance(meta.get('outputs'), dict):
+        raise ValueError('derived residual comparison requires inspected output metadata')
+    if any(name in meta['outputs'] for name in ('residual', 'xbd', 'absorbed')) or meta.get('saved'):
+        raise ValueError('derived residual row requires a request without residual, xbd, absorbed or saved outputs')
+    runtime = cmgschur.numbers(raw['matrices']['RRUNTIME'])
+    if runtime[2:4] != [1, 1] or row[1] != 5 or any(row[i] != 0 for i in (0, *range(2, 16))):
+        raise ValueError('derived residual row tuple is invalid')
+
+
+def derived_residual_leaves(reference, raw, meta):
+    """Only a certified public projection may become a zero-work derived row."""
+    if not all(isinstance(v, dict) and 'RSOLVER' in v.get('matrices', {}) for v in (reference, raw)):
+        return []
+    before, after = [current_ols_rows(v)[1] for v in (reference, raw)]
+    if before[1] == after[1]:
+        return []
+    if after[1] != 5 or before[1] not in {1, 2, 3, 4}:
+        raise ValueError('reference residual row is not a certified projection to derived transition')
+    validate_derived_request(raw, after, meta)
+    for value, row in ((reference, before), (raw, after)):
+        cmgschur.validate_result(value)
+        runtime = cmgschur.numbers(value['matrices']['RRUNTIME'])
+        if (type(value.get('return_code')) is not int or value['return_code'] != 0
+                or runtime[2:4] != [1, 1]
+                or runtime[44] != 1 or not math.isfinite(runtime[45]) or runtime[45] <= 0
+                or row[19] > runtime[45]):
+            raise ValueError('derived residual result/runtime tuple is invalid')
+    return [f'/matrices/RSOLVER/bits/{20 + i}' for i in (*range(10), 11, 12, 13) if before[i] != after[i]]
+
+
 def derived_residual_only(reference, raw, meta):
     """True when exact views differ only inside a validated derived residual row."""
     if not derived_residual_leaves(reference, raw, meta):
@@ -163,13 +223,13 @@ def derived_residual_only(reference, raw, meta):
 
 def portfolio_direct_scope(reference, raw, meta):
     """The certified zero-iteration MAP return owns only its changed family ID."""
-    scope = replay_scope(raw, 'auto', meta)
+    scope = replay_scope(raw, 'auto', meta, historical=True)
     tables = [value['matrices']['RSOLVER'] for value in [reference, raw]]
     if any((table['rows'], table['columns'], len(table['bits'])) != (2, 16, 32)
            for table in tables):
         raise ValueError('portfolio direct solver shape changed')
     decoded = [cmgschur.numbers(table) for table in tables]
-    derived = derived_residual_leaves(reference, raw, meta)
+    derived = legacy_derived_residual_leaves(reference, raw, meta)
     for index in range(2):
         before, after = [values[16 * index:16 * (index + 1)] for values in decoded]
         if before[1] == after[1] or (index == 1 and derived):
@@ -203,6 +263,8 @@ def portfolio_scope(reference, raw, meta, arm, selected):
     prepared_fit::merge_solve_report own these tuples. Repeats still compare the
     complete original fingerprint before reaching this cross-artifact check.
     """
+    legacy_ols_view(reference)
+    legacy_ols_view(raw)
     selected_name = next((name for name in (*routing.PORTFOLIOS, routing.GEOMETRY_MANY)
                           if routing.identity(selected) == routing.identity(routing.policy(name))), None)
     if selected_name is None or arm != 'auto':
@@ -218,11 +280,11 @@ def portfolio_scope(reference, raw, meta, arm, selected):
         return portfolio_direct_scope(reference, raw, meta)
     if (meta.get('categorical_intercepts') is not True
             or type(meta.get('absorbed_terms')) is not int or meta['absorbed_terms'] < 3):
-        return replay_scope(raw, arm, meta)
+        return replay_scope(raw, arm, meta, historical=True)
     terms, rows = meta['absorbed_terms'], meta.get('rows')
     if type(rows) is not int or rows < 1:
         raise ValueError('portfolio comparison requires inspected row count')
-    derived = derived_residual_leaves(reference, raw, meta)
+    derived = legacy_derived_residual_leaves(reference, raw, meta)
     for value, candidate in [(reference, False), (raw, True)]:
         table = value['matrices']['RSOLVER']
         if (type(value.get('return_code')) is not int or value['return_code'] != 0
@@ -292,7 +354,7 @@ def portfolio_scope(reference, raw, meta, arm, selected):
                 if row[5] > strict:
                     raise ValueError('portfolio original-design certificate exceeds '
                                      + ('its requested target' if geometry else 'private Auto target'))
-    scope = replay_scope(raw, arm, meta)
+    scope = replay_scope(raw, arm, meta, historical=True)
     # Raw columns 1,10,11,12,13,14 after removal of setup/solve time.
     return scope + [f'/matrices/RSOLVER/bits/{14 * row + column}'
                     for row in range(2) for column in [1, 8, 9, 10, 11, 12]] + derived
@@ -300,7 +362,10 @@ def portfolio_scope(reference, raw, meta, arm, selected):
 
 def compatibility(reference, raw, reference_columns, columns, meta, arm, *, selected_policy=None):
     cmgschur.scientific_comparison(reference, raw, reference_columns, columns, meta)
-    changed = differences(exact_view(reference, False), exact_view(raw, False))
+    if selected_policy is None:
+        current_ols_rows(reference)
+    view = exact_view if selected_policy is None else lambda value, _: legacy_ols_view(value)
+    changed = differences(view(reference, False), view(raw, False))
     scope = (replay_scope(raw, arm, meta) if selected_policy is None else
              portfolio_scope(reference, raw, meta, arm, selected_policy))
     outside = [path for path in changed if not allowed_difference(path, scope)]
@@ -316,9 +381,11 @@ def model_discrete_sha256(raw):
     if not set(names) <= set(tables) or (tables['RDOF']['rows'], tables['RDOF']['columns']) != (20, 2):
         raise ValueError('unsupported model-discrete matrix layout')
     dof = cmgschur.numbers(tables['RDOF'])
-    discrete = [dof[2*row+1] for row in range(20) if row not in {4, 11}]
+    discrete = [dof[2*row+1] for row in range(20) if row not in {4}]
     return routing.identity({'matrices': {name: tables[name] for name in names},
         'presence': {name: tables[name]['bits'][::2] for name in ('RFIT', 'RDOF', 'RCERT')},
+        'certificate_decisions': [tables['RCERT']['bits'][i]
+            for i in (1, 3, 5, 7, 47, 49, 51, 53, 57, 59, 63)],
         'dof': [0.0 if value == 0 else value for value in discrete]})
 
 

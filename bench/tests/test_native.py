@@ -27,8 +27,8 @@ def result(poisson=False):
                              'RINF', 'RDROP', 'RSEP', 'RSEQ')}
     matrices['RRUNTIME'] = {'rows': 108 if poisson else 30, 'columns': 1 if poisson else 2,
                            'bits': [bits(1)] * (108 if poisson else 60)}
-    matrices['RSOLVER'] = {'rows': 4 if poisson else 2, 'columns': 22 if poisson else 16,
-                          'bits': [bits(0)] * (88 if poisson else 32)}
+    matrices['RSOLVER'] = {'rows': 4 if poisson else 2, 'columns': 22,
+                          'bits': [bits(0)] * (88 if poisson else 44)}
     return {'schema': 1, 'return_code': 0, 'matrices': matrices,
             'columns': [[bits(1), bits(2)], [bits(3), bits(4)]], 'error': ''}
 
@@ -153,7 +153,7 @@ class NativeTransport(unittest.TestCase):
         parsed = native_io.read_result(self.write_result(result()), 2, 2)
         later = copy.deepcopy(parsed)
         later['head']['matrices']['RRUNTIME']['bits'][39] = bits(0.123456789)
-        later['head']['matrices']['RSOLVER']['bits'][8] = bits(0.987654321)
+        later['head']['matrices']['RSOLVER']['bits'][16] = bits(0.987654321)
         self.assertEqual(native_io.exact_differences(parsed, later, False), [])
         later['head']['matrices']['RSOLVER']['bits'][1] = bits(3)
         self.assertTrue(native_io.exact_differences(parsed, later, False))
