@@ -1,5 +1,53 @@
 # Validation status
 
+## Follow-up separation and weak-ring candidate
+
+The weak two-effect Mac fixture now passes its original Auto commands and
+independent explicit-dummy comparisons across all memory configurations.
+The trace's previously failing block-Schur fit took the same 96 iterations
+and restored the same two columns. It passed without a correction. A
+two-column unit test supplies nonfinite direction operands to a stopped
+column and checks that its restored iterate and the active neighbor survive
+the fused step. Elimination also verifies a conservative reconstruction
+bound before changing either the residual or coefficient bank.
+
+The Auto separation probe can certify a full unit dual before the weighted
+search. It retains a fresh terminal replay and the original numerical and
+memory gates. A bounded Auto attempt accelerates eligible small collections
+of categorical effects. QR traverses contiguous tails and discarded-column
+tiles, preserving the arithmetic order of each entry. A test compares the
+tiled tail exactly with the scalar calculation.
+
+On the fixed private Mac extract at eight workers, pooled explicit PPML was
+4.557 seconds in 0.6.0, 10.632 in the preceding development candidate and
+5.907 in this candidate. Pooled absorbed PPML was 1.680, 2.552 and 2.160
+seconds. Each value is the median of three estimates after one warm-up.
+In single paired stress runs, stacked `ibn` fell from 75.470 to 43.552 seconds
+and stacked explicit from 63.812 to 37.980. All ten candidate comparisons
+retain the same estimation sample, rank and omission status as the prior
+candidate, with zero observed main-coefficient and covariance differences.
+The separate diagnostic puts terminal separation at 1.82 seconds for pooled
+explicit PPML, down from 5.51 seconds in the previous traced build.
+
+All 39 original reporter calls and 11 mapped Mac fixtures pass on the final
+signed binary, including the exact weak-ring fixture and transaction checks.
+The Mac ABI harness passes. The 480-row covariance and unit-rescaling
+exports agree byte-for-byte with the prior qualified candidate. The full
+source gate passes 371 Python tests, 1,636 core unit tests, 213 plugin tests,
+243 serial FFI tests, the independent separation sample census and all 13
+isolated allocator audits.
+
+SCC job 8721706 passed the native build, generated benchmark, 24 finite-WLS
+tests, the restored-column test and the native weak-ring fixture. It ran on
+an isolated 28-core host at eight native workers for estimation. On a
+generated 140,000-row panel, pooled absorbed PPML medians were 4.743 seconds
+in 0.6.0, 9.450 in 0.6.1 and 7.285 in this candidate. Fixed-worker point
+estimates and standard errors repeat exactly as printed. Sample counts and
+point estimates agree across all three versions.
+The initial Linux routing filter selected no tests. The separate job 8722496
+ran the intended independent LP sample census and repeat/cross-worker oracle
+against the same source. Both tests passed.
+
 ## Post-0.6.1 performance and PPML covariance candidate
 
 The candidate preserves exact original-design alias checks and independently

@@ -563,6 +563,11 @@ where
     };
     let started = Instant::now();
     recover::<R, NB, UNIT>(st, ctx.w, work);
+    if !passes::safe_residual_write::<R, NB>(work, &norms) {
+        return Ok(Step::Declined(
+            "elimination reconstruction outside the finite range",
+        ));
+    }
     if let Some(coefficients) = batch.coefficients {
         add_coefficients::<R>(st, work, coefficients, batch.first);
     }

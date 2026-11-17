@@ -176,8 +176,25 @@ pub(super) fn certify_dual(
     linear: PreparedOlsFitConfig,
     admission: DetectorAdmission,
 ) -> Result<bool> {
-    let (ppml, linear) = admission.unit_projection.unwrap_or((ppml, linear));
     let unit = fallible_filled(dual.len(), 1., "unable to reserve dual certificate weights")?;
+    if let Some((fast_ppml, fast_linear)) = fast_unit_policy(generation, ppml, linear, admission) {
+        match certify_dual_with_weights(
+            generation,
+            dual,
+            &unit,
+            fast_ppml,
+            config,
+            fast_linear,
+            admission.full_span_bytes,
+            None,
+        ) {
+            Ok(true) => return Ok(true),
+            Ok(false) => {}
+            Err(error) if is_numerical_refusal(&error) => {}
+            Err(error) => return Err(error),
+        }
+    }
+    let (ppml, linear) = admission.unit_projection.unwrap_or((ppml, linear));
     certify_dual_with_weights(
         generation,
         dual,
@@ -604,6 +621,94 @@ fn stable_norm(values: &[f64]) -> f64 {
     norm.norm()
 }
 
+/// A complete dual of the original model proves no separation under any
+/// positive search metric. Leave positive proposals to the existing detector.
+pub(super) fn probe_dual(
+    generation: &PreparedPpmlModelGeneration,
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+    admission: DetectorAdmission,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<PreparedNumericalProposal>> {
+    if let Some(policy) = fast_unit_policy(generation, ppml, linear, admission) {
+        let trial = DetectorAdmission {
+            unit_projection: Some(policy),
+            ..admission
+        };
+        match resolve(generation, ppml, config, linear, interrupt, trial, 1) {
+            Ok(Resolution::Dual(dual, iterations)) => {
+                return bound_dual(generation, dual, iterations).map(Some);
+            }
+            Ok(Resolution::Direction(_)) => return Ok(None),
+            Err(error) if is_numerical_refusal(&error) => {}
+            Err(error) => return Err(error),
+        }
+    }
+    match resolve(generation, ppml, config, linear, interrupt, admission, 1) {
+        Ok(Resolution::Dual(dual, iterations)) => {
+            bound_dual(generation, dual, iterations).map(Some)
+        }
+        Ok(Resolution::Direction(_)) => Ok(None),
+        Err(error) if is_numerical_refusal(&error) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+fn is_numerical_refusal(error: &FeregError) -> bool {
+    matches!(
+        error.code,
+        ErrorCode::NonConvergence | ErrorCode::InvalidData
+    )
+}
+
+/// Use exact elimination or bounded Auto only on a design it can serve.
+/// This speculative cap leaves the admitted unit LSMR and weighted budgets
+/// intact. The new response and terminal replay rebuild their own solves.
+fn fast_unit_policy(
+    generation: &PreparedPpmlModelGeneration,
+    mut ppml: PpmlConfig,
+    mut linear: PreparedOlsFitConfig,
+    admission: DetectorAdmission,
+) -> Option<(PpmlConfig, PreparedOlsFitConfig)> {
+    let effects = generation.prepared().as_ref().effect_specs();
+    if admission.unit_projection.is_none()
+        || ppml.absorb.solver != FeSolverKind::Auto
+        || !(2..=5).contains(&effects.len())
+        || effects.iter().any(|spec| !spec.slopes.is_empty())
+    {
+        return None;
+    }
+    linear.absorb.map.max_iterations = linear.absorb.map.max_iterations.min(128);
+    // Reserve the full LSMR budget for the established strict attempt.
+    linear.absorb.lsmr.max_iterations = linear.absorb.lsmr.max_iterations.min(128);
+    ppml.absorb = linear.absorb;
+    Some((ppml, linear))
+}
+
+fn bound_dual(
+    generation: &PreparedPpmlModelGeneration,
+    dual: Vec<f64>,
+    iterations: usize,
+) -> Result<PreparedNumericalProposal> {
+    let certificate = dual_certificate(generation, &dual);
+    let mut proposal = bind_numerical_proposal(
+        generation,
+        DetectionProposal {
+            method: SeparationMethod::IteratedRectifier,
+            dropped: Vec::new(),
+            iterations,
+            status: MethodStatus::NoSeparation,
+            certificate: Some(certificate),
+            exact_fe_certificate: None,
+            direction: None,
+            note: "prepared iterated rectifier certified no separation".into(),
+        },
+    )?;
+    proposal.stable_dual = Some(dual);
+    Ok(proposal)
+}
+
 /// A weighted numerical failure can lose a boundary-only direction before
 /// returning any proposal. The same unit-metric certificate is the bounded
 /// recovery; a failed recovery preserves the original numerical error.
@@ -622,24 +727,7 @@ pub(super) fn recover(
         generation, ppml, config, linear, interrupt, admission, iterations,
     ) {
         Ok(Resolution::Direction(proposal)) => Ok(proposal),
-        Ok(Resolution::Dual(dual, iterations)) => {
-            let certificate = dual_certificate(generation, &dual);
-            let mut proposal = bind_numerical_proposal(
-                generation,
-                DetectionProposal {
-                    method: SeparationMethod::IteratedRectifier,
-                    dropped: Vec::new(),
-                    iterations,
-                    status: MethodStatus::NoSeparation,
-                    certificate: Some(certificate),
-                    exact_fe_certificate: None,
-                    direction: None,
-                    note: "prepared iterated rectifier certified no separation".into(),
-                },
-            )?;
-            proposal.stable_dual = Some(dual);
-            Ok(proposal)
-        }
+        Ok(Resolution::Dual(dual, iterations)) => bound_dual(generation, dual, iterations),
         Err(error)
             if matches!(
                 error.code,

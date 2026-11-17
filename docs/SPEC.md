@@ -1950,9 +1950,15 @@ The unit-weight detector uses the Dykstra recurrence
 `p_new = t - P_full(t)`, with FE projection tolerance at most `1e-14`.
 Generation-zero preflight resolves the detector's existing optional modified-LSMR
 admission, including its established Schwarz workspace bound, for unit-metric
-primal/dual checks. When admitted, all unit projections and independent terminal
-replay use that stored policy at the unchanged strict FE tolerance and complete
-original-model certificates. When a weighted Auto projection with more than
+primal/dual checks. After the exact graph proposals, an eligible Auto detector
+can try one unit-weight iteration before the weighted search. Only a complete
+dual can end detection here. A directional result or numerical refusal
+continues to the weighted search. For two to five categorical intercept
+effects, the unit probe and independent terminal replay can first use the
+already admitted Auto projection with up to 128 iterations per configured
+solver. A refused attempt has the original strict LSMR policy available.
+Every accepted projection uses the strict tolerance and complete original-model
+checks. When a weighted Auto projection with more than
 two categorical effects declines on numerical grounds, try one unit-weight
 iteration before continuing with the original weighted path. The early result
 must satisfy the same full primal or dual certificate and independent replay.
@@ -1973,6 +1979,8 @@ budget. Numerical failures (`NonConvergence` or `InvalidData`) of the weighted
 detector may use this same recovery; an unsuccessful numerical recovery retains
 the original error, while Break, allocation and internal failures propagate.
 The resulting no-drop evidence is independently replayed before publication.
+Reported certificate values can reflect the unit dual even when the weighted
+recurrence would also have found no separation.
 
 Exact categorical proposals examine the first FE pair and a star centered on
 the effect with the most levels, at most one pair per effect. Each proof binds

@@ -29,6 +29,35 @@ fn extreme_schedule_shapes_fail_capacity_without_panicking() {
 
 use super::*;
 
+#[test]
+fn tiled_dropped_span_keeps_scalar_order_and_tail() {
+    let row: Vec<_> = (0..25).map(|i| (i as f64 + 0.125).cos()).collect();
+    let (kept, dropped) = (
+        [24, 22, 23, 21, 20, 19, 18],
+        (0..18).rev().collect::<Vec<_>>(),
+    );
+    let coefficients: Vec<_> = (0..kept.len() * dropped.len())
+        .map(|i| (i as f64 + 0.25).sin())
+        .collect();
+    let mut norms = vec![0.125; dropped.len()];
+    let expected: Vec<_> = dropped
+        .iter()
+        .enumerate()
+        .map(|(position, &column)| {
+            let mut residual = row[column];
+            for (selected, &keep) in kept.iter().enumerate() {
+                residual -= row[keep] * coefficients[selected * dropped.len() + position];
+            }
+            hypot(0.125, residual).to_bits()
+        })
+        .collect();
+    accumulate_dropped_span_row(&row, (&kept, &dropped), &coefficients, &mut norms).unwrap();
+    assert_eq!(
+        norms.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+        expected
+    );
+}
+
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
     assert!(
         (actual - expected).abs() <= tolerance,

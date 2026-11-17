@@ -2147,6 +2147,13 @@ fn prepared_bound_iterated_rectifier(
             }
         }
     }
+    if graph_admitted.unit_projection.is_some() && ppml.absorb.solver == FeSolverKind::Auto {
+        if let Some(proposal) =
+            stable::probe_dual(generation, ppml, config, linear, graph_admitted, interrupt)?
+        {
+            return Ok(proposal);
+        }
+    }
     prepared_weighted_rectifier(generation, ppml, config, linear, graph_admitted, interrupt)
 }
 

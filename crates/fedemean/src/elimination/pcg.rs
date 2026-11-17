@@ -405,12 +405,14 @@ pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool, M: Precondi
         for c in 0..R {
             if state.active[c] {
                 if pq[c].is_finite() && pq[c] > 0.0 {
-                    alpha[c] = state.rz[c] / pq[c];
-                } else {
-                    // No curvature left along the direction: the recurrence
-                    // has reached its rounding floor.
-                    flat[c] = true;
+                    let step = state.rz[c] / pq[c];
+                    if step.is_finite() {
+                        alpha[c] = step;
+                        continue;
+                    }
                 }
+                // A curvature breakdown may leave a nonfinite direction.
+                flat[c] = true;
             }
         }
         if !state.fall_back(flat, &mut work.x, &work.xs) {
@@ -418,6 +420,9 @@ pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool, M: Precondi
         }
         if !state.active.contains(&true) {
             break;
+        }
+        if flat.contains(&true) {
+            clear_broken_directions(work, flat);
         }
         let measures = step(w, work, alpha, precond)?;
         iterations += 1;
@@ -454,4 +459,50 @@ pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool, M: Precondi
         accepted: state.accepted,
         floor: state.floor,
     })
+}
+
+/// The fused step still visits all lanes. Clear failed operands so that a zero
+/// step cannot poison the iterate just restored from the accepted checkpoint.
+fn clear_broken_directions<const R: usize>(work: &mut Work<R>, flat: [bool; R]) {
+    for ((p, q), r) in work
+        .p
+        .iter_mut()
+        .zip(&mut work.lanes[0].acc)
+        .zip(&mut work.r)
+    {
+        for (c, &broken) in flat.iter().enumerate() {
+            if broken {
+                p[c] = 0.0;
+                q[c] = 0.0;
+                r[c] = 0.0;
+            }
+        }
+    }
+}
+
+#[test]
+fn broken_lane_cannot_corrupt_restored_iterate() {
+    let mut work = Work {
+        x: vec![[3.0, 5.0]],
+        xs: vec![[3.0, 5.0]],
+        r: vec![[f64::NAN, 4.0]],
+        z: vec![[0.0; 2]],
+        p: vec![[f64::INFINITY, 2.0]],
+        lanes: vec![super::kernels::LaneWork {
+            acc: vec![[f64::NAN, 4.0]],
+            u: Vec::new(),
+            stats: [[0.0; 2]; 3],
+            lower: [[0.0; 2]; 2],
+        }],
+        seg: Vec::new(),
+        partials: Vec::new(),
+    };
+    let mut weights = Weights::empty();
+    weights.inverse_diagonal.push(1.0);
+    weights.inverse_root_mass.push(1.0);
+    clear_broken_directions(&mut work, [true, false]);
+    let measures = step(&weights, &mut work, [0.0, 0.5], &mut Jacobi).unwrap();
+    assert_eq!(work.x[0], [3.0, 6.0]);
+    assert_eq!(work.r[0], [0.0, 2.0]);
+    assert_eq!(measures, [[0.0, 4.0], [0.0, 2.0], [0.0, 2.0]]);
 }

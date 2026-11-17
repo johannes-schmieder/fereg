@@ -150,6 +150,23 @@ pub(super) fn recover<const R: usize, const NB: usize, const UNIT: bool>(
     );
 }
 
+/// Bound the raw value and every addend before overwriting the fallback input.
+/// The extra headroom also covers three accumulated coefficient increments.
+/// Each checked coefficient is reused as-is by the normal residual pass.
+pub(super) fn safe_residual_write<const R: usize, const NB: usize>(
+    work: &Work<R>,
+    norms: &RhsNorms<R>,
+) -> bool {
+    let limit = f64::MAX / (2 * (NB + 2).max(3)) as f64;
+    norms.big.iter().all(|&value| value <= limit)
+        && work
+            .x
+            .iter()
+            .chain(&work.seg)
+            .flatten()
+            .all(|value| value.abs() <= limit)
+}
+
 /// Form the residual in place and accumulate its remaining-level moments into
 /// the first lane's accumulator; returns `Σ w r^2` per RHS. With `gram`, also
 /// forms the raw-weighted residual Gram `Σ w r r'` (plain sums per row lane,

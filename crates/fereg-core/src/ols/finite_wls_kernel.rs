@@ -461,22 +461,16 @@ pub(super) fn factor_rank_revealing_retained_qr(
                 let sine = incoming / rotated;
                 qr[step * dimension + step] = rotated;
                 trailing_norms[step] = 0.0;
-                for column in (step + 1)..dimension {
-                    let upper = qr[step * dimension + column];
-                    let row_value = trailing_norms[column];
-                    qr[step * dimension + column] = cosine * upper + sine * row_value;
-                    trailing_norms[column] = -sine * upper + cosine * row_value;
-                }
+                let finite_tail = rotate_streamed_qr_tail(
+                    &mut qr[step * dimension + step + 1..(step + 1) * dimension],
+                    &mut trailing_norms[step + 1..],
+                    cosine,
+                    sine,
+                );
                 let upper_outcome = transformed_rhs[step];
                 transformed_rhs[step] = cosine * upper_outcome + sine * outcome;
                 outcome = -sine * upper_outcome + cosine * outcome;
-                if qr[step * dimension..(step + 1) * dimension]
-                    .iter()
-                    .chain(&transformed_rhs[step..=step])
-                    .chain(&trailing_norms[step..])
-                    .any(|value| !value.is_finite())
-                    || !outcome.is_finite()
-                {
+                if !finite_tail || !transformed_rhs[step].is_finite() || !outcome.is_finite() {
                     return Err(invalid_data(
                         "retained finite-WLS streaming QR is not finite",
                     ));
@@ -599,6 +593,19 @@ pub(super) fn factor_rank_revealing_retained_qr(
     })
 }
 
+/// Preserve both unfused updates and check their outputs in the same pass.
+/// The unmodified prefix was already checked during its own rotations.
+fn rotate_streamed_qr_tail(upper: &mut [f64], row: &mut [f64], cosine: f64, sine: f64) -> bool {
+    let mut finite = true;
+    for (upper, row) in upper.iter_mut().zip(row) {
+        let before = *upper;
+        *upper = cosine * before + sine * *row;
+        *row = -sine * before + cosine * *row;
+        finite &= upper.is_finite() & row.is_finite();
+    }
+    finite
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct RankRevealingQrReport {
     pub(super) rank: usize,
@@ -703,19 +710,12 @@ pub(super) fn certify_retained_qr_dropped_span(
             standardized_row,
             scratch_reader.as_mut(),
         )?;
-        for dropped_position in 0..dropped {
-            let mut residual = standardized_row[permutation[rank + dropped_position]];
-            for selected in 0..rank {
-                residual -= standardized_row[permutation[selected]]
-                    * projection_coefficients[selected * dropped + dropped_position];
-            }
-            residual_norms[dropped_position] = hypot(residual_norms[dropped_position], residual);
-            if !residual_norms[dropped_position].is_finite() {
-                return Err(invalid_data(
-                    "retained finite-WLS dropped-span residual is not finite",
-                ));
-            }
-        }
+        accumulate_dropped_span_row(
+            standardized_row,
+            permutation.split_at(rank),
+            projection_coefficients,
+            residual_norms,
+        )?;
     }
     let maximum_dropped_relative_norm =
         residual_norms.iter().copied().fold(0.0_f64, f64::max) / initial_norm;
@@ -733,6 +733,46 @@ pub(super) fn certify_retained_qr_dropped_span(
             && maximum_dropped_relative_norm.is_finite()
             && maximum_dropped_relative_norm <= upper,
     })
+}
+
+/// Traverse a tile across discarded columns to reuse each selected value and
+/// load the QR coefficients contiguously. Each residual and norm retain their
+/// original calculation and observation order.
+fn accumulate_dropped_span_row(
+    row: &[f64],
+    (kept, dropped): (&[usize], &[usize]),
+    coefficients: &[f64],
+    norms: &mut [f64],
+) -> Result<()> {
+    const TILE: usize = 16;
+    for (block, norms) in norms.chunks_mut(TILE).enumerate() {
+        let first = block * TILE;
+        let end = first + norms.len();
+        let mut residuals = [0.0; TILE];
+        let residuals = &mut residuals[..norms.len()];
+        for (value, &column) in residuals.iter_mut().zip(&dropped[first..end]) {
+            *value = row[column];
+        }
+        for (selected, &column) in kept.iter().enumerate() {
+            let base = selected * dropped.len();
+            let x = row[column];
+            for (residual, &coefficient) in residuals
+                .iter_mut()
+                .zip(&coefficients[base + first..base + end])
+            {
+                *residual -= x * coefficient;
+            }
+        }
+        for (norm, &residual) in norms.iter_mut().zip(residuals.iter()) {
+            *norm = hypot(*norm, residual);
+            if !norm.is_finite() {
+                return Err(invalid_data(
+                    "retained finite-WLS dropped-span residual is not finite",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Solve the accepted leading CPQR system and publish coefficients in
