@@ -547,8 +547,8 @@ class AffectedScopeChecks(unittest.TestCase):
 
 class IndependentOlsReferenceChecks(unittest.TestCase):
     def analytic_targets(self, frequency=False):
-        # Orthogonal centered slopes and residual; nonzero raw slope means
-        # distinguish the required original norms from within-column norms.
+        # Orthogonal slopes and residual; nonzero raw slope means must not
+        # enter reference norms when the model absorbs a constant.
         first = [-1., 1.] * 4
         second = [-1., -1., 1., 1.] * 2
         residual = [-1.] * 4 + [1.] * 4
@@ -561,7 +561,28 @@ class IndependentOlsReferenceChecks(unittest.TestCase):
         for frequency, adjusted in [(False, 123 / 130), (True, 323 / 338)]:
             targets = self.analytic_targets(frequency)
             self.assertAlmostEqual(targets['RFIT']['11'], adjusted, places=14)
-            self.assertAlmostEqual(targets['RCERT']['11'], math.sqrt(2.5), places=14)
+            self.assertAlmostEqual(targets['RCERT']['11'], 1., places=14)
+
+    def test_condition_reference_keeps_weighted_fe_variation_and_removes_location(self):
+        # Each group contains the four (u,v) sign combinations. Weights1/3
+        # give Var(g)=3/4; centered raw variances of u+2g and v+g are4 and7/4.
+        # Removing group FE leaves orthogonal u,v with unit variances, hence
+        # the scaled Cholesky diagonal ratio is sqrt((4/7)/(1/4))=4/sqrt(7).
+        group = [-1.] * 4 + [1.] * 4
+        u, v = [-1., 1.] * 4, [-1., -1., 1., 1.] * 2
+        x = [[a + 2 * g for a, g in zip(u, group)], [b + g for b, g in zip(v, group)]]
+        y = [.5 * a - .25 * b + 3 * g + p * q for a, b, g, p, q in zip(*x, group, u, v)]
+        weights = [1.] * 4 + [3.] * 4
+        for frequency in (False, True):
+            for origins, units in [((0., 0.), (1., 1.)), ((2.**40, -2.**30), (.125, 16.))]:
+                transformed = [[origin + unit * value for value in column]
+                               for column, origin, unit in zip(x, origins, units)]
+                targets = dense_targets(y, transformed, [group], weights, frequency)
+                self.assertAlmostEqual(targets['RCERT']['11'], 4 / math.sqrt(7), places=14)
+        expanded = lambda column: [value for value, weight in zip(column, weights) for _ in range(int(weight))]
+        repeated = dense_targets(expanded(y), [expanded(column) for column in x],
+                                 [expanded(group)], [1.] * 16, False)
+        self.assertAlmostEqual(repeated['RCERT']['11'], 4 / math.sqrt(7), places=14)
 
     def test_enrichment_rejects_changed_model_and_skips_unrelated_cases(self):
         expected = {'poisson': False}

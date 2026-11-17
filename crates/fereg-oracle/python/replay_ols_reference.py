@@ -76,9 +76,17 @@ def dense_targets(outcome, regressors, effects, weights, frequency):
         adjusted_r2 = 1 - ((dot(residual, residual) / residual_dof) /
                            (dot(centered, centered) / (effective_n - 1)))
 
-        # The finite solve scales by ORIGINAL weighted column norms. For two
-        # columns, the pivoted triangular diagonals follow from the 2x2 Gram.
-        norms = [dot(column, column).sqrt() for column in x]
+        # An absorbed constant makes location immaterial to the reference
+        # scale. Compute the weighted raw variation directly in Decimal,
+        # independently of the runtime's anchored/scaled accumulation. This
+        # is not the within norm: nonconstant FE variation remains in it.
+        centered_x = []
+        for column in x:
+            location = sum(weight * value for weight, value in zip(w, column)) / sum(w)
+            centered_x.append([value - location for value in column])
+        norms = [dot(column, column).sqrt() for column in centered_x]
+        # For two columns, the pivoted triangular diagonals follow from the
+        # 2x2 within Gram in those independently computed reference units.
         a = finite_gram[0][0] / norms[0] ** 2
         c = finite_gram[1][1] / norms[1] ** 2
         b = finite_gram[0][1] / (norms[0] * norms[1])
