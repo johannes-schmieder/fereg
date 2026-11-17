@@ -666,6 +666,55 @@ impl CertifiedPreparedOlsFit {
         &self.residual_absorption_report
     }
 
+    /// Count a rejected IID attempt without retaining its scientific authority.
+    /// Only sequential work and workspace maxima merge; accepted routes and
+    /// certificates continue to describe this fit alone.
+    pub(super) fn record_inference_retry_work(
+        &mut self,
+        initial: SolveReport,
+        residual: SolveReport,
+    ) -> Result<()> {
+        // A derived accepted residual must retain its zero-work report.
+        // The initial report carries all work of the rejected full attempt.
+        let current = &mut self.absorption_report;
+        for earlier in [initial, residual] {
+            current.iterations = current
+                .iterations
+                .checked_add(earlier.iterations)
+                .ok_or_else(|| allocation("IID retry iteration count overflows"))?;
+            current.checkpoint_retries = current
+                .checkpoint_retries
+                .checked_add(earlier.checkpoint_retries)
+                .ok_or_else(|| allocation("IID retry work count overflows"))?;
+            current.pilot_iterations = current
+                .pilot_iterations
+                .checked_add(earlier.pilot_iterations)
+                .ok_or_else(|| allocation("IID retry pilot count overflows"))?;
+            current.solver_workspace_peak = current
+                .solver_workspace_peak
+                .max(earlier.solver_workspace_peak);
+            current.setup_seconds += earlier.setup_seconds;
+            current.solve_seconds += earlier.solve_seconds;
+            current.certification_seconds += earlier.certification_seconds;
+            if ![
+                current.setup_seconds,
+                current.solve_seconds,
+                current.certification_seconds,
+            ]
+            .iter()
+            .all(|value| value.is_finite())
+            {
+                return Err(invalid_data("IID retry work timing is not finite"));
+            }
+        }
+        self.absorption_report.checkpoint_retries = self
+            .absorption_report
+            .checkpoint_retries
+            .checked_add(1)
+            .ok_or_else(|| allocation("IID retry count overflows"))?;
+        Ok(())
+    }
+
     #[must_use]
     pub const fn initial_absorbed_outcome_sum_of_squares(&self) -> f64 {
         self.initial_absorbed_outcome_sum_of_squares

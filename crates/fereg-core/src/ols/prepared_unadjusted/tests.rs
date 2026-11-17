@@ -1622,3 +1622,278 @@ fn translated_no_fe_map_preserves_iid_fit_statistics() {
         }
     }
 }
+
+fn iid_refit_walsh_fixture(weight_kind: u8) -> PreparedOlsData {
+    let mut edges = Vec::new();
+    for g in 0..16 {
+        let base = if g < 8 { 0 } else { 8 };
+        let mut seed = (g as u64 + 7) * 7919;
+        for j in 0..8 {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+            edges.push((
+                g,
+                if j == 0 {
+                    g
+                } else {
+                    base + ((seed >> 32) as usize % 8)
+                },
+            ));
+        }
+    }
+    edges.push((7, 8));
+    let (mut y, mut x, mut g, mut h, mut aw, mut fw) = (
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
+    for (edge, (a, b)) in edges.into_iter().enumerate() {
+        let fa =
+            (std::f64::consts::PI * (a as f64 + 0.5) / 16.).cos() + 0.2 * (a as f64 * 1.713).sin();
+        let fb =
+            (std::f64::consts::PI * (b as f64 + 0.5) / 16.).cos() + 0.2 * (b as f64 * 0.713).sin();
+        for row in 0_usize..4 {
+            let s = if row & 1 == 0 { 1. } else { -1. };
+            let e = if row.count_ones() % 2 == 0 { 1. } else { -1. };
+            x.push(s + 1000. * (-fa - 2. * fb));
+            y.push(1e6 * (fa + fb) + 0.2 * e + 0.01 * s);
+            g.push(a as f64);
+            h.push(b as f64);
+            aw.push((1 + edge % 3) as f64);
+            fw.push((1 + edge % 3) as u32);
+        }
+    }
+    let weights = match weight_kind {
+        0 => TestWeights::Unit,
+        1 => TestWeights::Analytic(&aw),
+        _ => TestWeights::Frequency(&fw),
+    };
+    let (mut request, mut input) = prepared_input(&y, &[x], Some(&g), true, weights);
+    let h_source = SourceEntry {
+        id: SourceId::new(3).unwrap(),
+        canonical_name: "h".into(),
+    };
+    request.model.sources.push(h_source.clone());
+    request.bindings.push(OlsInputBinding {
+        stata_var_position: request.bindings.len() as u32 + 1,
+        role: OlsInputRole::NumericSource(h_source.id),
+    });
+    request.absorbed_terms.push(AbsorbedTerm {
+        id: AbsorbTermId::new(2).unwrap(),
+        intercept: true,
+        categorical_sources: vec![h_source.id],
+        slope_sources: vec![],
+        label: "h".into(),
+        saved_name: String::new(),
+    });
+    input.numeric_sources.push((h_source.id, loaded(&h)));
+    prepare_model(&request, &[], &input, true).unwrap()
+}
+
+fn iid_refit_config() -> PreparedOlsUnadjustedConfig {
+    let mut config = PreparedOlsUnadjustedConfig::default();
+    // The public command default; the core coefficient API defaults to 1e-10.
+    config.fit.absorb.map.tolerance = 1e-8;
+    config.fit.absorb.lsmr.tolerance = 1e-8;
+    config.fit.allow_final_fe_recovery = true;
+    config.fit.final_residual_tolerance = Some(1e-14);
+    config.fit.execution.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
+    config
+}
+
+#[test]
+fn iid_projection_retry_restores_independent_walsh_statistics() {
+    let _stable = crate::fe::block_schur::stable_route_for_test();
+    // Each edge contains all four Walsh rows with equal weight: x_within=s,
+    // y_within=.01s+.2e, with exact orthogonality. The connected two-FE graph
+    // has rank31, so df=N_eff-32 and F=.0025*df, independently of any fit.
+    for weight_kind in 0..3 {
+        let data = iid_refit_walsh_fixture(weight_kind);
+        for mode in [
+            super::super::PreparedOlsExecutionMode::Fast,
+            super::super::PreparedOlsExecutionMode::Low,
+        ] {
+            let mut config = iid_refit_config();
+            config.fit.execution.mode = mode;
+            let fit = fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None)
+                .unwrap_or_else(|error| panic!("weight={weight_kind} mode={mode:?}: {error:?}"));
+            let n = fit.weights().effective_observations as f64;
+            let df = n - 32.;
+            assert_eq!(fit.dof().residual_dof as f64, df);
+            assert_close(fit.fit().coefficients()[0].value.unwrap(), 0.01, 1e-9);
+            assert_close(fit.statistics().rss, 0.04 * n, 1e-7);
+            assert_close(fit.statistics().within_tss, 0.0401 * n, 1e-7);
+            assert_close(fit.statistics().f_statistic.unwrap(), 0.0025 * df, 1e-7);
+            assert_close(fit.covariance().values()[0], 0.04 / df, 1e-10);
+            assert!(fit.certificate().passed);
+            if mode == super::super::PreparedOlsExecutionMode::Fast {
+                assert_eq!(fit.fit().absorption_report().checkpoint_retries, 1);
+            }
+        }
+    }
+}
+
+#[test]
+fn iid_projection_retry_keeps_ordinary_success_and_strict_failure_semantics() {
+    let _stable = crate::fe::block_schur::stable_route_for_test();
+    let data = iid_refit_walsh_fixture(0);
+    let mut config = iid_refit_config();
+    config.fit.final_residual_tolerance = None;
+    let fit = fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None).unwrap();
+    assert_eq!(fit.fit().absorption_report().checkpoint_retries, 0);
+    // The already accepted derived-scale path is outside this refusal repair.
+    // More accurate projection on another platform must remain acceptable.
+    assert_close(fit.statistics().rss, 20.64, 1e-5);
+    let tightened = stricter_iid_projection(config).unwrap();
+    assert!(stricter_iid_projection(tightened).is_none());
+    let mut impossible = iid_refit_config();
+    impossible.certificate_tolerance = 1e-30;
+    let error =
+        fit_prepared_model_unadjusted_with_loaded_moments(&data, impossible, None).unwrap_err();
+    assert_eq!(error.code, ErrorCode::InvalidData);
+    assert_eq!(
+        error.message,
+        "prepared iid covariance or fit-statistic certificate did not pass"
+    );
+    for code in [
+        ErrorCode::Interrupted,
+        ErrorCode::Allocation,
+        ErrorCode::InvalidArgument,
+        ErrorCode::Unsupported,
+    ] {
+        let error =
+            exhausted_projection_retry(invalid_data("original"), FeregError::new(code, "retry"));
+        assert_eq!(error.code, code);
+        assert_eq!(error.message, "retry");
+    }
+    let error = exhausted_projection_retry(
+        invalid_data("original"),
+        FeregError::new(ErrorCode::NonConvergence, "retry"),
+    );
+    assert_eq!(error.code, ErrorCode::InvalidData);
+    assert_eq!(error.message, "original");
+}
+
+#[test]
+fn iid_projection_retry_does_not_reclassify_bad_covariance_or_allocation() {
+    let _stable = crate::fe::block_schur::stable_route_for_test();
+    let data = iid_refit_walsh_fixture(0);
+    let fit = fit_prepared_model_coefficients(&data, iid_refit_config().fit).unwrap();
+    let absorbed =
+        compute_canonical_prepared_ols_absorbed_dof(&data, PreparedOlsAbsorbedDofPolicy::Pairwise)
+            .unwrap();
+    let summary = data
+        .inference_absorbed_dof_summary(&absorbed, absorbed.policy)
+        .unwrap();
+    let mut work = None;
+    let mut reservation = CountingReservation {
+        fail_at: Some(1),
+        ..CountingReservation::default()
+    };
+    let error = compose_view_internal(
+        &data,
+        fit,
+        summary,
+        5e-10,
+        &mut reservation,
+        InferencePerturbations::default(),
+        Some(&mut work),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, ErrorCode::Allocation);
+    assert!(work.is_none());
+    let mut certificate = PreparedOlsUnadjustedCertificate {
+        reference_weight_sum_relative_error: 0.,
+        sum_of_squares_order_relative_error: 0.,
+        covariance_scale_relative_infinity_norm: 0.,
+        covariance_symmetry_relative_infinity_norm: 0.,
+        statistic_formula_relative_infinity_norm: 1e-6,
+        minimum_covariance_diagonal: 1.,
+        passed: false,
+    };
+    let mut covariance = PreparedOlsUnadjustedCovariance {
+        variance_scale: 1.,
+        values: vec![1.],
+        standard_errors: vec![1.],
+    };
+    assert!(projection_dependent_failure(
+        &certificate,
+        &covariance,
+        5e-10
+    ));
+    covariance.standard_errors[0] = -f64::MIN_POSITIVE;
+    assert!(!projection_dependent_failure(
+        &certificate,
+        &covariance,
+        5e-10
+    ));
+    covariance.standard_errors[0] = 1.;
+    certificate.covariance_scale_relative_infinity_norm = 1e-6;
+    assert!(!projection_dependent_failure(
+        &certificate,
+        &covariance,
+        5e-10
+    ));
+}
+
+#[test]
+fn iid_projection_retry_propagates_break_and_recovers() {
+    const CHILD: &str = "FEREG_IID_RETRY_BREAK_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1").arg("ols::prepared_unadjusted::tests::iid_projection_retry_propagates_break_and_recovers")
+            .arg("--exact").arg("--test-threads=1").status().unwrap();
+        assert!(status.success());
+        return;
+    }
+    let data = iid_refit_walsh_fixture(0);
+    let config = iid_refit_config();
+    crate::interrupt::test_polls::cancel_at(None);
+    let fit = fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None).unwrap();
+    assert_eq!(fit.fit().absorption_report().checkpoint_retries, 1);
+    let polls = crate::interrupt::test_polls::polls();
+    for stop in [0, polls - 1] {
+        crate::interrupt::test_polls::cancel_at(Some(stop));
+        let error =
+            fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None).unwrap_err();
+        assert_eq!(error.code, ErrorCode::Interrupted);
+    }
+    crate::interrupt::test_polls::cancel_at(None);
+    assert!(
+        fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None)
+            .unwrap()
+            .certificate()
+            .passed
+    );
+}
+
+#[test]
+fn iid_projection_retry_accounting_preserves_residual_report_and_checks_overflow() {
+    let _stable = crate::fe::block_schur::stable_route_for_test();
+    let data = iid_refit_walsh_fixture(0);
+    let config = stricter_iid_projection(iid_refit_config()).unwrap();
+    let mut fit = fit_prepared_model_coefficients(&data, config.fit).unwrap();
+    let initial = fit.absorption_report().clone();
+    let residual = fit.residual_absorption_report().clone();
+    let mut rejected_residual = residual.clone();
+    rejected_residual.iterations = 7;
+    rejected_residual.pilot_iterations = 3;
+    fit.record_inference_retry_work(initial.clone(), rejected_residual)
+        .unwrap();
+    assert_eq!(fit.residual_absorption_report(), &residual);
+    assert_eq!(
+        fit.absorption_report().iterations,
+        2 * initial.iterations + 7
+    );
+    assert_eq!(fit.absorption_report().checkpoint_retries, 1);
+    let mut overflow = initial;
+    overflow.checkpoint_retries = usize::MAX;
+    assert_eq!(
+        fit.record_inference_retry_work(overflow, residual)
+            .unwrap_err()
+            .code,
+        ErrorCode::Allocation
+    );
+}

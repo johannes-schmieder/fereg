@@ -1308,6 +1308,23 @@ Robust and clustered covariance may be legitimately singular (for example
 G < K); a pivot within the certificate tolerance of the largest slope variance
 leaves F missing, and a clearly negative pivot is an error.
 
+For IID OLS with explicit absorbed effects, a failed sum-of-squares/statistic
+composition certificate may receive one stricter full fit at
+`min(requested FE tolerance, 1e-14)`, only when this tightens the request and
+all weight, covariance, finite-value and standard-error checks passed. The
+prepared sample, recipes, weights, solver/preconditioner, iteration limits and
+memory admission remain unchanged. Failed fit/inference owners are dropped
+before rebuilding; initial loaded-row materialization is not retained.
+Independent outcome projection and every original certificate are recomputed;
+within TSS is never inferred from F or the estimated coefficients. Allocation,
+Break, malformed-input and unsupported-request errors propagate immediately;
+an exhausted numerical retry retains the original IID refusal. The accepted
+initial projection report counts both rejected projections plus one retry,
+using additive work/time and sequential workspace maxima. Accepted route and
+certificate metadata, including a zero-work derived residual report, remain
+authoritative. Already certified fits are unchanged; in particular this repair
+does not tighten the accepted no-output derived-scale RSS policy (§7, §16).
+
 The OLS frontend displays the stored sample size, model F and its F-tail
 p-value, R², adjusted and within R², RMSE and per-dimension cluster counts
 above the coefficient table. Its absorbed-DoF table uses `e(dof_table)` and

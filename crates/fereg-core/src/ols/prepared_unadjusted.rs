@@ -268,14 +268,97 @@ pub fn fit_prepared_model_unadjusted_with_loaded_moments(
     )
 }
 
+struct IidProjectionRetryWork {
+    initial: crate::fe::SolveReport,
+    residual: crate::fe::SolveReport,
+}
+
+fn stricter_iid_projection(
+    mut config: PreparedOlsUnadjustedConfig,
+) -> Option<PreparedOlsUnadjustedConfig> {
+    let floor = 1e-14;
+    let before = (
+        config.fit.absorb.map.tolerance,
+        config.fit.absorb.lsmr.tolerance,
+    );
+    config.fit.absorb.map.tolerance = before.0.min(floor);
+    config.fit.absorb.lsmr.tolerance = before.1.min(floor);
+    (before
+        != (
+            config.fit.absorb.map.tolerance,
+            config.fit.absorb.lsmr.tolerance,
+        ))
+        .then_some(config)
+}
+
 fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
     prepared: &P,
-    config: PreparedOlsUnadjustedConfig,
-    rows: Option<super::LoadedOlsRows>,
+    mut config: PreparedOlsUnadjustedConfig,
+    mut rows: Option<super::LoadedOlsRows>,
     defer_dof: bool,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
     validate_config(config)?;
     reject_probability_iid(prepared)?;
+    let mut rejected_work = None;
+    let mut original_error = None;
+    for attempt in 0..2 {
+        let mut retry_work = None;
+        let result =
+            fit_inference_attempt(prepared, config, rows.take(), defer_dof, &mut retry_work);
+        match result {
+            Ok(mut result) => {
+                if let Some(IidProjectionRetryWork { initial, residual }) = rejected_work {
+                    result.fit.record_inference_retry_work(initial, residual)?;
+                }
+                return Ok(result);
+            }
+            Err(error) => {
+                if let Some(original) = original_error {
+                    return Err(exhausted_projection_retry(original, error));
+                }
+                let stricter = (attempt == 0 && prepared.inference_has_explicit_absorbed_effects())
+                    .then(|| stricter_iid_projection(config))
+                    .flatten();
+                let (Some(work), Some(next)) = (retry_work, stricter) else {
+                    return Err(error);
+                };
+                // All failed fit, inference and team owners are gone. Only
+                // bounded work metadata survives; loaded rows are rebuilt.
+                crate::interrupt::checkpoint()?;
+                if crate::diagnostics::phase_timing_enabled() {
+                    eprintln!("FEREG_PHASE|iid_projection_retry|attempt=1|map_tolerance={:.17e}|lsmr_tolerance={:.17e}", next.fit.absorb.map.tolerance, next.fit.absorb.lsmr.tolerance);
+                }
+                rejected_work = Some(work);
+                original_error = Some(error);
+                config = next;
+            }
+        }
+    }
+    unreachable!("bounded IID retry returns after its second attempt")
+}
+
+fn exhausted_projection_retry(original: FeregError, retry: FeregError) -> FeregError {
+    if crate::diagnostics::phase_timing_enabled() {
+        eprintln!(
+            "FEREG_PHASE|iid_projection_retry|exhausted|original={original:?}|retry={retry:?}"
+        );
+    }
+    // The prepared input already passed fitting and composition validation.
+    // Preserve its original numerical refusal if stricter recovery also fails;
+    // resource, cancellation, unsupported and malformed-request errors win.
+    match retry.code {
+        ErrorCode::InvalidData | ErrorCode::NonConvergence => original,
+        _ => retry,
+    }
+}
+
+fn fit_inference_attempt<P: PreparedOlsInferenceView + Sync + ?Sized>(
+    prepared: &P,
+    config: PreparedOlsUnadjustedConfig,
+    rows: Option<super::LoadedOlsRows>,
+    defer_dof: bool,
+    retry_work: &mut Option<IidProjectionRetryWork>,
+) -> Result<CertifiedPreparedOlsUnadjusted> {
     let fit = match rows {
         Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(
             prepared, config.fit, rows,
@@ -304,6 +387,7 @@ fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
             config.certificate_tolerance,
             &mut reservation,
             InferencePerturbations::default(),
+            Some(retry_work),
         )?;
         Ok(components.with_absorbed_dof(absorbed_dof))
     })?
@@ -341,6 +425,7 @@ fn compose_internal<R: InferenceReservation>(
         tolerance,
         reservation,
         perturbations,
+        None,
     )?;
     Ok(components.with_absorbed_dof(absorbed_dof))
 }
@@ -352,6 +437,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
     tolerance: f64,
     reservation: &mut R,
     perturbations: InferencePerturbations,
+    retry_work: Option<&mut Option<IidProjectionRetryWork>>,
 ) -> Result<PreparedOlsUnadjustedComponents> {
     let phase_timing = crate::diagnostics::phase_timing_enabled();
     let total_started = Instant::now();
@@ -452,6 +538,14 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
         },
     )?;
     if !certificate.passed {
+        if projection_dependent_failure(&certificate, &covariance, tolerance) {
+            if let Some(work) = retry_work {
+                *work = Some(IidProjectionRetryWork {
+                    initial: fit.absorption_report().clone(),
+                    residual: fit.residual_absorption_report().clone(),
+                });
+            }
+        }
         return Err(invalid_data(
             "prepared iid covariance or fit-statistic certificate did not pass",
         ));
@@ -1191,6 +1285,35 @@ fn certify_inference<P: PreparedOlsInferenceView + ?Sized>(
         minimum_covariance_diagonal,
         passed,
     })
+}
+
+// Only a projection-dependent composition mismatch may request the one
+// stricter full fit. Invalid covariance/weights and nonfinite values remain
+// fatal, even if a statistic also fails. This never accepts the rejected fit.
+fn projection_dependent_failure(
+    certificate: &PreparedOlsUnadjustedCertificate,
+    covariance: &PreparedOlsUnadjustedCovariance,
+    tolerance: f64,
+) -> bool {
+    !certificate.passed
+        && certificate.reference_weight_sum_relative_error <= tolerance
+        && certificate.covariance_scale_relative_infinity_norm <= tolerance
+        && certificate.covariance_symmetry_relative_infinity_norm <= tolerance
+        && certificate.minimum_covariance_diagonal.is_finite()
+        && certificate.minimum_covariance_diagonal >= 0.0
+        && covariance.variance_scale.is_finite()
+        && covariance.variance_scale >= 0.0
+        && covariance.values.iter().all(|value| value.is_finite())
+        && covariance
+            .standard_errors
+            .iter()
+            .all(|value| value.is_finite() && *value >= 0.0)
+        && certificate.sum_of_squares_order_relative_error.is_finite()
+        && certificate
+            .statistic_formula_relative_infinity_norm
+            .is_finite()
+        && (certificate.sum_of_squares_order_relative_error > tolerance
+            || certificate.statistic_formula_relative_infinity_norm > tolerance)
 }
 
 fn certify_statistic_identities(
