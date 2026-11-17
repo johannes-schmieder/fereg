@@ -35,7 +35,9 @@ def exact_view(result: dict, poisson: bool) -> dict:
     del tables['RMEMORY']
     runtime = tables.pop('RRUNTIME')['bits']
     # Explicit field allowlist: keep route/convergence signatures, omit process telemetry.
-    view['runtime_signature'] = runtime[1:11] if poisson else runtime[:6] + runtime[42:48] + runtime[54:60]
+    # Append later scientific flags so existing declared-work coordinates stay fixed.
+    view['runtime_signature'] = (runtime[1:11] + [runtime[i] for i in (26, 76, 77)] if poisson
+                                 else runtime[:6] + runtime[42:48] + runtime[54:60])
     solver = tables['RSOLVER']
     width = solver['columns']
     timing = {13, 14, 15} if poisson else {8, 9}
@@ -239,7 +241,7 @@ def discrete_view(result: dict, expected: dict) -> dict:
             protected[name] = tables[name]
     fields = ({'RFIT': [0, 1, 2, 3, 4, 11, 13, 15, 16, 20, 21, 22, 23, 26],
                'RCERT': [15], 'RINF': [0, 1, 2, 3, 4, 5, 6, 7, 10, 14, 15],
-               'RRUNTIME': [1, 3, 4, 5, 6, 7, 8, 76, 77]}
+               'RRUNTIME': [1, 3, 4, 5, 6, 7, 8, 26, 76, 77]}
               if poisson else
               {'RFIT': list(range(0, 24, 2)),
                'RCERT': list(range(0, 64, 2)) + [1, 3, 5, 7, 47, 49, 51, 53, 57, 59, 63],
@@ -325,6 +327,7 @@ def check_threads(args, case: Path, expected: dict, one_thread: dict, contract=N
 # PPML separation wire layout (crates/fereg-plugin/src/ppml_result.rs): one
 # RSEP row per separation method, and the receipt's separation trace digest.
 SEPARATION_COLUMNS = 14
+SEPARATION_SEQUENCE_COLUMNS = 13
 SEPARATION_TRACE_DIGEST = (28, 29)
 
 
@@ -369,13 +372,14 @@ def numerical_scope_indices(poisson: bool) -> dict[str, set[int] | RowColumns]:
 def work_scope_indices(poisson: bool) -> dict[str, set[int] | RowColumns]:
     """Only named inner-work counters; never routes, retries or outer steps.
 
-    The RSEP iteration count (column 5 of every method row) is declarable for
-    a scoped parent comparison only; it stays a protected cross-worker
-    decision in `discrete_view`, like the census's decision identity.
+    RSEP iterations (zero-based column 4) and RSEQ total iterations
+    (zero-based column 7) are declarable for a scoped parent comparison only;
+    they stay protected cross-worker decisions in `discrete_view`.
     """
     if poisson:
         return {'RFIT': {14}, 'RSOLVER': {19 * row + 12 for row in range(4)},
-                'RSEP': RowColumns(SEPARATION_COLUMNS, {5}),
+                'RSEP': RowColumns(SEPARATION_COLUMNS, {4}),
+                'RSEQ': RowColumns(SEPARATION_SEQUENCE_COLUMNS, {7}),
                 'runtime_signature': {1}}  # RRUNTIME[2]: total inner iterations.
     return {'RSOLVER': {2, 16}}
 
@@ -440,18 +444,22 @@ def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
 def scoped_decision_paths(prefixes: list[str]) -> set[str]:
     """`discrete_view` leaves a validated scope declares for the parent comparison.
 
-    Only the RSEP iteration count and the separation trace digest are both
+    Only RSEP/RSEQ iteration counts and the separation trace digest are both
     protected decisions and declarable leaves. Cross-worker checks and
     fixed-thread repeats never use this exemption.
     """
     paths = set()
+    work = work_scope_indices(True)
     for path in prefixes:
         parts = path.split('/')
-        if len(parts) == 5 and parts[1] == 'matrices' and parts[3] == 'bits':
-            if parts[2] == 'RREC':
+        if len(parts) == 5 and parts[1] == 'matrices' and parts[3] == 'bits' and parts[4].isdigit():
+            index = int(parts[4])
+            if parts[2] == 'RREC' and index in SEPARATION_TRACE_DIGEST:
                 paths.add(f'/protected/RREC/bits/{parts[4]}')
-            elif parts[2] == 'RSEP':
+            elif parts[2] == 'RSEP' and index in work['RSEP']:
                 paths.add(f'/protected/RSEP/{parts[4]}')
+            elif parts[2] == 'RSEQ' and index in work['RSEQ']:
+                paths.add(f'/protected/RSEQ/bits/{parts[4]}')
     return paths
 
 

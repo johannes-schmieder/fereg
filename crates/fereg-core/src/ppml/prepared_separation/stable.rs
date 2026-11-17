@@ -316,6 +316,9 @@ fn certify_omitted_contrasts(
     ppml.absorb.lsmr.tolerance = ppml.absorb.lsmr.tolerance.min(1e-14);
     linear.absorb.map.tolerance = ppml.absorb.map.tolerance;
     linear.absorb.lsmr.tolerance = ppml.absorb.lsmr.tolerance;
+    // Ordered proof invariant: every lower index is retained or already
+    // proved redundant. An unresolved omission returns before advancing;
+    // only this certified prefix may supply additional exact-copy witnesses.
     for column in 0..fit.model().columns.len() {
         crate::interrupt::checkpoint()?;
         if kept.contains(&column)
@@ -558,7 +561,8 @@ fn trace_dual_check(stage: &str, margin: f64, metric: f64, tolerance: f64) {
 
 /// Exact power-of-two affine copies are redundant even for fractional data.
 /// Both subtraction and scaling are verified lossless on the original inputs.
-fn exact_finite_duplicate(
+/// Call only after every preceding column has an independent span proof.
+pub(super) fn exact_finite_duplicate(
     generation: &PreparedPpmlModelGeneration,
     column: usize,
     kept: &[usize],
@@ -569,7 +573,17 @@ fn exact_finite_duplicate(
         if centered && !constant {
             continue;
         }
-        for &other in kept {
+        // The caller visits columns in order and aborts on any unproved
+        // omission. Every earlier column therefore already belongs to the
+        // certified retained-plus-FE span, even if itself numerically omitted.
+        // These exact identities form an acyclic proof: never use the current
+        // column or a future omission. The ORIGINAL kept set still supplies
+        // constant authority above and the projection-basis guard in the caller.
+        let proved = kept
+            .iter()
+            .copied()
+            .chain((0..column).filter(|other| !kept.contains(other)));
+        for other in proved {
             crate::interrupt::checkpoint()?;
             let left_anchor = if centered {
                 fit.column_value(other, 0)?

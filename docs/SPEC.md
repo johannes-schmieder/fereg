@@ -1799,9 +1799,10 @@ completed or failed differently before is bit-identical, and the shared FE
 certificate, the retained-CG arm and every other solver are unchanged.
 Numerical scope of the activation: the flagged separated set, the final sample, coefficients and VCE
 are unchanged on every witness; the rectifier may certify its terminal
-fixed point at an earlier iteration, so `RSEP` iteration counts (column 5)
-and certificate magnitudes (columns 9-12, zero-based 8-11) and `RSEQ` total
-iterations may change, and with them the separation trace digest (`RREC`
+fixed point at an earlier iteration, so `RSEP` iteration counts (one-based
+column 5, zero-based 4) and certificate magnitudes (columns 9-12, zero-based
+8-11) and `RSEQ` total iterations (zero-based column 7) may change, and with
+them the separation trace digest (`RREC`
 zero-based positions 28-29).
 
 A retained-CG projection solves the weighted normal equations. When a
@@ -1852,6 +1853,11 @@ coordinate. Every omitted finite direction requires an exact raw-source alias
 proof; a tiny projected residual, including a rounded zero, is insufficient.
 This avoids hiding separating combinations of individually small directions.
 Exact source and power-of-two affine identities may establish redundancy.
+The ordered audit may use already-certified earlier columns as witnesses for
+such exact copies. An unresolved omission stops the audit, so dependencies
+between omitted columns point strictly backward and cannot form a circular
+proof. The original retained basis still controls constant authority and
+projection guards; prefix-proof reuse adds no allocation.
 Rounded integer coefficients and at most two categorical coordinate sweeps only
 propose identities: checked integer reconstruction must leave every original
 row residual exactly zero. Lost centering/scaling information without an exact

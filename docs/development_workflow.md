@@ -63,14 +63,20 @@ case compose; a typed diagnostic scope must be passed alone. Each entry binds a 
 reason and `allowed_paths` leaves of the exact view. Accepted leaves are the
 numerical envelope of `numerical_scope_indices` (including PPML `RSEP`
 certificate magnitudes, zero-based columns 8-11 of every method row), the inner
-work counters of `work_scope_indices` (including the `RSEP` iteration count,
-column 5), `RB`/`RV` coordinates, bias leaves and retained output columns. The
+work counters of `work_scope_indices` (including `RSEP` iterations at zero-based
+column 4 of each 14-column row and `RSEQ` total iterations at zero-based column
+7 of each 13-column row), `RB`/`RV` coordinates, bias leaves and retained output
+columns. The
 one typed transaction leaf is the PPML receipt's separation trace digest
 (`RREC` 28-29), accepted only beside a declared `RSEP` leaf and a reason that
 names separation; every other receipt position, route, status and discrete
-field is rejected. Declared `RSEP` iteration and trace-digest leaves are exempt
+field is rejected. Direct drops, singleton drops and separation statuses stay
+protected. Declared `RSEP`/`RSEQ` iteration and trace-digest leaves are exempt
 only in the parent's discrete comparison; fixed-thread repeats and cross-worker
 checks keep them exact.
+Strict-profile rejection counts and convergence/frozen-rank flags remain exact
+in both repeated runs and cross-worker decisions; they are not process telemetry
+or declarable work leaves.
 
 ## Complexity inventory
 

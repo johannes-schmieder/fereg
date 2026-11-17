@@ -1,22 +1,10 @@
 {
   "growth": [
     {
-      "after": 1573,
-      "before": 1570,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Add exact-binary scan eligibility, deterministic largest-partition selection and candidate handling. The shared pair-kernel shape check replaces the prior design-specific check. These conditions validate representation or select mathematical submodels without fixture-specific size routing."
-    },
-    {
-      "after": 122208,
-      "before": 122083,
+      "after": 122212,
+      "before": 122208,
       "metric": "fereg-core/production_lines",
-      "reason": "Add a bounded primal graph proposal from exact binary generated columns and the largest categorical partition, reusing the categorical graph kernel and one code bank. Preflight includes the virtual partition; every candidate still requires the original full-model span/sign certificate, misses retain the existing detector, and no new NoSeparation authority is introduced."
-    },
-    {
-      "after": 3998,
-      "before": 3984,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Connect the bounded binary candidate after categorical proposals miss, retain ordinary full-model certification by carrying no exact FE-only proof, and record the proposal kind through the existing optional solver trace."
+      "reason": "Reuse exact raw or power-of-two affine identities from the already-certified prefix of the ordered omitted-column audit. Dependencies between omissions point strictly backward; unresolved omissions stop the audit, the original kept basis retains constant/projection authority, and the iterator adds no allocation."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -24668,15 +24656,15 @@
           },
           {
             "condition": "projected . kept_columns != kept",
-            "line": 371
+            "line": 374
           },
           {
             "condition": "! allowed_columns . contains ( & column )",
-            "line": 661
+            "line": 675
           },
           {
             "condition": "constant_in_certified_span ( generation , allowed_columns ) && response . iter ( ) . all ( | value | * value == response [ 0 ] )",
-            "line": 686
+            "line": 700
           }
         ],
         "functions": {
@@ -24694,34 +24682,34 @@
           },
           "certify_omitted_contrasts#1": {
             "line": 304,
-            "lines": 103
+            "lines": 106
           },
           "constant_in_certified_span#1": {
-            "line": 771,
+            "line": 785,
             "lines": 10
           },
           "dual_certificate#1": {
-            "line": 514,
+            "line": 517,
             "lines": 22
           },
           "exact_absorbed_column#1": {
-            "line": 410,
+            "line": 413,
             "lines": 48
           },
           "exact_difference#1": {
-            "line": 629,
+            "line": 643,
             "lines": 6
           },
           "exact_finite_duplicate#1": {
-            "line": 561,
-            "lines": 67
+            "line": 565,
+            "lines": 77
           },
           "exact_integer_alias#1": {
-            "line": 638,
+            "line": 652,
             "lines": 132
           },
           "recover#1": {
-            "line": 470,
+            "line": 473,
             "lines": 40
           },
           "resolve#1": {
@@ -24729,19 +24717,19 @@
             "lines": 119
           },
           "stable_norm#1": {
-            "line": 459,
+            "line": 462,
             "lines": 7
           },
           "strict_projection_policy#1": {
-            "line": 540,
+            "line": 543,
             "lines": 10
           },
           "trace_dual_check#1": {
-            "line": 551,
+            "line": 554,
             "lines": 7
           }
         },
-        "production_lines": 699
+        "production_lines": 703
       },
       "crates/fereg-core/src/ppml/prepared_separation/stable_alias.rs": {
         "chunk_candidates": [],
@@ -30359,7 +30347,7 @@
         "dispatch_candidates": 1573,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 122208
+        "production_lines": 122212
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

@@ -3229,3 +3229,6 @@ mod unit_policy_tests;
 
 #[path = "binary_graph_tests.rs"]
 mod binary_graph_tests;
+
+#[path = "alias_prefix_tests.rs"]
+mod alias_prefix_tests;

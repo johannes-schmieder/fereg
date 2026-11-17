@@ -44,6 +44,30 @@ class ReplayChecks(unittest.TestCase):
         changed['columns'][0][0] = '0000000000000000'
         self.assertEqual(len(differences(exact_view(base, False), exact_view(changed, False))), 2)
 
+    def test_ppml_convergence_decisions_survive_exact_and_cross_worker_views(self):
+        base = self.fixture()
+        base['matrices']['RSOLVER'] = {'columns': 22, 'bits': ['0000000000000000'] * 88}
+        base['matrices']['RRUNTIME']['bits'] = ['0000000000000000'] * 108
+        base['matrices']['RDOF'] = {'bits': ['0000000000000000'] * 12}
+        base['matrices']['RSTATUS'] = {'bits': ['0000000000000000'] * 4}
+        base['columns'].append(['0000000000000000'])
+        expected = {'poisson': True, 'outputs': {'sample': 0, 'drop_reason': 1}}
+        self.assertEqual(exact_view(base, True)['runtime_signature'][:10],
+                         base['matrices']['RRUNTIME']['bits'][1:11])
+        # Published RRUNTIME: strict-profile rejections, two consecutive passes,
+        # and frozen rank. Every one is scientific, not process telemetry.
+        for signature_index, runtime_index in enumerate([26, 76, 77], start=10):
+            changed = copy.deepcopy(base)
+            changed['matrices']['RRUNTIME']['bits'][runtime_index] = '3ff0000000000000'
+            self.assertEqual(differences(exact_view(base, True), exact_view(changed, True)),
+                             [f'/runtime_signature/{signature_index}'])
+            self.assertNotEqual(discrete_view(base, expected), discrete_view(changed, expected))
+        for index in [0, 27, 78]:  # elapsed time, phase time and allocator growth
+            changed = copy.deepcopy(base)
+            changed['matrices']['RRUNTIME']['bits'][index] = '3ff0000000000000'
+            self.assertEqual(exact_view(base, True), exact_view(changed, True))
+            self.assertEqual(discrete_view(base, expected), discrete_view(changed, expected))
+
     def test_intentional_changes_are_field_scoped_and_science_is_required(self):
         self.assertTrue(allowed_difference('/matrices/RV/bits/1', ['/matrices/RV/bits']))
         self.assertFalse(allowed_difference('/matrices/RB/bits/1', ['/matrices/RV/bits']))
@@ -113,6 +137,7 @@ class AffectedScopeChecks(unittest.TestCase):
                          '/matrices/RB', '/return_code', '/matrices/RREC/bits',
                          '/matrices/RB/bits', '/matrices/RCERT/bits', '/runtime_signature',
                          '/runtime_signature/0', '/runtime_signature/2', '/runtime_signature/3',
+                         '/runtime_signature/10', '/runtime_signature/11', '/runtime_signature/12',
                          '/matrices/RCERT/bits/15', '/matrices/RINF/bits/5',
                          '/matrices/RFIT/bits/13', '/matrices/RFIT/bits/15',
                          '/matrices/RSOLVER/bits/7', '/matrices/RSOLVER/bits/9']:
@@ -168,10 +193,11 @@ class AffectedScopeChecks(unittest.TestCase):
             # Certificate magnitudes and iteration counts of every method row,
             # classified by the 14-column stride rather than fixed indices.
             for path in ['/matrices/RSEP/bits/8', '/matrices/RSEP/bits/22', '/matrices/RSEP/bits/39',
-                         '/matrices/RSEP/bits/5', '/matrices/RSEP/bits/19', '/matrices/RSEP/bits/61']:
+                         '/matrices/RSEP/bits/4', '/matrices/RSEP/bits/18', '/matrices/RSEP/bits/60']:
                 entry['allowed_paths'] = [path]
                 self.assertEqual(affected_prefixes(scope, case, ppml), [path])
             for path in ['/matrices/RSEP/bits/0', '/matrices/RSEP/bits/7', '/matrices/RSEP/bits/12',
+                         '/matrices/RSEP/bits/5', '/matrices/RSEP/bits/19', '/matrices/RSEP/bits/61',
                          '/matrices/RSEP/bits/21', '/matrices/RSEP/bits/27', '/matrices/RSEP/bits']:
                 entry['allowed_paths'] = [path]
                 with self.assertRaises(RuntimeError): affected_prefixes(scope, case, ppml)
@@ -180,6 +206,7 @@ class AffectedScopeChecks(unittest.TestCase):
             self.assertEqual(affected_prefixes(scope, case, ppml), entry['allowed_paths'])
             for paths, reason in [(digest_paths, entry['reason']),
                                   (['/matrices/RFIT/bits/5'] + digest_paths, entry['reason']),
+                                  (['/matrices/RSEQ/bits/46'] + digest_paths, entry['reason']),
                                   (['/matrices/RSEP/bits/22'] + digest_paths, 'declared algorithm change'),
                                   (['/matrices/RSEP/bits/22', '/matrices/RREC/bits/27'], entry['reason']),
                                   (['/matrices/RSEP/bits/22', '/matrices/RREC/bits/30'], entry['reason']),
@@ -190,7 +217,7 @@ class AffectedScopeChecks(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     affected_prefixes({'cases': {'separation': bad}}, case, ppml)
             ols = {'poisson': False, 'outputs': {'sample': 0, 'drop_reason': 1}}
-            for path in ['/matrices/RSEP/bits/8'] + digest_paths:
+            for path in ['/matrices/RSEP/bits/8', '/matrices/RSEQ/bits/7'] + digest_paths:
                 bad = dict(entry, allowed_paths=['/matrices/RB/bits/0', path])
                 with self.assertRaises(RuntimeError):
                     affected_prefixes({'cases': {'separation': bad}}, case, ols)
@@ -202,21 +229,52 @@ class AffectedScopeChecks(unittest.TestCase):
                                'RSEP': table(28, 14), 'RSEQ': table(65, 13)},
                   'columns': [['3ff0000000000000'], ['0000000000000000']]}
         expected = {'poisson': True, 'outputs': {'sample': 0, 'drop_reason': 1}}
-        exempt = scoped_decision_paths(['/matrices/RSEP/bits/19', '/matrices/RSEP/bits/22',
+        exempt = scoped_decision_paths(['/matrices/RSEP/bits/18', '/matrices/RSEP/bits/22',
+                                        '/matrices/RSEQ/bits/46',
                                         '/matrices/RREC/bits/28', '/matrices/RREC/bits/29',
                                         '/matrices/RB/bits/0'])
         changed = copy.deepcopy(result)
-        for name, index in [('RSEP', 19), ('RSEP', 22), ('RREC', 28), ('RREC', 29)]:
+        for name, index in [('RSEP', 18), ('RSEP', 22), ('RSEQ', 46), ('RREC', 28), ('RREC', 29)]:
             changed['matrices'][name]['bits'][index] = '3ff0000000000000'
         self.assertEqual([p for p in differences(discrete_view(result, expected),
                                                  discrete_view(changed, expected)) if p not in exempt], [])
         # Without the declaration, or for any other decision, the views differ.
         self.assertTrue(differences(discrete_view(result, expected), discrete_view(changed, expected)))
-        for name, index in [('RSEP', 5), ('RSEP', 15), ('RREC', 27), ('RREC', 30), ('RSEQ', 6)]:
+        for name, index in [('RSEP', 19), ('RSEP', 20), ('RSEP', 15), ('RREC', 27),
+                            ('RREC', 30), ('RSEQ', 45), ('RSEQ', 47), ('RSEQ', 48)]:
             bad = copy.deepcopy(changed)
             bad['matrices'][name]['bits'][index] = '3ff0000000000000'
             self.assertTrue([p for p in differences(discrete_view(result, expected),
                                                     discrete_view(bad, expected)) if p not in exempt], (name, index))
+
+    def test_separation_work_scope_matches_published_columns_and_protects_decisions(self):
+        # ppml_result.rs publishes RSEP iterations/direct drops/singleton drops
+        # at 4/5/6 and RSEQ totals at 7/8/9. Statuses are 1 and 6 respectively.
+        with tempfile.TemporaryDirectory() as root:
+            case = Path(root) / 'separation.case'
+            case.write_text('bound separation input')
+            expected = {'poisson': True, 'outputs': {'sample': 0, 'drop_reason': 1}}
+            entry = {'input_sha256': digest(case), 'reason': 'declared separation work',
+                     'allowed_paths': []}
+            scope = {'cases': {'separation': entry}}
+            numerical, work = numerical_scope_indices(True), work_scope_indices(True)
+            for name, stride, iteration, certificates in [('RSEP', 14, 4, {8, 9, 10, 11}),
+                                                           ('RSEQ', 13, 7, set())]:
+                for row in range(5):
+                    for column in range(stride):
+                        index = row * stride + column
+                        path = f'/matrices/{name}/bits/{index}'
+                        entry['allowed_paths'] = [path]
+                        self.assertEqual(index in work[name], column == iteration)
+                        self.assertEqual(index in numerical.get(name, ()), column in certificates)
+                        if column == iteration or column in certificates:
+                            self.assertEqual(affected_prefixes(scope, case, expected), [path])
+                            self.assertFalse(allowed_difference('fixed-thread-repeat' + path, [path]))
+                        else:
+                            with self.assertRaises(RuntimeError):
+                                affected_prefixes(scope, case, expected)
+                        # Even a direct call cannot exempt statuses or drop counts.
+                        self.assertEqual(bool(scoped_decision_paths([path])), column == iteration)
 
     def test_several_scope_files_validate_each_entry_and_unite_leaves(self):
         with tempfile.TemporaryDirectory() as root:
@@ -272,6 +330,9 @@ class AffectedScopeChecks(unittest.TestCase):
                          [('RFIT', 0), ('RCERT', 1), ('RCERT', 47), ('RCERT', 49),
                           ('RCERT', 51), ('RCERT', 53), ('RCERT', 57), ('RCERT', 63)])
             decisions += [('RREC', 0), ('RSEQ', 6), ('RSEP', 7), ('RSOLVER', 1)]
+            if poisson:
+                decisions += [('RSEP', 1), ('RSEP', 4), ('RSEP', 5), ('RSEP', 6),
+                              ('RSEQ', 7), ('RSEQ', 8), ('RSEQ', 9)]
             for name, index in decisions:
                 bad = copy.deepcopy(result)
                 bad['matrices'][name]['bits'][index] = '3ff0000000000000'
