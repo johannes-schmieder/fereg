@@ -3202,7 +3202,7 @@ fn publication_contrast(origin: f64, graph: bool, copies: usize) {
     )
     .unwrap();
     let expected_rows: Vec<_> = (0..8 * copies)
-        .filter(|row| ![5, 6].contains(&(row / copies)) && !(copies == 1 && *row == 4))
+        .filter(|row| !([5, 6].contains(&(row / copies)) || copies == 1 && *row == 4))
         .collect();
     assert_eq!(result.sample().original_rows(), expected_rows);
     // Independent Poisson score solution on the retained 2x2 block:
