@@ -1,5 +1,41 @@
 # Validation status
 
+## 0.6.2 release qualification, November 17, 2026
+
+Native source is `bf3eb1d9b9397d8a14453f7fa0ba5d94572f160e`. The source ZIP
+contains the locked dependency closure and built the signed universal Mac
+plugin offline in a fresh Cargo home and target directory. The dependency
+audit found zero advisories.
+
+- Mac and Linux each passed all 172 applicable licensed Stata/MP 19 fixtures.
+  The Windows-only fixture and the two staged-package fixtures ran under their
+  respective qualification runners. Three staged installation checks passed.
+- The licensed Windows x86-64 Stata/MP 19 run passed the native build and ABI
+  checks, the project Stata suite, the weak two-effect fixture, and sequential
+  PyStata checks. The test machine shut down and removed its transient artifacts.
+- On Apple Silicon, Stata 18 passed three targeted fixtures, Stata 19
+  under Rosetta passed two, and the six sequential PyStata modes and interactive
+  Break checks passed. Physical Intel Macs and the reporter's exact Windows 11,
+  StataNow 19.5, and MCP setup were outside this run.
+- The isolated local root-package installation verified all 38 installed files
+  byte for byte and passed the native selftest plus independent OLS and PPML fits.
+
+The rebuilt Mac plugin passed all 39 original reporter calls. The tight-tolerance
+stacked PPML fit also passed with eight workers and the default worker count.
+Both retained 29,027 observations and rank 247. Main coefficients agreed
+within `2.5e-15` in absolute terms and main covariance within `2.4e-13`
+when scaled by the corresponding standard errors. The new report retains
+the final rank retry's numerical certificate and accounts for work spent on
+the preceding projection.
+
+On the private extract at eight workers, stacked `ibn` PPML fell from 895.29
+seconds in 0.6.1 to 42.19. The dense half with absorbed controls fell from
+68.43 seconds to 1.22. These are individual stress runs. Pooled PPML took
+6.01 seconds with dummy controls and 2.24 seconds with absorbed controls.
+These are medians of three fits after one warm-up, versus 4.56 and 1.68 in
+0.6.0 and 14.57 and 5.94 in 0.6.1. The 480-observation clustered covariance
+and unit-rescaling exports matched the earlier repaired build byte for byte.
+
 ## Follow-up separation and weak-ring candidate
 
 The weak two-effect Mac fixture now passes its original Auto commands and
