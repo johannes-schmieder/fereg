@@ -13,6 +13,9 @@
   constant normalization.
 - Reduce repeated QR and fixed-effect kernel scans while preserving
   observation order and the arithmetic of each output.
+- When a tighter rank check uses a different solver, keep the successful
+  retry's certificate and report both attempts' work. This fixes a spurious
+  failure in tightly converged models with redundant controls.
 
 ## 0.6.1 — 2026-11-17
 

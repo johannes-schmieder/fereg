@@ -1,34 +1,10 @@
 {
   "growth": [
     {
-      "after": 15519,
-      "before": 15453,
-      "metric": "fedemean/production_lines",
-      "reason": "Protect restored PCG iterates and bound elimination reconstruction before modifying the fallback input."
-    },
-    {
-      "after": 123291,
-      "before": 123173,
+      "after": 123328,
+      "before": 123291,
       "metric": "fereg-core/production_lines",
-      "reason": "Allow an independently certified unit proof before weighted work and keep the original QR arithmetic in a contiguous checked traversal."
-    },
-    {
-      "after": 1581,
-      "before": 1577,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Allow an independently certified unit proof before weighted work and keep the original QR arithmetic in a contiguous checked traversal."
-    },
-    {
-      "after": 2338,
-      "before": 2305,
-      "metric": "file/crates/fereg-core/src/ols/finite_wls_kernel.rs",
-      "reason": "Allow an independently certified unit proof before weighted work and keep the original QR arithmetic in a contiguous checked traversal."
-    },
-    {
-      "after": 4103,
-      "before": 4096,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Allow an independently certified unit proof before weighted work and keep the original QR arithmetic in a contiguous checked traversal."
+      "reason": "Count a rejected rank projection as work while preserving the replacement frame's certified solver and route."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -20208,7 +20184,11 @@
         "functions": {
           "merge_into#1": {
             "line": 61,
-            "lines": 36
+            "lines": 29
+          },
+          "record_projection_retry#1": {
+            "line": 94,
+            "lines": 42
           },
           "retryable#1": {
             "line": 32,
@@ -20219,7 +20199,7 @@
             "lines": 20
           }
         },
-        "production_lines": 81
+        "production_lines": 118
       },
       "crates/fereg-core/src/ols/retained_refinement.rs": {
         "chunk_candidates": [],
@@ -30559,7 +30539,7 @@
         "dispatch_candidates": 1581,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 123291
+        "production_lines": 123328
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

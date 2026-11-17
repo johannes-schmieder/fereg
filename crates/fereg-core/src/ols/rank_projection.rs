@@ -1,9 +1,9 @@
 //! Bounded accuracy check before an iterative session freezes finite rank.
 use super::{
-    merge_solve_report, LinearSessionAllocationPhase, LinearSessionPhaseAllocationObservation,
-    RetainedSolveStage, SolveReport,
+    LinearSessionAllocationPhase, LinearSessionPhaseAllocationObservation, RetainedSolveStage,
+    SolveReport,
 };
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{invalid_data, ErrorCode, FeregError, Result};
 
 // The existing strict FE accuracy floor, not a relaxed finite-rank tolerance.
 pub(super) const RANK_PROJECTION_TOLERANCE: f64 = 1e-14;
@@ -60,17 +60,10 @@ pub(super) struct RankProjectionWork {
 impl RankProjectionWork {
     pub(super) fn merge_into(self, stage: &mut RetainedSolveStage) -> Result<()> {
         if let Some(report) = self.projection {
-            let final_report = &mut stage.candidate.frame.response_absorption_report;
-            let certificate = final_report.certificate.clone();
-            let normal_equation_residual = final_report.normal_equation_residual;
-            let iterations = final_report.iterations.saturating_add(report.iterations);
-            merge_solve_report(final_report, report)?;
-            // Prefix work counts, but its looser certificate does not describe
-            // the corrected design that is about to acquire rank authority.
-            final_report.certificate = certificate;
-            final_report.normal_equation_residual = normal_equation_residual;
-            final_report.iterations = iterations;
-            final_report.checkpoint_retries = final_report.checkpoint_retries.saturating_add(1);
+            record_projection_retry(
+                &mut stage.candidate.frame.response_absorption_report,
+                report,
+            )?;
         }
         for (phase, peak) in [
             (
@@ -96,9 +89,117 @@ impl RankProjectionWork {
     }
 }
 
+// The retried frame replaces the earlier projection entirely. Report its
+// solver and certificate, while accounting for work spent on both attempts.
+fn record_projection_retry(final_report: &mut SolveReport, discarded: SolveReport) -> Result<()> {
+    let setup_seconds = final_report.setup_seconds + discarded.setup_seconds;
+    let solve_seconds = final_report.solve_seconds + discarded.solve_seconds;
+    let certification_seconds =
+        final_report.certification_seconds + discarded.certification_seconds;
+    if !final_report.certified()
+        || !discarded.certified()
+        || ![setup_seconds, solve_seconds, certification_seconds]
+            .into_iter()
+            .all(f64::is_finite)
+    {
+        return Err(invalid_data(
+            "invalid retained-rank projection retry report",
+        ));
+    }
+    final_report.iterations = final_report.iterations.saturating_add(discarded.iterations);
+    final_report.checkpoint_retries = final_report
+        .checkpoint_retries
+        .saturating_add(discarded.checkpoint_retries)
+        .saturating_add(usize::from(discarded.fallback_used))
+        .saturating_add(1);
+    final_report.solver_workspace_peak = final_report
+        .solver_workspace_peak
+        .max(discarded.solver_workspace_peak);
+    let escalations = discarded.route().escalations;
+    if escalations != 0 {
+        let mut route = final_report.route();
+        route.escalations = route.escalations.saturating_add(escalations);
+        final_report.set_route(route);
+    }
+    final_report.pilot_iterations = final_report
+        .pilot_iterations
+        .max(discarded.pilot_iterations);
+    final_report.pilot_contraction = final_report
+        .pilot_contraction
+        .max(discarded.pilot_contraction);
+    final_report.setup_seconds = setup_seconds;
+    final_report.solve_seconds = solve_seconds;
+    final_report.certification_seconds = certification_seconds;
+    final_report.warnings.extend(discarded.warnings);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::unresolved;
+    use super::{record_projection_retry, unresolved};
+    use crate::fe::{
+        FeCertificate, FeFallbackReason, FeSolverKind, LsmrPreconditioner, SolveReport,
+        SolveStopReason,
+    };
+
+    #[test]
+    fn stricter_rank_projection_can_change_solver_and_retains_its_certificate() {
+        let certificate = FeCertificate {
+            absolute_infinity_norm: 1e-15,
+            relative_infinity_norm: 1e-15,
+            relative_two_norm: 1e-15,
+            passed: true,
+        };
+        let mut retry = SolveReport::single_route(
+            FeSolverKind::Lsmr,
+            SolveStopReason::Certified,
+            certificate.clone(),
+        );
+        retry.used_solver = FeSolverKind::Map;
+        retry.requested_preconditioner = Some(LsmrPreconditioner::Auto);
+        retry.used_preconditioner = Some(LsmrPreconditioner::Diagonal);
+        retry.note_fallback(FeFallbackReason::Uncertified);
+        retry.iterations = 3;
+        retry.checkpoint_retries = 2;
+        retry.solve_seconds = 0.25;
+        retry.normal_equation_residual = 1e-15;
+        let mut prefix =
+            SolveReport::single_route(FeSolverKind::Map, SolveStopReason::Certified, certificate);
+        prefix.certificate.relative_infinity_norm = 1e-9;
+        prefix.normal_equation_residual = 1e-9;
+        prefix.iterations = 5;
+        prefix.checkpoint_retries = 1;
+        prefix.solve_seconds = 0.5;
+        prefix.note_fallback(FeFallbackReason::Nonconvergence);
+        let mut prefix_route = prefix.route();
+        prefix_route.escalations = 1;
+        prefix.set_route(prefix_route);
+        prefix.warnings.push("prefix diagnostic".into());
+        let mut expected = retry.clone();
+        expected.iterations = 8;
+        expected.checkpoint_retries = 5;
+        let mut expected_route = expected.route();
+        expected_route.escalations = 1;
+        expected.set_route(expected_route);
+        expected.solve_seconds = 0.75;
+        expected.warnings.push("prefix diagnostic".into());
+
+        record_projection_retry(&mut retry, prefix.clone()).unwrap();
+        assert_eq!(retry, expected);
+        let mut no_fallback = SolveReport::single_route(
+            FeSolverKind::Lsmr,
+            SolveStopReason::Certified,
+            retry.certificate.clone(),
+        );
+        record_projection_retry(&mut no_fallback, prefix.clone()).unwrap();
+        assert_ne!(no_fallback.used_solver, prefix.used_solver);
+        assert!(!no_fallback.fallback_used);
+        assert_eq!(no_fallback.checkpoint_retries, 3);
+
+        prefix.certificate.passed = false;
+        assert!(record_projection_retry(&mut retry, prefix).is_err());
+        assert_eq!(retry, expected);
+    }
 
     #[test]
     fn coefficient_goal_adds_a_warning_without_changing_rank_authority() {
