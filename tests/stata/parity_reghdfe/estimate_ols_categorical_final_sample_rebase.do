@@ -146,7 +146,7 @@ _fereg_estimate_ols_test y c.x i.f##i.z, absorb(a#b)
 tempname accepted_b accepted_V
 matrix `accepted_b' = e(b)
 matrix `accepted_V' = e(V)
-foreach specification in "ib1.f" "ib3.f" "ibn.f" {
+foreach specification in "ib1.f" "ib3.f" {
     capture noisily _fereg_estimate_ols_test y c.x `specification', absorb(a#b)
     assert _rc == 498
     assert mreldif(e(b), `accepted_b') == 0

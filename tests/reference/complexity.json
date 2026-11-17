@@ -1,24 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 122262,
-      "before": 122260,
-      "metric": "fereg-core/production_lines",
-      "reason": "Warm and retain the already-admitted Low-mode pooled projection bank during initial projection, preserving maximum capacity through a shorter tail block so subsequent strict speculative retries do not grow reusable capacity. Numerical operations and admission charges remain unchanged."
-    },
-    {
-      "after": 5991,
-      "before": 5989,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "Warm and retain the already-admitted Low-mode pooled projection bank during initial projection, preserving maximum capacity through a shorter tail block so subsequent strict speculative retries do not grow reusable capacity. Numerical operations and admission charges remain unchanged."
-    },
-    {
-      "after": 331,
-      "before": 326,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/build_full_retained_design#1",
-      "reason": "Warm and retain the already-admitted Low-mode pooled projection bank during initial projection, preserving maximum capacity through a shorter tail block so subsequent strict speculative retries do not grow reusable capacity. Numerical operations and admission charges remain unchanged."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -16599,44 +16580,44 @@
           },
           {
             "condition": "policies . len ( ) == policies . capacity ( )",
-            "line": 171
+            "line": 170
           },
           {
             "condition": "component . kind == ComponentKind :: Continuous && component . level_state == LevelState :: Absent && matches ! ( component . time_series_state , TimeSeriesState :: None | TimeSeriesState :: Materialized ) => Ok ( ( ) ) , ( RawTermKind :: Factor , [ component ] ) if component . kind == ComponentKind :: Categorical && component . level_state == LevelState :: Present && component . time_series_state == TimeSeriesState :: None => Ok ( ( ) ) , ( RawTermKind :: Interaction | RawTermKind :: Product , components ) if components . len ( ) >= 2 && components . iter ( ) . all ( | component |",
-            "line": 234
+            "line": 223
           },
           {
             "condition": "component . kind == ComponentKind :: Categorical && component . level_state == LevelState :: Present && component . time_series_state == TimeSeriesState :: None => Ok ( ( ) ) , ( RawTermKind :: Interaction | RawTermKind :: Product , components ) if components . len ( ) >= 2 && components . iter ( ) . all ( | component |",
-            "line": 239
+            "line": 228
           },
           {
             "condition": "components . len ( ) >= 2 && components . iter ( ) . all ( | component |",
-            "line": 243
+            "line": 232
           },
           {
             "condition": "term . components . len ( ) == 1 && * source == term . components [ 0 ] . source =>",
-            "line": 305
+            "line": 294
           },
           {
             "condition": "term . components . len ( ) == 1 && * source == term . components [ 0 ] . source && * level_bits == canonical_factor_value ( term . components [ 0 ] . level_value ) . to_bits ( ) =>",
-            "line": 312
+            "line": 301
           },
           {
             "condition": "components . len ( ) == term . components . len ( ) =>",
-            "line": 321
+            "line": 310
           }
         ],
         "functions": {
           "canonical_factor_value#1": {
-            "line": 357,
+            "line": 346,
             "lines": 7
           },
           "categorical_source_index#1": {
-            "line": 347,
+            "line": 336,
             "lines": 9
           },
           "minimum_level_bits#1": {
-            "line": 221,
+            "line": 210,
             "lines": 9
           },
           "new#1": {
@@ -16664,19 +16645,19 @@
             "lines": 22
           },
           "resolve_term_column_policy#1": {
-            "line": 264,
+            "line": 253,
             "lines": 82
           },
-          "validate_default_base_policy#1": {
-            "line": 149,
-            "lines": 71
+          "validate_categorical_base_policy#1": {
+            "line": 148,
+            "lines": 61
           },
           "validate_term_grammar#1": {
-            "line": 231,
+            "line": 220,
             "lines": 22
           }
         },
-        "production_lines": 299
+        "production_lines": 289
       },
       "crates/fereg-core/src/ols/prepared_clustered.rs": {
         "chunk_candidates": [],
@@ -30383,7 +30364,7 @@
         "dispatch_candidates": 1573,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 122262
+        "production_lines": 122252
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

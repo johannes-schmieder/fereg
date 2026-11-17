@@ -1,13 +1,18 @@
 # Changelog
 
-## 0.6.1 — locally qualified, unpublished, 2026-11-17
+## 0.6.1 — all-level factor extension in validation, unpublished, 2026-11-17
 
-Stability and correctness repairs. Source, native platform, canonical replay,
-private scientific and combined-package installation checks pass locally.
-The corresponding-source and three-platform archives are verified; nothing
-is published.
+Stability and correctness repairs. The preceding candidate passed source,
+native platform, canonical replay, private scientific and combined-package
+installation checks locally. A newly authorized all-level factor extension is
+under focused validation; its full source, native and package checks are pending.
+Nothing is published.
 See [validation](docs/VALIDATION.md) for the exact evidence and limits.
 
+- Support all-level `ibn.` factors with interacted or sloped absorption in OLS
+  and PPML, preserving original coefficient slots, bases and omission flags
+  after filtering or separation. Explicit `ib#` and `fvset` base overrides
+  with these absorbed terms remain unsupported.
 - Reproject suspicious finite directions before freezing rank and coefficients,
   including projection error amplified against an explicit coefficient goal;
   certify the reported inverse under changes of regressor units.

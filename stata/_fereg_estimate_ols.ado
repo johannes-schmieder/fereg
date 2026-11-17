@@ -351,7 +351,10 @@ program define _fereg_estimate_ols, eclass
         }
     }
     if `has_absorb_interaction' {
-        if regexm(lower(`"`indepvars'"'), "(^|[ #])ib[^ #]*[.]") {
+        // ibn. includes every level; it does not choose a replacement base.
+        // Normalize only this operator for the guard, retaining parsed metadata.
+        local base_guard_rhs = subinstr(lower(`"`indepvars'"'), "ibn.", "i.", .)
+        if regexm(`"`base_guard_rhs'"', "(^|[ #])ib[^ #]*[.]") {
             di as error "hidden categorical OLS final-sample rebasing does not yet support explicit base operators"
             exit 498
         }

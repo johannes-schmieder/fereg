@@ -80,7 +80,7 @@ pub(crate) fn rebase_prepared_model(
     categorical: bool,
 ) -> Result<PreparedOlsModel> {
     if categorical {
-        validate_default_base_policy(graph)?;
+        validate_categorical_base_policy(graph)?;
     }
 
     let original_coefficient_count = graph
@@ -141,12 +141,11 @@ struct CategoricalBasePolicy {
     base_level_bits: Option<u64>,
 }
 
-/// The guarded metadata wire does not distinguish Stata's default minimum
-/// base from an explicit `ib<minimum>.` request. Public syntax restrictions
-/// belong to Stata. This native preflight retains the observable minimum-base
-/// rule, allowing Stata's unbased single-level graph without choosing a base
-/// or changing the original recipe's omission status.
-fn validate_default_base_policy(graph: &CompiledTermGraph) -> Result<()> {
+/// Stata's metadata does not distinguish default from explicit minimum bases,
+/// or `ibn.` from selected unbased levels. Public syntax restrictions belong
+/// to Stata. Both unbased recipes and a declared minimum base are valid;
+/// never select a replacement base or alter whole-column omission flags.
+fn validate_categorical_base_policy(graph: &CompiledTermGraph) -> Result<()> {
     let mut policies = Vec::new();
     policies
         .try_reserve_exact(graph.sources.len())
@@ -196,20 +195,10 @@ fn validate_default_base_policy(graph: &CompiledTermGraph) -> Result<()> {
         }
     }
     for policy in policies {
-        let single_unbased_level = policy.base_level_bits.is_none()
-            && graph
-                .terms
-                .iter()
-                .flat_map(|term| &term.components)
-                .all(|component| {
-                    component.source != policy.source
-                        || component.kind != ComponentKind::Categorical
-                        || component.level_state != LevelState::Present
-                        || component.time_series_state != TimeSeriesState::None
-                        || canonical_factor_value(component.level_value).to_bits()
-                            == policy.minimum_level_bits
-                });
-        if !single_unbased_level && policy.base_level_bits != Some(policy.minimum_level_bits) {
+        if policy
+            .base_level_bits
+            .is_some_and(|base| base != policy.minimum_level_bits)
+        {
             return Err(unsupported(
                 "categorical final-sample rebasing requires Stata's default minimum base policy",
             ));
@@ -476,26 +465,27 @@ mod tests {
     }
 
     #[test]
-    fn default_minimum_base_policy_is_required_natively() {
+    fn declared_bases_must_be_minimum_but_unbased_recipes_are_valid() {
         let default = factor_graph(Some(1.0));
-        validate_default_base_policy(&default).expect("default minimum base");
+        validate_categorical_base_policy(&default).expect("default minimum base");
 
-        let nonminimum = validate_default_base_policy(&factor_graph(Some(2.0)))
+        let nonminimum = validate_categorical_base_policy(&factor_graph(Some(2.0)))
             .expect_err("nonminimum base must fail closed");
         assert_eq!(nonminimum.code, ErrorCode::Unsupported);
         assert!(nonminimum.message.contains("default minimum base policy"));
 
-        let no_base = validate_default_base_policy(&factor_graph(None))
-            .expect_err("no-base syntax must fail closed");
-        assert_eq!(no_base.code, ErrorCode::Unsupported);
-        assert!(no_base.message.contains("default minimum base policy"));
+        let no_base = factor_graph(None);
+        validate_categorical_base_policy(&no_base).expect("all-level unbased recipes");
+        assert!(no_base.terms.iter().all(
+            |term| !term.whole_column_omitted && term.components[0].base == MetadataFlag::False
+        ));
     }
 
     #[test]
     fn single_declared_level_does_not_require_or_infer_a_base() {
         let mut graph = factor_graph(None);
         graph.terms.truncate(1);
-        validate_default_base_policy(&graph).expect("active single-level default graph");
+        validate_categorical_base_policy(&graph).expect("active single-level default graph");
         assert!(!graph.terms[0].whole_column_omitted);
         assert_eq!(graph.terms[0].components[0].base, MetadataFlag::False);
 
@@ -506,19 +496,15 @@ mod tests {
         repeated.order = ComponentOrder::new(2).expect("component order");
         graph.terms[0].components.push(repeated);
         graph.terms[0].raw_kind = RawTermKind::Interaction;
-        validate_default_base_policy(&graph).expect("one distinct declared level");
+        validate_categorical_base_policy(&graph).expect("one distinct declared level");
         graph.terms[0].components[1].level_value = 3.0;
-        assert_eq!(
-            validate_default_base_policy(&graph)
-                .expect_err("two unbased levels")
-                .code,
-            ErrorCode::Unsupported
-        );
+        validate_categorical_base_policy(&graph)
+            .expect("distinct selected unbased levels retain their recipes");
 
         let mut multiple = factor_graph(Some(1.0));
         multiple.terms[1].components[0].base = MetadataFlag::True;
         assert_eq!(
-            validate_default_base_policy(&multiple)
+            validate_categorical_base_policy(&multiple)
                 .expect_err("multiple bases")
                 .code,
             ErrorCode::Unsupported
@@ -529,12 +515,9 @@ mod tests {
         omitted_second_level.terms.truncate(2);
         omitted_second_level.terms[1].whole_column_omitted = true;
         omitted_second_level.terms[1].components[0].omitted = MetadataFlag::True;
-        assert_eq!(
-            validate_default_base_policy(&omitted_second_level)
-                .expect_err("omitted distinct unbased level remains declared")
-                .code,
-            ErrorCode::Unsupported
-        );
+        validate_categorical_base_policy(&omitted_second_level)
+            .expect("explicit omission does not turn another unbased level into a base");
+        assert!(omitted_second_level.terms[1].whole_column_omitted);
     }
 
     #[test]

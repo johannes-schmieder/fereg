@@ -517,6 +517,7 @@
         "tests/stata/development/stability061_ppml_nearcontrast.do",
         "tests/stata/development/stability061_ppml_ordinary_slope.do",
         "tests/stata/development/stability061_ppml_partition_contrasts.do",
+        "tests/stata/development/stability061_ibn_interacted_absorb.do",
         "tests/stata/development/stability061_ppml_replicated_binary.do",
         "tests/stata/development/stability061_ppml_sparse_contrast.do",
         "tests/stata/development/stability061_weight_candidate_once.do",

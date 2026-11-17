@@ -1053,6 +1053,12 @@ all-categorical factor interactions, and Stata lag/lead/difference operators
 on continuous variables. Stata supplies authoritative base/omission flags and
 canonical names through `fvexpand`/`_ms_parse_parts`; Rust must not infer these
 flags from spelling. Do not broadly expand design columns in ado/Mata.
+All-level `ibn.` factor operators are supported with interacted or sloped
+absorption. An original graph without a declared base remains unbased; final-
+sample filtering never chooses a replacement base. Stata may discard the `bn`
+spelling from its parsed raw operators, so admission uses the authoritative
+recipe flags rather than operator text. A graph with a declared base must
+still use its original minimum level, with no conflicting declared bases.
 Explicit RHS base overrides (`ib#`, `fvset`) with interacted or sloped
 absorption remain unsupported until a separately approved extension.
 
@@ -1065,7 +1071,8 @@ Unknown operators, orphaned/gapped metadata, invalid flags, nonzero reserved
 fields and pending time-series work are errors before observation access.
 
 Tests: `parser/ordinary_factor_terms.do`, `parser/model_wire_v2_capture.do`,
-`tests/model_wire_adversarial.rs`, final-sample rebase and TS dummy oracles.
+`tests/model_wire_adversarial.rs`, final-sample rebase and TS dummy oracles,
+`development/stability061_ibn_interacted_absorb.do`.
 
 ## 7. OLS estimation
 

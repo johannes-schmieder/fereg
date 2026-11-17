@@ -809,7 +809,9 @@ not. Categorical-by-continuous and continuous-by-continuous finite RHS
 interactions are unsupported. When {cmd:absorb()} contains an interaction or
 absorbed slope, explicit RHS base operators such as {cmd:ib2.region} and
 {cmd:fvset} base overrides are unavailable in the current final-sample
-rebasing path.
+rebasing path. All-level {cmd:ibn.region} terms are supported, including
+within categorical interactions; final-sample filtering and separation preserve
+their original coefficient slots without selecting a replacement base.
 
 {pstd}
 The public surface does not include a model-based IID VCE, a preconditioner

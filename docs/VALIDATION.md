@@ -1,9 +1,22 @@
 # Validation status
 
-## Release 0.6.1 locally qualified candidate, November 17, 2026
+## Release 0.6.1 all-level factor extension in validation, November 17, 2026
 
-**Source and native qualification pass locally; unpublished.** Main, public
-tags and releases remain unchanged. All three native plugins were built from
+**All-level factor extension: focused validation in progress; unpublished.**
+The authorized extension admits `ibn.half#i.(c01-c30)` with interacted absorption
+without changing the caller's command. OLS uses the same policy. Native admission
+accepts original indicator graphs without a declared base; it does not infer
+bases from operator spelling or select replacement bases. Existing minimum-base,
+conflicting-base and public `ib#`/`fvset` restrictions remain. Two focused Rust
+tests pass, including independent group means and robust contrast covariance
+after missingness and whole-level separation. The maintained native fixture
+adds explicit dummy OLS/Poisson, pweights, two-way clustered covariance, mixed
+`i.`/`ibn.` terms, absorbed slopes, original stripes and atomic error checks.
+Full source, actual-native, private-command and package qualification of this
+extension are pending; the evidence below describes the preceding candidate.
+
+**Preceding candidate qualification.** Main, public tags and releases remain
+unchanged. All three preceding native plugins were built from
 `4a7c2ae334bd45b69724c842ab54c286a32889a7` (Q), whose runtime identity is
 `7f98e1f19a1d5d75f030e4ba23e258651641d68218d5f90220d3f00aeb85bf0f`.
 The corresponding-source and three-platform archives use packaging source
@@ -137,7 +150,8 @@ H/I comparison stopped at H's uncertified LSMR solve before I ran. The private
 stacked J trace still used 67 unit projections, so prefix-proof reuse has no
 established private speed gain. Correctness-run durations are not benchmarks.
 Unresolved ill-conditioned separation directions remain conservatively
-refused, and the `ibn` request remains unsupported.
+refused. The historical Q candidate rejected the `ibn` request; the new
+extension is being qualified separately.
 
 The Windows tests use Windows Server 2022 and Stata/MP 19. They do not qualify
 Pierre's exact Windows 11, StataNow/MP 19.5, CPython 3.13.1 and full MCP setup.

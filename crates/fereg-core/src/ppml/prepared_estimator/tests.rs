@@ -3359,3 +3359,6 @@ fn candidate_uniform_raw_owner_memory_counts_actual_explicit_capacity() {
         implicit + capacity
     );
 }
+
+#[path = "ibn_rebase_tests.rs"]
+mod ibn_rebase_tests;

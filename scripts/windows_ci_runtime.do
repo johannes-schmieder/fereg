@@ -196,6 +196,9 @@ if _rc exit 9139
 * Large replicated binary separation and matched no-separation control.
 capture noisily do "tests/stata/development/stability061_ppml_replicated_binary.do"
 if _rc exit 9140
+* All-level factors retain original slots with interacted absorption.
+capture noisily do "tests/stata/development/stability061_ibn_interacted_absorb.do"
+if _rc exit 9141
 * Fresh Python processes test changing host threads and native error recovery.
 shell python scripts/check_pystata_threads.py ///
     --utilities "C:/Program Files/Stata19/utilities" ///
