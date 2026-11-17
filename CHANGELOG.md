@@ -1,11 +1,12 @@
 # Changelog
 
-## 0.6.1 — qualified stability candidate, unpublished, 2026-11-17
+## 0.6.1 — 2026-11-17
 
 Stability and correctness repairs. Full source, Mac/Linux/Windows, canonical,
 private scientific and combined-package installation checks pass locally,
 including the repaired 16-worker stress harness. All 39 calls in the supplied
-original scripts succeed unchanged. Nothing is published.
+original scripts succeed unchanged. The qualified archives and native binaries
+are unchanged in this release.
 See [validation](docs/VALIDATION.md) for the exact evidence and limits.
 
 - Support all-level `ibn.` factors with interacted or sloped absorption in OLS

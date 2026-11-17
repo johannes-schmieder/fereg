@@ -1,13 +1,15 @@
 # Validation status
 
-## Release 0.6.1 combined stability candidate, November 17, 2026
+## Release 0.6.1, November 17, 2026
 
-**Qualified local candidate; unpublished.** The combined I2 runtime passes its
+**Qualified release runtime.** The combined I2 runtime passes its
 source, private-command, Mac, Windows, Linux and assembled-package checks.
 Native build source is
 `8c97110c137127dad01b0a4431fffbfb605e4292`; runtime identity is
 `383c30b7b17462209dd8c0f54463a1233d177c660557e618013c18d995df26da`.
-Main, public tags, releases and SSC remain unchanged.
+The release promotes the qualified candidate without changing native binaries
+or archives. Public installation verification is recorded after publication;
+SSC submission is a separate action.
 
 **Unchanged private commands.** Both supplied do-files pass all 39 calls on
 the actual final Mac binary, including `ibn.half#i.(c01-c30)` with interacted
@@ -112,8 +114,8 @@ of the earlier 12 installation fixtures and Stata18 replay is supported by
 - Linux qualification summary: SHA256
   `3cd13d60691ffbe22e36c5dfb55120a7ed68cf586d9940962a82707bca9ac463`.
 
-These runs establish correctness, not controlled speed comparisons. Public
-HTTP installation and publication have not occurred. Current evidence and
+These runs establish correctness, not controlled speed comparisons. The
+qualification above precedes public HTTP installation. Evidence and
 candidate assets are retained outside the repository under
 `$HOME/research/fereg/stability061-20261116/ibn-extension`: 10,109 payloads,
 1,514,498,557 bytes, independently rehashed. Retention manifest SHA256 is
