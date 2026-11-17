@@ -260,3 +260,62 @@ pub(crate) fn seventeen_channels() -> (FeDesign, Vec<f64>, DenseMatrix) {
     let weights = (0..n).map(|r| 1.0 + (r % 3) as f64 / 2.0).collect();
     (design, weights, DenseMatrix::from_columns(&[y]).unwrap())
 }
+
+#[test]
+fn replicated_categorical_unit_projection_preserves_rational_dual() {
+    let copies = 8192;
+    let n = 6 * copies;
+    let g = [0, 0, 1, 1, 2, 0];
+    let h = [0, 1, 0, 1, 0, 0];
+    let u = [0., 0., 0., 0., 0., 1.];
+    let x = [0., 0., 1., 1., 1., 0.];
+    // Exact projection of u onto the two-FE orthogonal complement.
+    // Its g and h moments vanish, and the zero-outcome cell has margin4/7.
+    let dual = [-3. / 7., -1. / 7., -1. / 7., 1. / 7., 0., 4. / 7.];
+    for interleaved in [false, true] {
+        let index = |row: usize| if interleaved { row % 6 } else { row / copies };
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new((0..n).map(|row| g[index(row)]).collect(), 3, true, vec![])
+                    .unwrap(),
+                EffectTerm::new((0..n).map(|row| h[index(row)]).collect(), 2, true, vec![])
+                    .unwrap(),
+            ],
+        )
+        .unwrap();
+        let columns: Vec<Vec<f64>> = [u, dual, x]
+            .iter()
+            .map(|v| (0..n).map(|row| v[index(row)]).collect())
+            .collect();
+        for workers in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let mut values = DenseMatrix::from_columns(&columns).unwrap();
+                    let report = crate::fe::absorb_lsmr(
+                        &design,
+                        &vec![1.; n],
+                        &mut values,
+                        crate::fe::LsmrConfig {
+                            tolerance: 1e-14,
+                            max_iterations: 100,
+                            ..crate::fe::LsmrConfig::default()
+                        },
+                    )
+                    .unwrap();
+                    assert!(
+                        report.certified(),
+                        "interleaved={interleaved} workers={workers}: {report:?}"
+                    );
+                    for row in 0..n {
+                        assert!((values[(row, 0)] - dual[index(row)]).abs() < 1e-13);
+                        assert!((values[(row, 1)] - dual[index(row)]).abs() < 1e-13);
+                        assert!(values[(row, 2)].abs() < 1e-13);
+                    }
+                });
+        }
+    }
+}

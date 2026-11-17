@@ -2068,6 +2068,20 @@ Local rank-aware bases prevent slope scaling/rotation from changing the span
 test. Residual reconstruction and small D'Wr are necessary, not a universal
 forward-accuracy bound; §20 independently tests weak graphs.
 
+The scalar and tiled local-span certificate dots use compensated signed
+accumulation, including the FMA product-rounding remainder. The full-system
+adjoint also compensates each gathered channel/RHS sum and each scattered
+level/channel/RHS sum, merging each fixed row block's sum and correction in
+block order. This shared adjoint serves PCG and modified LSMR right-hand sides,
+operator applications, residual checks and categorical weight-mass formation.
+Products retain their declared grouping; worker counts do not change the
+partition or reduction order. Normalization, local rank, positive-weight
+requirements and certificate tolerances are unchanged.
+
+Retain the 8192-copy grouped/interleaved rational-residual and unit-projection
+witnesses, including workers 1/4 and the independent full PPML publication
+check. The additional bounded correction storage is admitted under §19.
+
 A derived certificate applies to a residual formed as a linear combination of
 certified projections, `r = y~ - X~b`. The moments are recomputed from the
 declared design and weights as above, with `s = s_y + sum |b_j| s_j`, each term
@@ -2327,6 +2341,28 @@ left admission totals unchanged (they still charge the released storage), so
 `memory(auto)` chose Fast or Low exactly as before. Estimates remain estimates, not process RSS
 or strict OS bounds. No new route-specific admission fences may be added to
 hide a performance regression. Future removal of a mode needs mapped coverage.
+
+The compensated full-system adjoint (§16) uses sum and correction banks of
+`2 × r × scatter_blocks × scatter_levels` doubles for an RHS width `r`.
+Structure preparation checks representability through the maximum batch width;
+each application resets the banks. Gathered sums and local-span certificate
+dots use bounded stack corrections, without an observation-sized correction
+vector. Full PCG/LSMR, weight formation, preconditioner handles and fereg's
+outer LSMR estimate all charge the doubled scatter storage.
+
+Reused full projectors admit the composed live shape: the retained maximum
+recurrence width, retained weight state, output and Gram capacities, and task
+scratch. Reduced-cell accounting includes task scratch, partials, measures and
+fill transients. Narrower calls and a return to unit weights do not erase those
+charges. LSMR conservatively retains the selected-width transient allowance
+through escalation; the former one-lane Schwarz retry cannot reclaim the
+already selected wide banks and is removed. A stale or nonfitting Schwarz
+factor and its paired scratch are released together; admission and reporting
+use the same build-peak bound. Reported workspace is a conservative upper
+bound, not exact residency. A lower per-call cap can therefore decline with
+observations untouched; constructing a fresh `Projector` permits admission
+against a narrower history. Memory-boundary routes may change, while the
+original numerical certificates and public memory controls remain binding.
 
 **LSMR admission (Milestone 3, 2026-11-09).** The within-shaped
 modified-LSMR estimate (recurrence windows, per-RHS result metadata, slope

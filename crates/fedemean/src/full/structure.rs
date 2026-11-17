@@ -68,6 +68,11 @@ impl Structure {
         self.scatter_offsets[self.scatter_offsets.len() - 1]
     }
 
+    /// Sum and compensation banks for every fixed scatter block.
+    pub(super) fn scatter_slots(&self) -> usize {
+        2 * self.scatter_blocks() * self.scatter_levels()
+    }
+
     pub(super) fn scatter_blocks(&self) -> usize {
         if self.scattered.is_empty() {
             0
@@ -152,6 +157,15 @@ impl Structure {
             bytes,
             block_bytes: 0,
         };
+        // Every consumer uses at most BATCH lanes. Validate the doubled
+        // sum/correction bank before its usize products or u128 admission.
+        st.scatter_blocks()
+            .checked_mul(st.scatter_levels())
+            .and_then(|n| n.checked_mul(2))
+            .and_then(|n| n.checked_mul(crate::elimination::BATCH))
+            .ok_or(Error::OutOfMemory(
+                "full adjoint scatter dimensions overflow",
+            ))?;
         st.block_bytes = super::blocks::block_bytes(&st, effects);
         Ok(Some(st))
     }

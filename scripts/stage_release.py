@@ -16,8 +16,8 @@ from typing import Optional
 VERSION = "0.6.1"
 RELEASE_TAG = "v0.6.1"
 PACKAGE_NAME = f"fereg-{VERSION}"
-FIXED_TIME = (2026, 11, 11, 0, 0, 0)
-FIXED_UTC = "2026-11-16T00:00:00Z"
+FIXED_TIME = (2026, 11, 17, 0, 0, 0)
+FIXED_UTC = "2026-11-17T00:00:00Z"
 PLATFORM_PLUGINS = {
     "linux": "fereg_linux.plugin",
     "windows": "fereg_windows.plugin",
@@ -297,10 +297,11 @@ def copy_release_files(
     shutil.copy2(source / "LICENSE", staging / "fereg-LICENSE.txt")
     shutil.copy2(source / "THIRD_PARTY_NOTICES.md", staging / "fereg-THIRD-PARTY-NOTICES.txt")
     (staging / "fereg-SOURCE.txt").write_text(
-        "The corresponding source for this release, including pinned dependency sources,\n"
-        "licenses, and build instructions, is available alongside the binary package:\n"
+        "Corresponding source archive (including pinned dependency sources, licenses,\n"
+        "and build instructions):\n"
         f"https://github.com/johannes-schmieder/fereg/releases/download/{RELEASE_TAG}/"
         f"{PACKAGE_NAME}-source.zip\n\n"
+        "For an unpublished candidate, this URL is its intended publication location.\n"
         "For a modified local build, its source is the checkout used to build it.\n",
         encoding="utf-8",
     )

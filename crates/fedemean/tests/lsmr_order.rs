@@ -258,16 +258,18 @@ fn scale_bits(input: &InputState) -> Option<Vec<u64>> {
 }
 
 /// The projection one column at a time (the memory limit admits one column).
-fn one_at_a_time(
-    projector: &mut Projector<'_>,
-    case: &Case,
-    data: (&[f64], usize),
-    request: &Request,
-) -> Run {
+fn one_at_a_time(choice: Settings, case: &Case, data: (&[f64], usize), request: &Request) -> Run {
+    // A previously wide projector retains its admitted banks. Use a fresh
+    // projector to exercise a genuinely one-column recurrence budget.
+    let mut projector = Projector::new(case.design(), choice);
+    projector.prepare(&Control::default()).unwrap();
     let mut narrow = *request;
-    narrow.memory_limit = projector.admission_bytes(1);
-    assert!(narrow.memory_limit < projector.admission_bytes(2));
-    project(projector, case, data, &narrow)
+    // Leave room for all output metadata while excluding a two-column recurrence.
+    let one = projector.admission_bytes(1).unwrap();
+    let two = projector.admission_bytes(2).unwrap();
+    assert!(one < two);
+    narrow.memory_limit = Some(two - 1);
+    project(&mut projector, case, data, &narrow)
 }
 
 /// `batch` and `alone` decline alike: reason, input state, the iterations a
@@ -310,7 +312,7 @@ fn a_setup_decline_ends_the_batch_after_the_columns_before_it() {
     let choice = settings(Method::Lsmr, Preconditioner::Jacobi, Fallback::Decline);
     let mut projector = Projector::new(case.design(), choice);
     let batch = project(&mut projector, &case, (&original, ncols), &request);
-    let alone = one_at_a_time(&mut projector, &case, (&original, ncols), &request);
+    let alone = one_at_a_time(choice, &case, (&original, ncols), &request);
     let facts = assert_same_decline(&batch, &alone, "setup decline");
     let (reason, input, _) = declined(&batch.outcome);
     assert_eq!(
@@ -364,7 +366,7 @@ fn a_declining_batch_charges_what_one_column_at_a_time_charges() {
             let request = Request::new(tolerance, cap);
             let mut projector = Projector::new(case.design(), choice);
             let batch = project(&mut projector, &case, (&original, ncols), &request);
-            let alone = one_at_a_time(&mut projector, &case, (&original, ncols), &request);
+            let alone = one_at_a_time(choice, &case, (&original, ncols), &request);
             let label = format!("tolerance {tolerance:e}, cap {cap}");
             if matches!(batch.outcome, Outcome::Projected(_)) {
                 assert!(matches!(alone.outcome, Outcome::Projected(_)), "{label}");

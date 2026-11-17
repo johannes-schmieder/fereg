@@ -1,23 +1,42 @@
 # Changelog
 
-## 0.6.1 — in development
+## 0.6.1 — validation in progress, 2026-11-17
 
-Stability and correctness repairs; candidate validation is in progress.
+Stability and correctness repairs; not yet release-qualified or published.
+A large public stress case prompted an additional repaired projection path;
+its full source and rebuilt-native qualification remain pending.
+See [validation](docs/VALIDATION.md) for completed checks and remaining gates.
 
 - Recheck suspicious projected rank before freezing PPML coefficients; correct
   reported-inverse certification under changes of regressor units.
-- Strengthen full-model separation checks, including contrasts between controls
-  and fixed effects and unresolved near-dependent directions.
-- Preserve identified finite and absorbed-slope variation under large shifts;
-  stabilize nonzero-offset initialization without discarding offset components.
+- Require independent full-model separation proofs, including absorbed slopes,
+  exact aliases and small contrasts between controls and fixed effects. Use
+  bounded graph proposals for exact binary controls and reuse previously proved
+  exact aliases through an acyclic proof chain; retain the same final checks.
+- Preserve identified finite and absorbed-slope variation under large shifts
+  and changes of units. Remove an observed origin only when subtraction is
+  lossless, including OLS without absorbed effects and implicit one-FE centering.
+- Stabilize nonzero-offset initialization and admit component-scaled strict
+  checkpoints for two or three categorical effects under the existing memory
+  limits and original-weight acceptance certificates.
+- Compensate local-span certificate dots and full-system adjoint sums to retain
+  strict projection accuracy on replicated designs, including PCG, LSMR and
+  weight-mass formation, without changing rank or acceptance tolerances.
+- Charge retained wide workspaces, Gram/output capacities and reduced-cell
+  scratch on narrower reuse. Keep LSMR's selected-width allowance through
+  escalation and remove the undercharged one-lane Schwarz retry; a tighter
+  cap can decline untouched, while a fresh projector admits a smaller history.
 - Allow serialized PyStata calls from different host threads while rejecting
   concurrent/reentrant native calls and retaining numeric-window safeguards.
 - Fix long coefficient-name lists and factor metadata; include public OLS
   metadata in atomic rollback.
 - Evaluate weighted candidate restrictions once, accept explicit continuous
   omission operators, and support prediction with an empty coefficient axis.
-- Add independent adversarial mathematical witnesses and platform integration
-  checks for these cases. Detailed final coverage remains pending.
+- Align canonical replay and benchmark checkers with the current wire and solver
+  tables. Protect separation drop counts, route decisions, DoF, determinism and
+  omission markers; preserve historical input-bound contracts separately.
+- Add independent mathematical, memory-boundary, rollback and native regression
+  tests, including a 77-case actual-plugin corpus with repeated worker checks.
 
 
 ## 0.6.0 — 2026-11-11

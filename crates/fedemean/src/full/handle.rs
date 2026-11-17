@@ -163,7 +163,7 @@ fn base(st: &Structure, design: &Design<'_>, weighted: bool) -> u128 {
         .filter(|e| e.sloped())
         .map(|e| e.levels().div_ceil(LEVEL_TASK))
         .sum();
-    let scatter = (st.scatter_blocks() * st.scatter_levels()) as u128;
+    let scatter = (st.scatter_slots()) as u128;
     let conversion = if design.sloped() {
         8 * (2 * st.coefficients() + 3 * tasks) as u128 + 32 * effects.len() as u128
     } else {

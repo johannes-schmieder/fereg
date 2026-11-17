@@ -1084,3 +1084,52 @@ mod tests {
         assert!(!certificate.passed);
     }
 }
+
+#[cfg(test)]
+#[test]
+fn replicated_rational_residual_certificate_is_order_stable() {
+    let copies = 8192;
+    let n = 6 * copies;
+    let g = [0, 0, 1, 1, 2, 0];
+    let h = [0, 1, 0, 1, 0, 0];
+    let p = [-3. / 7., -1. / 7., -1. / 7., 1. / 7., 0., 4. / 7.];
+    for interleaved in [false, true] {
+        let index = |row: usize| if interleaved { row % 6 } else { row / copies };
+        let design = FeDesign::new(
+            n,
+            vec![
+                crate::fe::EffectTerm::new(
+                    (0..n).map(|row| g[index(row)]).collect(),
+                    3,
+                    true,
+                    vec![],
+                )
+                .unwrap(),
+                crate::fe::EffectTerm::new(
+                    (0..n).map(|row| h[index(row)]).collect(),
+                    2,
+                    true,
+                    vec![],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        let residuals =
+            DenseMatrix::from_columns(&[(0..n).map(|row| p[index(row)]).collect()]).unwrap();
+        for workers in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let certificate =
+                        certify_residuals(&design, &vec![1.; n], &residuals, 1e-14).unwrap();
+                    assert!(
+                        certificate.passed,
+                        "interleaved={interleaved} workers={workers}: {certificate:?}"
+                    );
+                });
+        }
+    }
+}

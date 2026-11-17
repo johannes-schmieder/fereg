@@ -176,6 +176,15 @@ class StataProfileSeparationContractTests(unittest.TestCase):
         self.assertEqual(sorted(fixtures), expected)
         self.assertIn("tests/stata/development/parallel_input_oracle.do", fixtures)
 
+    def test_replicated_binary_fixture_uses_current_stata_profiles(self) -> None:
+        fixture = "tests/stata/development/stability061_ppml_replicated_binary.do"
+        profiles = load_profiles()
+        self.assertIn(fixture, profiles["development"]["fixtures"])
+        self.assertNotIn(fixture, profiles["older-stata"]["fixtures"])
+        windows = (ROOT / "scripts/windows_ci_runtime.do").read_text(encoding="utf-8")
+        self.assertIn(f'capture noisily do "{fixture}"\nif _rc exit 9140', windows)
+        self.assertEqual(windows.count("if _rc exit 9140"), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

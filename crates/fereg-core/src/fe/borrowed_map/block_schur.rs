@@ -715,7 +715,11 @@ pub(crate) fn lsmr_base_workspace_bytes(
     let values = checked_sum_memory(&[
         checked_mul_memory(levels, 18, "PPML LSMR coefficient vectors")?,
         checked_mul_memory(n, 9, "PPML LSMR observation vectors")?,
-        checked_mul_memory(scatter, SCATTER_BLOCKS, "PPML LSMR scatter blocks")?,
+        checked_mul_memory(
+            scatter,
+            2 * SCATTER_BLOCKS,
+            "PPML LSMR scatter sum/correction banks",
+        )?,
     ])?;
     checked_sum_memory(&[
         structure,

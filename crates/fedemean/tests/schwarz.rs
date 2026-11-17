@@ -1056,3 +1056,62 @@ fn automatic_escalation_keeps_fast_jacobi_and_hands_slow_recurrences_to_schwarz(
         }
     }
 }
+
+/// A cached automatic preconditioner that no longer fits is released with
+/// its apply scratch before the certified Jacobi fallback is reported.
+#[test]
+fn cached_schwarz_is_released_when_the_new_cap_only_fits_jacobi() {
+    let case = Case::random(381, 3000, &[700, 150, 9, 5]);
+    let original = case.columns(382, 3);
+    for method in [Method::Pcg, Method::Lsmr] {
+        let choice = settings(method, Preconditioner::Auto, Fallback::Decline);
+        let mut warm = Projector::new(case.design(), choice);
+        let request = Request::new(TOLERANCE, MAX_ITERATIONS);
+        let mut data = original.clone();
+        let (outcome, _) = project(
+            &mut warm,
+            &case,
+            None,
+            (&mut data, 3),
+            &request,
+            &Control::default(),
+        )
+        .unwrap();
+        schwarz_used(&projected(outcome));
+        // A fresh Jacobi projector provides the base budget independently
+        // of the warm projector's retained Schwarz estimate.
+        let mut cold = Projector::new(
+            case.design(),
+            settings(method, Preconditioner::Jacobi, Fallback::Decline),
+        );
+        cold.prepare(&Control::default()).unwrap();
+        let mut limited = request;
+        limited.memory_limit = Some(cold.admission_bytes(3).unwrap() + 1024);
+        data.copy_from_slice(&original);
+        let (outcome, _) = project(
+            &mut warm,
+            &case,
+            None,
+            (&mut data, 3),
+            &limited,
+            &Control::default(),
+        )
+        .unwrap();
+        let report = projected(outcome);
+        assert_eq!(report.route.preconditioner, PreconditionerUsed::Jacobi);
+        assert!(report.workspace_bytes <= limited.memory_limit.unwrap());
+        let mut reference = original.clone();
+        let (outcome, _) = project(
+            &mut cold,
+            &case,
+            None,
+            (&mut reference, 3),
+            &request,
+            &Control::default(),
+        )
+        .unwrap();
+        assert!(projected(outcome).certificate.passed);
+        assert_eq!(bits(&data), bits(&reference));
+        assert!(warm.admission_bytes(3).unwrap() <= limited.memory_limit.unwrap());
+    }
+}

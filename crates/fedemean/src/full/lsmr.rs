@@ -40,7 +40,7 @@
 use super::blocks::Blocks;
 use super::kernels::{adjoint, forward, load, residualize, Basis, Rows, ROW_BLOCK};
 use super::pcg::{predicted_slow, PILOT};
-use super::schwarz::{Refusal, Schwarz, Scratch};
+use super::schwarz::{Schwarz, Scratch};
 use super::structure::Structure;
 use super::{
     add_coefficients, certify, cold_start, ensure, filled, form_gram, initial_mode, load_start,
@@ -305,10 +305,14 @@ impl Operator for Inverse<'_> {
 /// preconditioner `schwarz` will apply with, with its bytes; one column
 /// when none wider fits.
 fn batch_width(job: &Job<'_, '_>, ncols: usize, schwarz: Option<&Schwarz>) -> (usize, u128) {
-    let other = job.bytes - lsmr_bytes(job.st, 1);
-    let bytes = |w: usize| other + lsmr_bytes(job.st, w);
+    let other = job.bytes - lsmr_bytes(job.st, job.retained_width);
+    let tasks = job.state.blocks().map_or(0, |blocks| blocks.tasks()) as u128;
+    let bytes = |w: usize| {
+        let width = w.max(job.retained_width);
+        other + lsmr_bytes(job.st, width) + 8 * 3 * tasks * (width - job.retained_width) as u128
+    };
     let fits = |w: usize| {
-        let preconditioner = schwarz.map_or(0, |s| s.peak_bytes(w));
+        let preconditioner = schwarz.map_or(0, |s| s.peak_bytes(w.max(job.retained_width)));
         job.request
             .memory_limit
             .is_none_or(|limit| bytes(w) + preconditioner <= limit)
@@ -378,13 +382,11 @@ struct Settled {
 
 /// The lockstep width of one projection's rounds and the bytes it reports.
 struct Width {
-    /// Columns per round; one after an escalation that only fits so.
+    /// Columns per round, selected before allocating persistent banks.
     round: usize,
     /// Whether an escalating projection's pilot column has run.
     piloted: bool,
-    /// The workspace at the projection's width and at one column.
-    bytes: u128,
-    narrow: u128,
+    /// Conservative peak, retaining the selected width through escalation.
     peak: u128,
 }
 
@@ -410,18 +412,21 @@ pub(super) fn project(
         reference: formed,
     } = outputs;
     let started = Instant::now();
-    let mut mode = match initial_mode(job, slot, 1, &mut facts)? {
+    let mut mode = match initial_mode(job, slot, &mut work.schwarz, 1, &mut facts)? {
         Ok(mode) => mode,
         Err(reason) => return Ok((untouched(reason, with_structure(facts, job)), false)),
     };
     let (width, bytes) = batch_width(job, ncols, slot.as_ref().filter(|_| mode == Mode::Schwarz));
-    let narrow = job.bytes;
-    let job = &Job { bytes, ..*job };
+    // Persistent banks retain the selected width. Conservatively retain its
+    // transient allowance through escalation too; do not credit it to Schwarz.
+    let job = &Job {
+        bytes,
+        retained_width: width.max(job.retained_width),
+        ..*job
+    };
     let mut lockstep = Width {
         round: width,
         piloted: false,
-        bytes,
-        narrow,
         peak: bytes,
     };
     work.size(st, 1)?;
@@ -430,7 +435,8 @@ pub(super) fn project(
         .state
         .blocks()
         .map_or(0, |blocks| blocks.tasks() * 3 * width);
-    let scatter = st.scatter_blocks() * st.scatter_levels() * width;
+    let scatter = st.scatter_slots() * width;
+    work.width = work.width.max(width);
     for (buffer, len) in [
         (&mut work.inverse_measures, tasks),
         (&mut work.scatter, scatter),
@@ -748,28 +754,16 @@ where
             }
         };
         let default = SchwarzSpec::default();
-        let mut built = ensure(job, default, slot, lockstep.round, facts)?;
-        if matches!(built, Err(Refusal::MemoryLimit)) && lockstep.round > 1 {
-            // Schwarz beside one column at a time.
-            let narrow = Job {
-                bytes: lockstep.narrow,
-                ..*job
-            };
-            built = ensure(&narrow, default, slot, 1, facts)?;
-            if built.is_ok() {
-                lockstep.round = 1;
-            }
-        }
+        // Keep the selected wide bound through escalation: persistent banks
+        // survive, so retrying this same admission at one lane cannot free it.
+        let built = ensure(job, default, slot, &mut work.schwarz, lockstep.round, facts)?;
         if built.is_ok() {
             facts.escalations += 1;
             *mode = Mode::Schwarz;
-            let schwarz = slot.as_ref().map_or(0, |s| s.peak_bytes(lockstep.round));
-            let held = if lockstep.round > 1 {
-                lockstep.bytes
-            } else {
-                lockstep.narrow
-            };
-            lockstep.peak = lockstep.peak.max(held + schwarz);
+            let schwarz = slot
+                .as_ref()
+                .map_or(0, |s| s.peak_bytes(lockstep.round.max(job.retained_width)));
+            lockstep.peak = lockstep.peak.max(job.bytes + schwarz);
         } else if lanes[e].slow.load(Ordering::Relaxed) {
             // A slow (not stalled) recurrence whose Schwarz does not fit
             // continues with Jacobi.

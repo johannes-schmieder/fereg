@@ -1,5 +1,112 @@
 # Validation status
 
+## Release 0.6.1 validation in progress, November 17, 2026
+
+**Release qualification is reopened; not published.** Main, tags and public
+releases remain unchanged. The additional large public stress case below
+has a focused-tested repair awaiting full source and rebuilt-native validation.
+The completed checks in this section describe J and the stated tooling
+snapshots; they do not qualify that new runtime. The three tested native plugins were built from
+`986742cbaaa3594050618b9db3c2bd4fd401a4da` (J). Tooling snapshots through
+`80fff066` contain no numerical-runtime changes; production identity
+checks cover 285 runtime modules and 59 artifact inputs. The shared runtime
+identity is `519bd0787f109939062fc4747b5d800b5ae69e044f2c9cf1f3afb94289657fa1`.
+
+**Scientific checks.** Maintained witnesses cover shifts and changes of units,
+exact aliases and small separating contrasts, complete absorbed-slope spans,
+offsets, disparate component weights, memory-admission boundaries, public
+rollback and long factor-name lists. All 108 separation-routing arms succeed
+against independent LP sample witnesses; coefficient/covariance bits and
+non-work decisions agree, with the declared iteration signatures. Repeats and
+agreement across 1/2/4/8 workers pass.
+
+On the confidential follow-up data, all six comparisons against the frozen
+external estimator pass: separate halves and the stacked model, each with
+explicit and absorbed controls. Corresponding samples match exactly; maximum
+absolute main-coefficient error is 1.58e-12, relative SE error 5.18e-8 and full
+covariance-block error scaled by reference SE products 1.04e-7. All 38 supported
+original commands pass; the unsupported `ibn` request returns the expected
+r(498). Additional default absorbed fits agree at workers 1 and 8 and repeat
+exactly at 8; a separate explicit-LSMR fit agrees with its reference. The private
+stacked model still uses 67 unit projections, so no speed gain from alias-prefix
+reuse is established. These are correctness checks, not controlled timing.
+
+**Source and tooling.** The clean J source-only gate passes on Rust 1.85.1 and
+Python 3.12.2: the full workspace, including 1,615 core and 213 plugin tests,
+243 serial FFI tests, 13 allocator audits in separate processes, Clippy,
+formatting, fuzz compilation, complexity, portable/static and mock-SPI checks.
+Tooling commit `082c9cb2` passes 368 Python tests and 18 CI tests (one platform
+skip); `80fff066`, its fixture-only correction, passes all 482 benchmark tests
+with the tested inputs unchanged. The final packaging date/source-text changes
+pass 15 staging tests and four installation-tool tests.
+The local environment preserves NumPy 1.26.4 and pandas 2.2.2; ReportLab 5.1.0
+is isolated for benchmark report tests.
+
+Canonical replay from `ea400549` (L), with the actual J Mac plugin, passes all
+77 cases (39 OLS, 38 PPML), including bias, separation and derived residuals:
+308 native calls, workers 1 and 4, twice each. Independent numerical targets,
+fixed-worker bits and cross-worker discrete decisions all pass. Current wire
+layouts, the centered-norm condition reference and bias input bindings were
+checked independently; numerical tolerances were unchanged. Historical typed
+solver contracts reject current layouts rather than reinterpret old scopes.
+
+**Native platforms.** The Mac universal plugin was built offline from extracted
+J source with fresh Cargo home and target directories; binary audit and actual
+ABI checks pass. Actual J installation checks, a 34-file isolated local
+`net install`, and Stata/MP 18 pass. Nine unaffected frontend installation tests
+are reused after a 56-file source identity check. The unchanged bridge retains
+the seven native fixtures, 54 PyStata calls in six modes and 14 physical Break
+boundaries from `19402e51` (I). Three targeted I fixtures pass under Rosetta; this is neither
+native Intel hardware nor an execution of J's Intel slice.
+
+Linux J passes build/ELF/ABI checks, 2,586 Rust test executions, 370 Python test
+executions, 18 CI and 476 benchmark tests, and the Linux mock audit. Stata/MP 19
+whole-tree coverage is 169 pass, zero fail, three not run (two extracted-package
+fixtures and the Windows-only fixture). The staged package passes 12/12,
+older-Stata profiles pass on 15.1 and 19, and all 54 PyStata checks pass.
+SCC jobs 8695582/3/4 all report failed 0 and exit 0; 789 collected files verify.
+Windows J run `win-20261117T060527Z-4a9dea23` on Windows Server 2022 and
+Stata/MP 19 passes its Rust/MSVC, bridge, binary/ABI and licensed-Stata profile;
+cleanup stops the instance and releases
+the lock. Its receipt SHA-256 is
+`f1062faa45415c445b49d5ef3ad59648294044fca358e460d4df86f84a47ace2`.
+
+The tested J plugin SHA-256 values are:
+
+| Platform | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Universal macOS | 33,911,616 | `de5611a086ee654f118ad18599e8b0aea543cbbe088849250cf1fbf4df0274b9` |
+| Linux x86-64 | 24,155,640 | `c447a572e5f1c0e17373e585d19fc201cb57c1a82b2e460f82a04efce657f7e5` |
+| Windows x86-64 | 20,551,168 | `eed6ae23c702b2711eb751378a132214b73feb21ebed72506691a1e877316e82` |
+
+**Additional repair awaiting qualification.** The 65,536-row public synthetic stress case fails on the
+actual J Mac plugin. Generation-zero graph separation correctly removes
+16,384 rows; on the remaining 49,152 rows, the next generation's unit-metric
+LSMR projection exhausts 16,000 iterations instead of certifying the valid
+model's no-further-separation result. The planned eight-call worker/repeat
+stress panel is not qualified. Compensated certificate dots and shared
+full-system adjoint sums now pass the grouped/interleaved witnesses and the
+full-size Rust PPML publication case; the separation suite passes 90 tests.
+Independent mathematical and memory-accounting review found no remaining
+blocker. The retained-capacity repair passes the eight-arm PCG/LSMR reuse
+witness, reduced-cell exact-boundary and cached-Schwarz cap checks, and the
+existing full, handle, LSMR-order, Schwarz and slope suites. An independent
+counting allocator checks 16 cases against the conservative workspace bound.
+The new maintained Stata fixture covers the full-size separated case and a
+matched no-separation control at workers 1 and 4. Its rebuilt-native execution,
+the full source gate and renewed platform qualification are still pending.
+An attempted H/I performance comparison also stopped at H's uncertified LSMR
+solve before I ran; it provides no comparative timing evidence.
+
+Final corresponding-source and three-platform archive hashes and the combined
+package installation check await the repaired source freeze and qualification. HTTP
+publication/install checks and native Intel-Mac execution are not covered.
+The reported Windows 11, StataNow 19.5 and full MCP path is not qualified by the
+Server 2022 run. The existing Windows loading-Break limitation remains.
+Unresolved ill-conditioned separation directions are still conservatively
+refused, and the `ibn` request above remains unsupported. No release, tag or push
+has been performed for this candidate.
+
 ## Release 0.6.0, November 11, 2026
 
 Johannes's instruction of 2026-11-11: merge the fedemean branch into main and

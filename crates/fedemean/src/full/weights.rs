@@ -105,7 +105,7 @@ impl State {
         }
         let m = st.coefficients();
         refill(&mut self.mass, m, 0.0)?;
-        refill(scatter, st.scatter_blocks() * st.scatter_levels(), 0.0)?;
+        refill(scatter, st.scatter_slots(), 0.0)?;
         let one = [1.0];
         let src = match weights.values {
             Some(_) => Rows {

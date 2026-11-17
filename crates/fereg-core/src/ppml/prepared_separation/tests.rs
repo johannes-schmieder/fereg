@@ -3105,15 +3105,20 @@ fn exact_integer_alias_proves_factor_bundle_and_rejects_perturbation_and_rounded
 
 #[test]
 fn unit_metric_direction_survives_complete_ppml_publication_validation() {
-    publication_contrast(7., false);
+    publication_contrast(7., false, 1);
 }
 
 #[test]
 fn binary_graph_direction_survives_complete_ppml_publication_validation() {
-    publication_contrast(0., true);
+    publication_contrast(0., true, 1);
 }
 
-fn publication_contrast(origin: f64, graph: bool) {
+#[test]
+fn binary_graph_replicated_publication_certifies_grouped_large_sample() {
+    publication_contrast(0., true, 8192);
+}
+
+fn publication_contrast(origin: f64, graph: bool, copies: usize) {
     use crate::ppml::{
         fit_prepared_ppml, LoadedPpmlInput, PpmlMemoryConfig, PpmlSolverFamily, PpmlVceRequest,
         PreparedPpmlAdjustmentKind, PreparedPpmlOutputRequest, PreparedPpmlRequestV1,
@@ -3123,9 +3128,15 @@ fn publication_contrast(origin: f64, graph: bool) {
     second.id = AbsorbTermId::new(2).unwrap();
     second.categorical_sources = vec![SourceId::new(3).unwrap()];
     ols.absorbed_terms.push(second);
-    loaded.candidate = vec![true; 8].into();
-    loaded.outcome = column(&[1., 1., 1., 1., 1., 0., 0., 0.]);
-    loaded.numeric_sources[0].1 = column(&[
+    let repeated = |values: &[f64]| {
+        values
+            .iter()
+            .flat_map(|&value| std::iter::repeat(value).take(copies))
+            .collect::<Vec<_>>()
+    };
+    loaded.candidate = vec![true; 8 * copies].into();
+    loaded.outcome = column(&repeated(&[1., 1., 1., 1., 1., 0., 0., 0.]));
+    loaded.numeric_sources[0].1 = column(&repeated(&[
         origin,
         origin,
         origin + 1.,
@@ -3134,18 +3145,28 @@ fn publication_contrast(origin: f64, graph: bool) {
         origin,
         origin,
         origin,
-    ]);
-    loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 3., 3., 3., 1.]);
-    loaded.numeric_sources[2].1 = column(&[1., 2., 1., 2., 1., 1., 2., 1.]);
+    ]));
+    loaded.numeric_sources[1].1 = column(&repeated(&[1., 1., 2., 2., 3., 3., 3., 1.]));
+    loaded.numeric_sources[2].1 = column(&repeated(&[1., 2., 1., 2., 1., 1., 2., 1.]));
     let mut separation = rectifier_only();
     separation.drop_singletons = true;
+    let threads = crate::ThreadConfig::from_requested(1, true).unwrap();
+    let mut ppml = PpmlConfig::default();
+    ppml.absorb.lsmr.threads = threads;
+    let linear = PreparedOlsFitConfig {
+        execution: crate::ols::PreparedOlsExecutionConfig {
+            threads,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     let request = PreparedPpmlRequestV1 {
         bias: None,
         ols,
         clusters: Vec::new(),
         vce: PpmlVceRequest::Robust,
-        ppml: PpmlConfig::default(),
-        linear: PreparedOlsFitConfig::default(),
+        ppml,
+        linear,
         memory: PpmlMemoryConfig::default(),
         memory_preflight_probe: None,
         allocation_snapshot_probe: None,
@@ -3160,8 +3181,8 @@ fn publication_contrast(origin: f64, graph: bool) {
             xb: false,
             absorbed: false,
             eta: false,
-            mean: false,
-            requested_observation_columns: 0,
+            mean: true,
+            requested_observation_columns: 1,
             publication_matrix_cells: 512,
         },
         solver: PpmlSolverFamily::Auto,
@@ -3180,10 +3201,24 @@ fn publication_contrast(origin: f64, graph: bool) {
         },
     )
     .unwrap();
-    assert_eq!(result.sample().original_rows(), &[0, 1, 2, 3, 7]);
+    let expected_rows: Vec<_> = (0..8 * copies)
+        .filter(|row| ![5, 6].contains(&(row / copies)) && !(copies == 1 && *row == 4))
+        .collect();
+    assert_eq!(result.sample().original_rows(), expected_rows);
+    // Independent Poisson score solution on the retained 2x2 block:
+    // a=2-sqrt(2), b=c=2*(sqrt(2)-1), d=2*a; the third g cell has mean1.
+    let a = 2. - 2_f64.sqrt();
+    let means = [a, 2. * (1. - a), 2. * (1. - a), 2. * a, 1., 0., 0., a];
+    assert_eq!(result.output().mean().len(), expected_rows.len());
+    for (&row, &actual) in expected_rows.iter().zip(result.output().mean()) {
+        assert!((actual - means[row / copies]).abs() < 1e-8);
+    }
     complete_span_admission_boundary(result.memory().plan);
-    assert_eq!(result.separation().separated_count, 2);
-    assert_eq!(result.separation().singleton_count, 1);
+    assert_eq!(result.separation().separated_count, 2 * copies);
+    assert_eq!(
+        result.separation().singleton_count,
+        usize::from(copies == 1)
+    );
     assert!(result
         .separation()
         .methods

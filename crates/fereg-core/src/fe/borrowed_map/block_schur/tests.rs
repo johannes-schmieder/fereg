@@ -936,3 +936,36 @@ fn full_system_declines_name_their_reasons() {
         assert_eq!(error.code, crate::error::ErrorCode::Unsupported);
     }
 }
+
+/// Many small FEs make both fixed scatter banks dominate observation slack.
+#[test]
+fn lsmr_outer_grant_covers_compensated_small_effect_banks() {
+    let rows = 64;
+    let codes: Vec<Vec<u32>> = (0..32)
+        .map(|j| (0..rows).map(|i| ((i >> (j % 6)) & 1) as u32).collect())
+        .collect();
+    let effects = codes.iter().map(|c| fedemean::Effect::new(c, 2)).collect();
+    let design = fedemean::Design::new(rows, effects).unwrap();
+    let mut projector = fedemean::Projector::new(
+        design,
+        fedemean::Settings {
+            choice: fedemean::Choice {
+                reduction: fedemean::Reduction::Full,
+                method: fedemean::Method::Lsmr,
+                preconditioner: fedemean::Preconditioner::Jacobi,
+                ..fedemean::Choice::default()
+            },
+            ..fedemean::Settings::default()
+        },
+    );
+    projector.prepare(&fedemean::Control::default()).unwrap();
+    let admitted = projector.admission_bytes(1).unwrap();
+    for workers in [1, 4, 16] {
+        let grant = lsmr_base_workspace_bytes(rows, &[2; 32], workers).unwrap();
+        assert!(
+            grant >= admitted,
+            "grant {grant}, dependency admission {admitted}"
+        );
+        assert!(grant >= 2 * 64 * 64 * 8);
+    }
+}

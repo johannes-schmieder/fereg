@@ -74,7 +74,10 @@
 //!
 //! Memory: every allocation is fallible; the structure, weight state and
 //! one flat workspace (resized per batch width, allocations kept) are
-//! retained, so repeated PCG projections allocate nothing. `mlsmr` and
+//! retained, so repeated PCG projections allocate nothing. Later admissions
+//! and reports charge the retained high-water shape, even at a narrower
+//! width or after returning to unit weights. A lower limit that cannot
+//! cover it declines untouched; a fresh projector can admit smaller banks. `mlsmr` and
 //! `mlsmr_columns` allocate their own vectors per round; the LSMR batch is
 //! the widest that fits the memory limit. A Schwarz preconditioner is built
 //! for the current weights within the memory limit (or declines) and
@@ -310,6 +313,8 @@ pub(super) struct Job<'j, 'c> {
     cells: Option<&'j Cells>,
     cap: usize,
     bytes: u128,
+    /// Existing recurrence banks remain live when a later solve is narrower.
+    retained_width: usize,
     cancel: Cancel<'c>,
 }
 
@@ -334,10 +339,7 @@ fn state_bytes(st: &Structure, method: Method, weighted: bool) -> u128 {
 /// Bytes of the elimination's cells and its Schur workspace for `width`
 /// columns (six recurrence vectors and the cells' products).
 fn cells_bytes(cells: &Cells, width: usize) -> u128 {
-    let [ca, cb] = cells.channels;
-    let small = cells.small_tasks() as u128 * 512 * cb as u128;
-    let w = width as u128;
-    cells.bytes() + 8 * w * (6 * small + (cells.cells() * cb) as u128 + 3 * ca as u128)
+    cells.bytes() + pcg::reduced_work_bytes(cells, width) + cells.fill_scratch_bytes()
 }
 
 /// Bytes of the modified LSMR solve for batches of `width` columns (beside
@@ -352,25 +354,9 @@ pub(super) fn lsmr_bytes(st: &Structure, width: usize) -> u128 {
     if width <= 1 {
         return pcg::work_bytes(st, 1) + 8 * (5 * n + 8 * m);
     }
-    let scatter = (st.scatter_blocks() * st.scatter_levels()) as u128;
+    let scatter = (st.scatter_slots()) as u128;
     let w = width as u128;
     pcg::work_bytes(st, 1) + 8 * (w * (3 * n + 11 * m + scatter) + 3 * n + 5 * m)
-}
-
-/// Bytes a projection of `ncols` columns uses beyond the caller's data: the
-/// structure, the weight state and the solve workspace (modified LSMR at its
-/// widest batch; under a tighter limit it runs narrower, down to one column).
-pub(crate) fn admission_bytes(
-    st: &Structure,
-    method: Method,
-    ncols: usize,
-    weighted: bool,
-) -> u128 {
-    let solve = match method {
-        Method::Pcg => pcg::work_bytes(st, ncols.min(BATCH)),
-        Method::Lsmr => lsmr_bytes(st, ncols.clamp(1, BATCH)),
-    };
-    st.bytes + state_bytes(st, method, weighted) + solve
 }
 
 /// The columns a projection of `ncols` must admit at once: PCG's batch;
@@ -399,11 +385,72 @@ impl Engine {
         self.structure.as_ref()
     }
 
+    fn retained_width(&self) -> usize {
+        self.work.width.max(self.reduced.width).max(1)
+    }
+
+    /// Bound the composed live shape, rather than a previous whole-call peak.
+    /// In particular, new weighted state can coexist with older wide banks.
+    pub(crate) fn projection_bytes(
+        &self,
+        st: &Structure,
+        effects: &[crate::Effect<'_>],
+        method: Method,
+        columns: (usize, usize),
+        weighted: bool,
+    ) -> u128 {
+        let (ncols, solve_columns) = columns;
+        let width = solve_columns.clamp(1, BATCH).max(self.retained_width());
+        let state = state_bytes(st, method, weighted)
+            .max(self.weights.as_ref().map_or(0, |(_, state)| state.bytes));
+        let solve = match method {
+            Method::Pcg => pcg::work_bytes(st, width),
+            Method::Lsmr => lsmr_bytes(st, width),
+        };
+        let tasks: u128 = effects
+            .iter()
+            .filter(|e| e.sloped())
+            .map(|e| e.levels().div_ceil(blocks::LEVEL_TASK) as u128)
+            .sum();
+        let measures = (self.work.measures.capacity() as u128).max(3 * tasks * width as u128);
+        let inverse =
+            (self.work.inverse_measures.capacity() as u128).max(if method == Method::Lsmr {
+                3 * tasks * width as u128
+            } else {
+                0
+            });
+        let blocks = st.nobs.div_ceil(ROW_BLOCK) as u128;
+        // LSMR's base PCG bank always has one column, even in a wide solve.
+        let base_rows = 3
+            * blocks
+            * if method == Method::Lsmr {
+                1
+            } else {
+                width as u128
+            };
+        let gram = (self.gram.values.capacity() as u128).max(if ncols <= BATCH {
+            ncols as u128 * ncols as u128
+        } else {
+            0
+        });
+        let rows = (self.work.rows.capacity() as u128).max(blocks * gram);
+        let outputs = 8
+            * (self.norms.capacity().max(ncols) as u128
+                + self.reference.capacity().max(ncols) as u128)
+            + std::mem::size_of::<ColumnReport>() as u128
+                * self.columns.capacity().max(ncols) as u128;
+        st.bytes
+            + state
+            + solve
+            + outputs
+            + 8 * (measures + inverse + gram + rows.saturating_sub(base_rows))
+    }
+
     /// Bytes of the retained Schwarz preconditioner (at least its build's
     /// peak) or the elimination's cells, and their workspaces for `ncols`
     /// columns (0 when none is built).
     pub(crate) fn schwarz_bytes(&self, ncols: usize) -> u128 {
-        let width = ncols.clamp(1, BATCH);
+        let width = ncols.clamp(1, BATCH).max(self.retained_width());
         self.schwarz.as_ref().map_or(0, |s| s.peak_bytes(width))
             + self.cells.as_ref().map_or(0, |c| cells_bytes(c, width))
     }
@@ -489,14 +536,24 @@ impl Engine {
         let effects = call.design.effects();
         let (validated, key) = validate_keyed(weights, values.nobs())?;
         let weighted = validated.values.is_some();
-        let width = values.ncols().clamp(1, BATCH);
+        let retained_width = self.retained_width();
+        let width = values.ncols().clamp(1, BATCH).max(retained_width);
         let minimum = minimum_columns(call.method, values.ncols());
-        let bytes = admission_bytes(st, call.method, minimum, weighted)
-            + self.cells.as_ref().map_or(0, |c| cells_bytes(c, width));
+        let bytes = self.projection_bytes(
+            st,
+            effects,
+            call.method,
+            (values.ncols(), minimum),
+            weighted,
+        ) + self.cells.as_ref().map_or(0, |c| cells_bytes(c, width));
         if request.memory_limit.is_some_and(|limit| bytes > limit) {
             return Ok(untouched(Decline::MemoryLimit, facts));
         }
         if self.weights.as_ref().is_none_or(|(k, _)| *k != key) {
+            // A different factorization can have a different apply shape.
+            // Drop its scratch with it, so neither survives uncharged.
+            self.schwarz = None;
+            self.work.schwarz = Default::default();
             let mut state = self.weights.take().map(|(_, s)| s).unwrap_or_default();
             let roots = call.method == Method::Lsmr;
             self.generation += 1;
@@ -522,6 +579,7 @@ impl Engine {
             cells: self.cells.as_ref(),
             cap: request.max_iterations.clamp(1, MAX_ITERATIONS),
             bytes,
+            retained_width,
             cancel: call.cancel,
         };
         let outputs = Outputs {
@@ -583,7 +641,7 @@ impl Engine {
         let mut t = filled(st.nobs, 0.0)?;
         let mut rows = filled(st.nobs.div_ceil(ROW_BLOCK) * 3, 0.0)?;
         let mut moments = filled(st.coefficients(), 0.0)?;
-        let mut scatter = filled(st.scatter_blocks() * st.scatter_levels(), 0.0)?;
+        let mut scatter = filled(st.scatter_slots(), 0.0)?;
         let src = Rows {
             data: column,
             stride: 1,
@@ -716,25 +774,33 @@ fn ensure(
     job: &Job<'_, '_>,
     spec: SchwarzSpec,
     slot: &mut Option<Schwarz>,
+    scratch: &mut schwarz::Scratch,
     width: usize,
     facts: &mut Facts,
 ) -> Result<std::result::Result<(), Refusal>> {
+    let width = width.max(job.retained_width);
     let budget = match job.request.memory_limit {
         Some(limit) => match limit.checked_sub(job.bytes) {
             Some(budget) => Some(budget),
-            None => return Ok(Err(Refusal::MemoryLimit)),
+            None => {
+                *slot = None;
+                *scratch = Default::default();
+                return Ok(Err(Refusal::MemoryLimit));
+            }
         },
         None => None,
     };
     if let Some(schwarz) = slot.as_ref().filter(|s| s.current(spec, job.generation)) {
-        let bytes = schwarz.bytes() + schwarz.scratch_bytes(width);
-        return Ok(if budget.is_none_or(|budget| bytes <= budget) {
-            Ok(())
-        } else {
-            Err(Refusal::MemoryLimit)
-        });
+        let bytes = schwarz.peak_bytes(width);
+        if budget.is_none_or(|budget| bytes <= budget) {
+            return Ok(Ok(()));
+        }
+        *slot = None;
+        *scratch = Default::default();
+        return Ok(Err(Refusal::MemoryLimit));
     }
     *slot = None;
+    *scratch = Default::default();
     let started = Instant::now();
     let built = Schwarz::build(
         job.st,
@@ -755,6 +821,7 @@ fn ensure(
 fn initial_mode(
     job: &Job<'_, '_>,
     slot: &mut Option<Schwarz>,
+    scratch: &mut schwarz::Scratch,
     width: usize,
     facts: &mut Facts,
 ) -> Result<std::result::Result<Mode, Decline>> {
@@ -762,17 +829,17 @@ fn initial_mode(
     Ok(Ok(match job.action {
         Action::Jacobi => Mode::Jacobi,
         Action::Identity => Mode::Identity,
-        Action::Schwarz(spec) => match ensure(job, spec, slot, width, facts)? {
+        Action::Schwarz(spec) => match ensure(job, spec, slot, scratch, width, facts)? {
             Ok(()) => Mode::Schwarz,
             Err(Refusal::MemoryLimit) => return Ok(Err(Decline::MemoryLimit)),
             Err(Refusal::Numerical(reason)) => return Ok(Err(Decline::Numerical(reason))),
         },
-        Action::Auto => match ensure(job, default, slot, width, facts)? {
+        Action::Auto => match ensure(job, default, slot, scratch, width, facts)? {
             Ok(()) => Mode::Schwarz,
             Err(_) => Mode::Jacobi,
         },
         Action::Escalate => {
-            if job.hard && ensure(job, default, slot, width, facts)?.is_ok() {
+            if job.hard && ensure(job, default, slot, scratch, width, facts)?.is_ok() {
                 Mode::Schwarz
             } else {
                 Mode::Escalate
@@ -826,7 +893,8 @@ fn report(
         facts,
         certificate,
         weight_scale: job.state.raw_scale,
-        workspace_bytes: job.bytes + schwarz.map_or(0, |s| s.peak_bytes(width)),
+        workspace_bytes: job.bytes
+            + schwarz.map_or(0, |s| s.peak_bytes(width.max(job.retained_width))),
     }
 }
 
@@ -1153,7 +1221,15 @@ fn recurrence<const R: usize>(
     if !escalate {
         return Ok(solved);
     }
-    let built = ensure(job, SchwarzSpec::default(), slot, R, facts)?.is_ok();
+    let built = ensure(
+        job,
+        SchwarzSpec::default(),
+        slot,
+        &mut work.schwarz,
+        R,
+        facts,
+    )?
+    .is_ok();
     if !built && !matches!(solved, Solve::Declined(pcg::SLOW)) {
         return Ok(solved);
     }
@@ -1454,10 +1530,11 @@ fn project_pcg(
         reference: formed_scales,
     } = outputs;
     let started = Instant::now();
-    let mut initial = match initial_mode(job, slot, ncols.min(BATCH), &mut facts)? {
-        Ok(mode) => mode,
-        Err(reason) => return Ok((untouched(reason, with_structure(facts, job)), false)),
-    };
+    let mut initial =
+        match initial_mode(job, slot, &mut work.schwarz, ncols.min(BATCH), &mut facts)? {
+            Ok(mode) => mode,
+            Err(reason) => return Ok((untouched(reason, with_structure(facts, job)), false)),
+        };
     let mut fold = MomentFold::default();
     for buffer in [&mut *norms, &mut *formed_scales] {
         buffer.clear();

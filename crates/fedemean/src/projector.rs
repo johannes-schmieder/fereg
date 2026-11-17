@@ -377,6 +377,8 @@ pub struct Request {
     /// Form the raw-weighted residual Gram `sum w r r'` (at most 8 columns).
     pub residual_gram: bool,
     /// Decline when the solver workspace would exceed this many bytes.
+    /// Retained wider banks still count. A smaller limit may require a fresh
+    /// projector; refusal leaves the caller's observations untouched.
     pub memory_limit: Option<u128>,
 }
 
@@ -621,7 +623,8 @@ pub struct Report {
     /// The maximum weight that normalizes weights for norms and
     /// certificates (1 for unit weights).
     pub weight_scale: f64,
-    /// Bytes of retained structure, weight state and solve workspaces; on
+    /// Safe upper bound of retained structure, weight state and solve
+    /// workspaces, including retained high-water capacities; on
     /// the full formulation with additive Schwarz, at least its build's
     /// peak (its transients included).
     pub workspace_bytes: u128,
@@ -1080,7 +1083,9 @@ impl<'a> Projector<'a> {
     pub fn admission_bytes(&self, ncols: usize) -> Option<u128> {
         if let Ok(Formulation::Full(method, _)) = self.formulation {
             return self.full.structure().map(|st| {
-                full::admission_bytes(st, method, ncols, true) + self.full.schwarz_bytes(ncols)
+                self.full
+                    .projection_bytes(st, self.design.effects(), method, (ncols, ncols), true)
+                    + self.full.schwarz_bytes(ncols)
             });
         }
         self.engine.structure().map(|st| {

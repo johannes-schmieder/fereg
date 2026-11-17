@@ -209,6 +209,18 @@ pub(super) fn forward<const R: usize>(
     each_block(out, ROW_BLOCK * R, st.nobs * R * effects.len(), &body);
 }
 
+/// Keep cancellation error beside each signed level sum, in row order.
+#[inline(always)]
+fn compensated_add(sum: &mut f64, correction: &mut f64, value: f64) {
+    let next = *sum + value;
+    *correction += if sum.abs() >= value.abs() {
+        (*sum - next) + value
+    } else {
+        (value - next) + *sum
+    };
+    *sum = next;
+}
+
 /// `out = D' (scale * src)`: each level's sum over its rows. `scatter`
 /// holds one accumulator per scatter block.
 pub(super) fn adjoint<const R: usize>(
@@ -236,15 +248,18 @@ pub(super) fn adjoint<const R: usize>(
             for (k, o) in out.chunks_exact_mut(R).enumerate() {
                 let level = first + k;
                 let mut sum = [0.0; R];
+                let mut correction = [0.0; R];
                 for &row in &index.rows[index.starts[level]..index.starts[level + 1]] {
                     let row = row as usize;
                     let v = src.get::<R>(row);
                     let w = scale.map_or(1.0, |s| s[row]);
                     for j in 0..R {
-                        sum[j] += w * v[j];
+                        compensated_add(&mut sum[j], &mut correction[j], w * v[j]);
                     }
                 }
-                o.copy_from_slice(&sum);
+                for j in 0..R {
+                    o[j] = sum[j] + correction[j];
+                }
             }
         };
         let out = &mut out[offset * R..(offset + levels) * R];
@@ -267,18 +282,29 @@ fn gather_channels<const R: usize>(
         for (k, o) in out.chunks_exact_mut(channels * R).enumerate() {
             let level = first + k;
             let origins = basis.level(index.effect, level);
-            o.fill(0.0);
-            for &row in &index.rows[index.starts[level]..index.starts[level + 1]] {
-                let row = row as usize;
-                let mut v = src.get::<R>(row);
-                let w = scale.map_or(1.0, |s| s[row]);
-                for value in &mut v {
-                    *value *= w;
+            for (channel, output) in o.chunks_exact_mut(R).enumerate() {
+                let mut sums = [0.0; R];
+                let mut corrections = [0.0; R];
+                for &row in &index.rows[index.starts[level]..index.starts[level + 1]] {
+                    let row = row as usize;
+                    let v = src.get::<R>(row);
+                    let w = scale.map_or(1.0, |s| s[row]);
+                    let x = if effect.intercept() && channel == 0 {
+                        1.0
+                    } else {
+                        let slope = channel - usize::from(effect.intercept());
+                        if origins.is_empty() {
+                            effect.slopes()[slope][row]
+                        } else {
+                            value(effect.slopes()[slope], row, origins, slope)
+                        }
+                    };
+                    for j in 0..R {
+                        compensated_add(&mut sums[j], &mut corrections[j], x * (w * v[j]));
+                    }
                 }
-                if origins.is_empty() {
-                    add_channels::<R, false>((effect, origins), row, &v, o);
-                } else {
-                    add_channels::<R, true>((effect, origins), row, &v, o);
+                for j in 0..R {
+                    output[j] = sums[j] + corrections[j];
                 }
             }
         }
@@ -302,11 +328,12 @@ fn add_channels<const R: usize, const O: bool>(
     row: usize,
     v: &[f64; R],
     acc: &mut [f64],
+    correction: &mut [f64],
 ) {
     let mut a = 0;
     if effect.intercept() {
         for j in 0..R {
-            acc[j] += v[j];
+            compensated_add(&mut acc[j], &mut correction[j], v[j]);
         }
         a = R;
     }
@@ -317,7 +344,7 @@ fn add_channels<const R: usize, const O: bool>(
             slope[row]
         };
         for j in 0..R {
-            acc[a + j] += x * v[j];
+            compensated_add(&mut acc[a + j], &mut correction[a + j], x * v[j]);
         }
         a += R;
     }
@@ -333,6 +360,7 @@ fn scatter_rows<const R: usize, const S: bool, const O: bool>(
     (src, scale): (Rows<'_>, Option<&[f64]>),
     span: std::ops::Range<usize>,
     acc: &mut [f64],
+    correction: &mut [f64],
 ) {
     for row in span {
         let mut v = src.get::<R>(row);
@@ -346,12 +374,18 @@ fn scatter_rows<const R: usize, const S: bool, const O: bool>(
                 let code = effect.codes()[row] as usize;
                 let a = (base + code * effect.channels()) * R;
                 let origins = if O { basis.level(e, code) } else { &[] };
-                add_channels::<R, O>((effect, origins), row, &v, &mut acc[a..]);
+                add_channels::<R, O>(
+                    (effect, origins),
+                    row,
+                    &v,
+                    &mut acc[a..],
+                    &mut correction[a..],
+                );
                 continue;
             }
             let a = (base + effects[e].codes()[row] as usize) * R;
             for j in 0..R {
-                acc[a + j] += v[j];
+                compensated_add(&mut acc[a + j], &mut correction[a + j], v[j]);
             }
         }
     }
@@ -372,22 +406,30 @@ fn scatter_pass<const R: usize>(
     let rows = st.scatter_rows;
     let body = |block: usize, acc: &mut [f64]| {
         acc.fill(0.0);
+        let (acc, correction) = acc.split_at_mut(width);
         let start = block * rows;
         let span = start..(start + rows).min(st.nobs);
         let lent = (src, scale);
         match (st.sloped, design.1.offsets()) {
-            (false, _) => scatter_rows::<R, false, false>(st, design, lent, span, acc),
-            (true, false) => scatter_rows::<R, true, false>(st, design, lent, span, acc),
-            (true, true) => scatter_rows::<R, true, true>(st, design, lent, span, acc),
+            (false, _) => scatter_rows::<R, false, false>(st, design, lent, span, acc, correction),
+            (true, false) => {
+                scatter_rows::<R, true, false>(st, design, lent, span, acc, correction)
+            }
+            (true, true) => scatter_rows::<R, true, true>(st, design, lent, span, acc, correction),
         }
     };
-    let scatter = &mut scatter[..blocks * width];
-    each_block(scatter, width, st.nobs * R * st.scattered.len(), &body);
-    let (total, rest) = scatter.split_at_mut(width);
-    for part in rest.chunks_exact(width) {
-        for (a, b) in total.iter_mut().zip(part) {
-            *a += b;
+    let scatter = &mut scatter[..blocks * 2 * width];
+    each_block(scatter, 2 * width, st.nobs * R * st.scattered.len(), &body);
+    let (first, rest) = scatter.split_at_mut(2 * width);
+    let (total, correction) = first.split_at_mut(width);
+    for part in rest.chunks_exact(2 * width) {
+        for j in 0..width {
+            compensated_add(&mut total[j], &mut correction[j], part[j]);
+            compensated_add(&mut total[j], &mut correction[j], part[width + j]);
         }
+    }
+    for j in 0..width {
+        total[j] += correction[j];
     }
     let effects = design.0;
     for (&e, &base) in st.scattered.iter().zip(&st.scatter_offsets) {

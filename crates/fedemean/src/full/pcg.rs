@@ -55,6 +55,8 @@ pub(super) fn predicted_slow(earlier: f64, best: f64, (window, done): (usize, us
 /// width; repeated widths allocate nothing.
 #[derive(Default)]
 pub(super) struct Work {
+    /// Largest allocated recurrence width; narrower calls retain these banks.
+    pub(super) width: usize,
     pub(super) x: Vec<f64>,
     /// Per column, the best iterate that met the acceptance rule.
     xs: Vec<f64>,
@@ -85,13 +87,25 @@ pub(super) fn work_bytes(st: &Structure, r: usize) -> u128 {
     let (m, n, r) = (st.coefficients() as u128, st.nobs as u128, r as u128);
     let chunks = m.div_ceil(CHUNK as u128);
     let blocks = (st.nobs as u128).div_ceil(super::kernels::ROW_BLOCK as u128);
-    let scatter = (st.scatter_blocks() * st.scatter_levels()) as u128;
+    let scatter = (st.scatter_slots()) as u128;
     8 * r * (6 * m + n + scatter + 3 * chunks + 3 * blocks)
+}
+
+/// Reduced recurrence, including task scratch even at exact level boundaries.
+pub(super) fn reduced_work_bytes(cells: &Cells, width: usize) -> u128 {
+    let small = cells.small_tasks() as u128 * 512 * cells.channels[1] as u128;
+    let per_column = 6 * small
+        + cells.cells() as u128 * cells.channels[1] as u128
+        + cells.scratch_len(1) as u128
+        + 3 * small.div_ceil(CHUNK as u128)
+        + 3 * cells.small_tasks() as u128;
+    8 * width as u128 * per_column
 }
 
 impl Work {
     /// Size every buffer for `r` columns, keeping allocations.
     pub(super) fn size(&mut self, st: &Structure, r: usize) -> Result<()> {
+        self.width = self.width.max(r);
         let m = st.coefficients() * r;
         for v in [
             &mut self.x,
@@ -107,10 +121,7 @@ impl Work {
         }
         let sizes = [
             (&mut self.t, st.nobs * r),
-            (
-                &mut self.scatter,
-                st.scatter_blocks() * st.scatter_levels() * r,
-            ),
+            (&mut self.scatter, st.scatter_slots() * r),
             (
                 &mut self.partials,
                 st.coefficients().div_ceil(CHUNK) * 3 * r,
@@ -131,6 +142,7 @@ impl Work {
     /// Size every recurrence buffer for the Schur system of `cells` (`m`
     /// coefficients, `r` columns; `t` holds the cells' workspace).
     pub(super) fn size_reduced(&mut self, cells: &Cells, m: usize, r: usize) -> Result<()> {
+        self.width = self.width.max(r);
         let sizes = [
             (&mut self.x, m * r),
             (&mut self.xs, m * r),
@@ -655,5 +667,58 @@ mod tests {
         assert!(!predicted_slow(1e5, 1e4, window));
         // A twofold drop from 1e4: about 160 more iterations.
         assert!(predicted_slow(2e4, 1e4, window));
+    }
+}
+
+#[cfg(test)]
+mod capacity_tests {
+    use super::*;
+    use crate::{Design, Effect};
+
+    #[test]
+    fn reduced_task_scratch_is_charged_at_exact_level_boundary() {
+        let n = 8192;
+        let large: Vec<u32> = (0..n as u32).collect();
+        let small: Vec<u32> = (0..n).map(|i| (i % 512) as u32).collect();
+        let slope = vec![1.0; n];
+        let effects = vec![
+            Effect::new(&large, n)
+                .with_slopes(true, [&slope[..]])
+                .unwrap(),
+            Effect::new(&small, 512),
+        ];
+        let design = Design::new(n, effects).unwrap();
+        let cancel = Cancel(None);
+        let st = Structure::build(&design, &cancel).unwrap().unwrap();
+        let cells = Cells::build(&st, design.effects(), [0, 1], &cancel).unwrap();
+        let mut work = Work::default();
+        work.size_reduced(&cells, 512, 8).unwrap();
+        let bytes = |w: &Work| {
+            8 * [
+                &w.x,
+                &w.xs,
+                &w.r,
+                &w.z,
+                &w.p,
+                &w.q,
+                &w.t,
+                &w.scatter,
+                &w.partials,
+                &w.measures,
+            ]
+            .iter()
+            .map(|v| v.capacity() as u128)
+            .sum::<u128>()
+        };
+        let actual = bytes(&work);
+        let previous = 8 * 8 * (6 * 512 + cells.cells() as u128 + 3 * 2);
+        assert!(
+            previous < actual,
+            "the former bound must miss this exact task boundary"
+        );
+        assert!(reduced_work_bytes(&cells, work.width) >= actual);
+        work.size_reduced(&cells, 512, 1).unwrap();
+        assert_eq!(bytes(&work), actual);
+        assert!(reduced_work_bytes(&cells, work.width) >= actual);
     }
 }

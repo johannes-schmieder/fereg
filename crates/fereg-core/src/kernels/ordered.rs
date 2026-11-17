@@ -328,6 +328,20 @@ pub fn basis_project(rows: &[usize], basis: &[f64], values: &mut [f64], scratch:
     }
 }
 
+/// Compensate both product rounding and cancellation in a certificate dot.
+#[inline(always)]
+fn certificate_dot_add(sum: &mut f64, correction: &mut f64, left: f64, right: f64) {
+    let product = left * right;
+    let next = *sum + product;
+    *correction += if sum.abs() >= product.abs() {
+        (*sum - next) + product
+    } else {
+        (product - next) + *sum
+    };
+    *correction += left.mul_add(right, -product);
+    *sum = next;
+}
+
 #[inline(always)]
 pub fn basis_projection(
     observations: &[usize],
@@ -342,11 +356,13 @@ pub fn basis_projection(
     if denominator > 0.0 {
         for basis in bases {
             let mut coefficient = 0.0_f64;
+            let mut correction = 0.0_f64;
             for (local, &observation) in observations.iter().enumerate() {
                 let scaled = weights[observation].sqrt() * residuals[observation * stride + rhs]
                     / denominator;
-                coefficient = basis[local].mul_add(scaled, coefficient);
+                certificate_dot_add(&mut coefficient, &mut correction, basis[local], scaled);
             }
+            coefficient += correction;
             square = coefficient.mul_add(coefficient, square);
         }
     }
@@ -531,17 +547,24 @@ pub fn basis_projection_tile(
     }
     for direction in basis.chunks_exact(stride) {
         let mut coefficients = [0.0_f64; 16];
+        let mut corrections = [0.0_f64; 16];
         for (local, &row) in members.iter().enumerate() {
             let root = weights[row].sqrt();
             for column in 0..projected.len() {
                 let denominator = scales[first + column];
                 if denominator > 0.0 {
                     let scaled = root * residuals[row * width + first + column] / denominator;
-                    coefficients[column] = direction[local].mul_add(scaled, coefficients[column]);
+                    certificate_dot_add(
+                        &mut coefficients[column],
+                        &mut corrections[column],
+                        direction[local],
+                        scaled,
+                    );
                 }
             }
         }
         for column in 0..projected.len() {
+            coefficients[column] += corrections[column];
             projected[column] =
                 coefficients[column].mul_add(coefficients[column], projected[column]);
         }
