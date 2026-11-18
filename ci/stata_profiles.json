@@ -466,6 +466,7 @@
         "tests/stata/development/feppml_singleton_index.do",
         "tests/stata/development/feppml_thread_ceiling_oracle.do",
         "tests/stata/development/feppml_three_partition_slope_oracle.do",
+        "tests/stata/development/feppml_weak_pair_unrelated_omission.do",
         "tests/stata/development/feppml_wide_inference_oracle.do",
         "tests/stata/development/interaction_codes_oracle.do",
         "tests/stata/development/local_request_transport_oracle.do",

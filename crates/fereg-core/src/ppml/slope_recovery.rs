@@ -132,6 +132,53 @@ impl GenerationRecovery {
     }
 }
 
+fn numerically_omitted(status: crate::ols::PreparedOlsFitStatus) -> bool {
+    use crate::ols::PreparedOlsFitStatus::{CollinearWithFixedEffects, NumericallyRankDeficient};
+    matches!(status, CollinearWithFixedEffects | NumericallyRankDeficient)
+}
+
+// A slope can exchange places with a different retained column after changing
+// units. An unrelated omission on the final sample supplies no such evidence.
+fn exact_alternate(
+    generation: &PreparedPpmlModelGeneration,
+    fit: &PreparedPpmlIrlsFit,
+    target: usize,
+    target_omitted: bool,
+) -> Result<Option<usize>> {
+    let view = generation.fit_view();
+    for c in fit.coefficients() {
+        let Some(other) = c.generated_column_index else {
+            continue;
+        };
+        if other == target
+            || numerically_omitted(c.status) == target_omitted
+            || (!numerically_omitted(c.status) && c.value.is_none())
+        {
+            continue;
+        }
+        let mut ratio = None;
+        let mut exact = true;
+        for r in 0..fit.mean().len() {
+            crate::interrupt::row_checkpoint(r)?;
+            let a = view.column_value(target, r)?;
+            let b = view.column_value(other, r)?;
+            if b == 0.0 {
+                exact &= a == 0.0;
+            } else {
+                let m = *ratio.get_or_insert(a / b);
+                exact &= m.is_finite() && m != 0.0 && (-m).mul_add(b, a) == 0.0;
+            }
+            if !exact {
+                break;
+            }
+        }
+        if exact && ratio.is_some() {
+            return Ok(Some(other));
+        }
+    }
+    Ok(None)
+}
+
 /// A genuinely weak slope with a zero conditional effect can be omitted by
 /// the original rank policy. Verify both fits on the exact final sample before
 /// retaining that representation; a fully identified raw fit must still pass
@@ -155,24 +202,23 @@ pub(super) fn replay_original_omission(
     let Some(fitted_target) = fitted_target else {
         return Ok(stable);
     };
-    use crate::ols::PreparedOlsFitStatus::{CollinearWithFixedEffects, NumericallyRankDeficient};
-    let aliased = stable.coefficients().iter().any(|c| {
-        matches!(
-            c.status,
-            CollinearWithFixedEffects | NumericallyRankDeficient
-        )
-    });
+    let target_omitted = numerically_omitted(fitted_target.status);
+    let fe_recovery = matches!(recovery, GenerationRecovery::Absorbed(_));
+    let alternate = exact_alternate(generation, &stable, target, target_omitted)?;
     let stable_rank = stable.linear().basis().kept_generated_columns().len();
-    if !aliased {
-        let beta = fitted_target.value.unwrap_or(0.0);
-        for (row, eta) in stable.eta().iter().enumerate() {
-            crate::interrupt::row_checkpoint(row)?;
-            if (generation.fit_view().column_value(target, row)? * beta).abs()
-                > 64.0 * f64::EPSILON * (1.0 + eta.abs())
-            {
-                return Ok(stable);
-            }
+    let beta = fitted_target.value.unwrap_or(0.);
+    let mut negligible = true;
+    for (r, eta) in stable.eta().iter().enumerate() {
+        crate::interrupt::row_checkpoint(r)?;
+        if (generation.fit_view().column_value(target, r)? * beta).abs()
+            > 64.0 * f64::EPSILON * (1.0 + eta.abs())
+        {
+            negligible = false;
+            break;
         }
+    }
+    if !negligible && alternate.is_none() {
+        return Ok(stable);
     }
     let reference = stable.into_mean();
     let recovery = generation.slope_recovery.take().expect("checked presence");
@@ -190,23 +236,30 @@ pub(super) fn replay_original_omission(
     };
     match refit(generation) {
         Ok(raw) => {
-            use crate::ols::PreparedOlsFitStatus::{
-                CollinearWithFixedEffects, NumericallyRankDeficient,
+            let omitted = |column| {
+                raw.coefficients().iter().any(|c| {
+                    c.generated_column_index == Some(column) && numerically_omitted(c.status)
+                })
             };
-            let omitted = raw.coefficients().iter().any(|c| {
-                matches!(
-                    c.status,
-                    CollinearWithFixedEffects | NumericallyRankDeficient
-                ) && c.generated_column_index.is_some_and(|i| pair.contains(&i))
-            });
+            let member_omitted = pair.iter().copied().any(omitted);
             let rank = raw.linear().basis().kept_generated_columns().len();
-            if (omitted || aliased && rank == stable_rank) && raw.mean().len() == reference.len() {
+            // For the finite pair, keeping both original columns requires their
+            // joint covariance certificate even when a third column is omitted.
+            // An exchanged FE alias must be exact, omit its alternate, preserve
+            // rank and pass independent covariance replay on the original frame.
+            let exchanged = fe_recovery
+                && !member_omitted
+                && target_omitted
+                && rank == stable_rank
+                && alternate.is_some_and(omitted);
+            if (member_omitted || exchanged) && raw.mean().len() == reference.len() {
                 let mut agrees = true;
                 for (row, (raw, stable)) in raw.mean().iter().zip(&reference).enumerate() {
                     crate::interrupt::row_checkpoint(row)?;
                     agrees &= *raw > 0.0 && (raw - stable).abs() / stable <= 1e-8;
                 }
                 if agrees {
+                    generation.replayed_original_omission = true;
                     return Ok(raw);
                 }
             }
@@ -278,6 +331,18 @@ impl RecoveryAdmission {
                     .ok_or_else(overflow)?,
             )
             .ok_or_else(overflow)?;
+        {
+            let bytes = super::absorbed_information::workspace_bytes(
+                dimensions.reported_coefficient_slots,
+                dimensions.fe_total_levels,
+                dimensions.cluster_subset_groups,
+            );
+            dimensions.metadata.result_bytes = dimensions
+                .metadata
+                .result_bytes
+                .checked_add(bytes)
+                .ok_or_else(overflow)?;
+        }
         let mut config = self.config;
         config.require_fast_route = base.selected == super::PpmlMemoryRoute::Fast;
         let mut candidate = super::plan_ppml_memory(dimensions, config)?

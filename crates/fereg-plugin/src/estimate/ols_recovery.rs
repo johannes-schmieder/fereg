@@ -197,6 +197,14 @@ fn infer(
     if error_norm > 5e-10 * residual_norm + 64. * f64::EPSILON * outcome_norm {
         return Err(error);
     }
+    if !both_kept {
+        // A pivot change can replace the omitted pair member with a different
+        // weak column. Equal ranks and residuals do not certify inference on
+        // that remaining basis. Replay the covariance that would be posted.
+        let view = original.view();
+        let (b, v) = scatter_working(&view)?;
+        replay::enclose(prepared, &view, None, &b)?.check(&v)?;
+    }
     Ok((original, if both_kept { mapped } else { None }))
 }
 

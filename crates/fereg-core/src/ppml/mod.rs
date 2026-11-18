@@ -22,6 +22,7 @@ mod prepared_irls;
 mod prepared_model;
 mod prepared_separation;
 pub(crate) use prepared_separation::exact_arithmetic::{exact_dot, ExactNullspace};
+mod absorbed_information;
 mod profiled_intercept_curve;
 mod psd;
 mod reference_covariance;

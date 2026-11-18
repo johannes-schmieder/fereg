@@ -1,6 +1,19 @@
 version 18
 clear all
 set more off
+
+program define assert_raw_entries
+    args expected_b expected_V
+    tempname b V
+    matrix `b'=e(b)
+    matrix `V'=e(V)
+    forvalues i=1/`=colsof(`expected_b')' {
+        assert abs(`b'[1,`i']-`expected_b'[1,`i'])<=1e-10+1e-7*abs(`expected_b'[1,`i'])
+        forvalues j=1/`=colsof(`expected_b')' {
+            assert abs(`V'[`i',`j']-`expected_V'[`i',`j'])<=1e-10+1e-6*abs(`expected_V'[`i',`j'])
+        }
+    }
+end
 set obs 128
 generate byte a=mod(_n-1,2)
 generate byte b=mod(floor((_n-1)/2),2)
@@ -52,6 +65,11 @@ foreach memory in fast low {
         else {
             quietly feppml y a z [pw=w], absorb(raw_g=g raw_h=h) memory(`memory') ///
                 separation(none) mu(m) eta(eta) xb(xb) d(d)
+            * Explicit dummy Hessian and HC sandwich on these replicated cells.
+            * Each (g,h,b,r) appears with a=0 and a=1, giving an exact zero cross.
+            matrix truth_b=(0,ln(2)*2^26,0)
+            matrix truth_V=(860/30861,0,0 \ 0,(86/3429)*2^52,0 \ 0,0,0)
+            assert_raw_entries truth_b truth_V
             assert e(N)==128 & _b[_cons]==0
             assert abs(_b[a]-ref_a)<1e-9 & abs(_b[z]*2^(-26)-ref_z)<1e-9
             assert abs(_se[z]*2^(-26)-ref_sz)<1e-10
@@ -87,6 +105,10 @@ foreach memory in fast low {
     drop res
     quietly replace z=mod(g,2)-.5 + 2^(-38)*b
     quietly fereg yl a z, absorb(raw_g=g raw_h=h) memory(`memory') residuals(res)
+    * Explicit dummy WLS with IID correction RSS/(128-7).
+    matrix truth_b=(0,3*2^38,1)
+    matrix truth_V=(2/121,0,-1/121 \ 0,(2/121)*2^76,-(2^38)/121 \ -1/121,-(2^38)/121,3/242)
+    assert_raw_entries truth_b truth_V
     assert abs(_b[_cons]-ref_cons)<1e-9 & abs(_se[_cons]-ref_scons)<1e-9
     assert abs(_b[z]*2^(-38)-ref_z)<1e-9 & abs(_se[z]*2^(-38)-ref_sz)<1e-9
     local unit = 2^(-38)
@@ -100,6 +122,25 @@ foreach memory in fast low {
     assert abs(yl-res-level)<1e-8 & abs(fitted-level)<1e-8 & abs(scored+d-level)<1e-8
     assert abs(raw_g+(mod(g,2)-.5)*_b[z]-ref_g)<1e-8 & abs(raw_h-ref_h)<1e-8
     drop ref_g ref_h res raw_g raw_h scored d fitted
+
+    * An unweighted HC cross that is exactly zero can have an inaccurate raw
+    * entry despite correct posted SEs and lincom. Publish only a certified fit.
+    quietly replace z=mod(g,2)-.5 + 2^(-30)*b
+    quietly regress yl a
+    capture noisily feppml y a z, absorb(g h) memory(`memory') separation(none) mu(m) threads(1)
+    local rc=_rc
+    if `rc' {
+        assert `rc'==430 & "`e(cmd)'"=="regress"
+        capture confirm variable m, exact
+        assert _rc==111
+    }
+    else {
+        matrix truth_b=(0,ln(2)*2^30,0)
+        matrix truth_V=(2000/92583,0,0 \ 0,(200/10287)*2^60,0 \ 0,0,0)
+        assert_raw_entries truth_b truth_V
+        assert abs(m/mu-1)<1e-8
+        drop m
+    }
 
     * Even an exactly rescalable PPML slope and covariance do not guarantee
     * representable XB and D. Their sum loses the log mean at this depth.

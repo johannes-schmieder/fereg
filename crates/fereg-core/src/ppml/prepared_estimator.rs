@@ -594,8 +594,23 @@ pub fn fit_prepared_ppml_interruptible(
             &mut poll_subset,
         )?
     };
-    if let Some(super::slope_recovery::ReportMap::Pair(map)) = report_map {
-        super::slope_information::check(map, prepared, &fit, &coefficients, &inference)?;
+    match report_map {
+        Some(super::slope_recovery::ReportMap::Pair(map)) => {
+            super::slope_information::check(map, prepared, &fit, &coefficients, &inference)?
+        }
+        Some(super::slope_recovery::ReportMap::Absorbed(map)) => {
+            super::absorbed_information::check(
+                Some(map),
+                prepared,
+                &fit,
+                &coefficients,
+                &inference,
+            )?
+        }
+        None if prepared.replayed_original_omission => {
+            super::absorbed_information::check(None, prepared, &fit, &coefficients, &inference)?
+        }
+        None => {}
     }
     interrupt(PpmlInterruptPoint::Inference)?;
     let inference_elapsed = inference_clock.elapsed();

@@ -1216,6 +1216,15 @@ slopes additionally check the Poisson mean obtained from the original ordered
 predictor, offset and absorbed contribution. The robust covariance replay
 checks the sensitivity of the final information and the mapped score
 contributions, including covariance with nuisance slopes and the constant.
+For a slope centered within an absorbed effect, scaling its small cross
+covariance back to the original units can amplify an error even when its
+standard error is accurate. A bounded explicit-dummy PPML calculation in
+extended precision independently verifies the original coefficients and
+covariance. This replay admits up to 64 finite and dummy coordinates and
+8 Mi row-by-squared-width cells. If an alternative omission pattern is used, its retained
+parameterization must pass its own inference checks. Equality of fitted
+means alone cannot certify the remaining slopes. An unrelated omitted
+regressor therefore confers no authority to post a weak pair.
 
 After a numerical omission, OLS and PPML can independently test the final
 residual score on a better-scaled direction in the original model. A witness

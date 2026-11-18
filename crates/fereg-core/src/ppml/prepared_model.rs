@@ -41,6 +41,7 @@ pub(crate) use crate::ols::prepared_fit_view::SharedPreparedOlsData as PreparedP
 pub(crate) struct PreparedPpmlModelGeneration {
     generation: usize,
     pub(super) slope_recovery: Option<super::slope_recovery::GenerationRecovery>,
+    pub(super) replayed_original_omission: bool,
     prepared: PreparedPpmlModel,
     offset: Vec<f64>,
     unit_prior_weights: Option<Vec<f64>>,
@@ -710,6 +711,7 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
         let mut prepared = PreparedPpmlModelGeneration {
             generation,
             slope_recovery: None,
+            replayed_original_omission: false,
             prepared,
             offset,
             unit_prior_weights,

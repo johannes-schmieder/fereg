@@ -67,4 +67,41 @@ local columns : colnames e(b)
 assert "`columns'"=="x o.z w _cons" & e(df_m)==2
 assert abs(_b[x]-.5)<1e-8 & abs(_b[w]-.25)<1e-8 & _b[z]==0 & _se[z]==0
 assert abs(r-(y-mean))<1e-8
+
+* Two weak pairs share exactly the same difference. Dropping x leaves a
+* second ill-conditioned pair (u,k). The centered x and w are orthogonal
+* to k and the constant, so V[u,_cons] is exactly zero on this pivot.
+clear
+set obs 32
+generate byte cell = floor((_n-1)/8)
+generate byte x = cond(cell<2,2*cell-1,0)
+generate byte w = cond(cell>=2,2*cell-5,0)
+generate byte k = mod(floor((_n-1)/2),2)
+generate byte shock = cond(mod(_n,2),-1,1)
+generate double z = x+2^-15*w
+generate double u = .5*k-3*2^-15*w
+generate double mean = 2+x/2+w/4+k/2
+generate double y = mean+shock*(1+abs(x)+k)*(1+w/4)/4
+foreach memory in fast low {
+    quietly regress y x w k
+    matrix previous_b=e(b)
+    matrix previous_V=e(V)
+    capture noisily fereg y u z x k, vce(unadjusted) threads(1) memory(`memory') residuals(r)
+    local rc=_rc
+    if `rc' {
+        assert `rc'==430
+        mata: assert(st_matrix("e(b)")==st_matrix("previous_b"))
+        mata: assert(st_matrix("e(V)")==st_matrix("previous_V"))
+        confirm new variable r
+    }
+    else {
+        local names : colnames e(b)
+        assert "`names'"=="u z o.x k _cons"
+        assert abs(_b[u]+2730.5)<1e-7 & abs(_b[z]-.5)<1e-9 & abs(_b[k]-1365.75)<1e-7
+        matrix V=e(V)
+        assert abs(V[1,5])<=1e-10
+        assert abs(y-r-mean)<1e-8
+        drop r
+    }
+}
 display as result "END_FIXTURE|slope_recovery_ols_inference|rc=0"
