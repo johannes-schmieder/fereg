@@ -1,4 +1,4 @@
-*! fereg model-wire v2 metadata parser 0.6.3 18nov2026
+*! fereg model-wire v2 metadata parser 0.6.4 18nov2026
 program define fereg_parse, rclass
     version 15.0
     gettoken literal_rhs : 0, parse(",") bind

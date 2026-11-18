@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.4 — 2026-11-18
+
+- Preserve explicitly selected factor-variable reference levels through sample
+  filtering and separation. Certify no separation for sparse Poisson designs
+  when the positive-outcome rows establish full rank.
+- Verify Poisson separation on the original design. Certify exactly zero
+  clustered covariance in saturated designs when the cluster scores imply it.
+- Recover nearly collinear continuous slopes in supported OLS and PPML models
+  when coefficients, inference and predictions can be reported faithfully in
+  the original units. Reuse column extrema across the recovery checks.
+- Speed up wide OLS by reusing validated data and parallelizing independent
+  checks. Preserve the accuracy of covariance with translated regressors.
+
 ## 0.6.3 — 2026-11-18
 
 - Restore the projected response after a rejected weighted PPML solve. A cold

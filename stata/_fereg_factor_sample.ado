@@ -1,4 +1,4 @@
-*! fereg factor expansion availability 0.6.3
+*! fereg factor expansion availability 0.6.4
 program define _fereg_factor_sample, rclass
     version 15.0
     syntax varlist(fv ts numeric), TOUSE(varname numeric) GENerate(name) ///

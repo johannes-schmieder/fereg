@@ -1,4 +1,4 @@
-*! fereg public OLS syntax and result adapter 0.6.3 18nov2026
+*! fereg public OLS syntax and result adapter 0.6.4 18nov2026
 program define _fereg_ols, eclass sortpreserve
     version 15.0
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
