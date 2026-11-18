@@ -28,6 +28,8 @@ mod reference_covariance;
 mod residuals;
 mod result;
 mod saturated_cluster;
+mod slope_information;
+mod slope_recovery;
 mod solver;
 mod topology_identity;
 mod vce;

@@ -124,10 +124,17 @@ does not depend on the platform, the thread count, or the variables' scale.
 coefficients and their variances are zero.
 
 {pstd}
-After a numerical omission, a score check can detect a material effect
-along a difference of nearly collinear regressors. This returns {cmd:r(430)}.
-Fit the equivalent specification using that difference explicitly, for
-example {it:z}-{it:x} in place of {it:z} while retaining {it:x}.
+For two explicit continuous regressors with an accurately measured small
+difference, {cmd:fereg} can fit the model using that difference internally.
+A slope that varies slightly within levels of the first absorbed categorical
+effect can also be centered within those levels. On success, the returned
+coefficients, covariance, predictions and saved effects use the requested units
+and normalization.
+If the original units cannot store a reliable result, estimation can stop
+with {cmd:r(430)}. In that case, keep the first regressor and enter the
+scaled difference explicitly. For example, if {it:z} is close to {it:x},
+generate a double-precision variable equal to ({it:z} - {it:x}) times a
+convenient power of two, and use it in place of {it:z}.
 
 {marker absorb}
 {title:Absorbed terms}

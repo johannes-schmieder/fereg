@@ -73,6 +73,14 @@ pub(super) enum OwnedInference {
 }
 
 impl OwnedInference {
+    pub(super) fn into_residuals(self) -> Vec<f64> {
+        match self {
+            Self::Iid(value) => value.into_residuals(),
+            Self::Robust(value) => value.into_residuals(),
+            Self::Clustered(value) => value.into_residuals(),
+        }
+    }
+
     pub(super) fn view(&self) -> CertifiedOlsInference<'_> {
         match self {
             Self::Iid(value) => CertifiedOlsInference::Iid(value),

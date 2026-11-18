@@ -39,9 +39,7 @@ use super::prepared_model::{
 use super::prepared_separation::{
     fit_with_prepared_ppml_separation, PreparedPpmlSeparationExecution,
 };
-use super::result::{
-    prepare_ppml_fixed_effect_report, recover_ppml_fixed_effects, PreparedPpmlFixedEffectReport,
-};
+use super::result::{prepare_ppml_fixed_effect_report, PreparedPpmlFixedEffectReport};
 use super::vce::compute_ppml_inference_interruptible_with_threads;
 use super::{
     CertifiedPpmlResult, CertifiedPpmlResultInput, PpmlAllocatorSnapshot,
@@ -307,6 +305,7 @@ pub fn fit_prepared_ppml_interruptible(
         ),
         requested_saved_channel_count,
     )?;
+    let recovery_columns = super::slope_recovery::preflight(&request);
     preflight_dimensions.metadata.input_owner_bytes = raw_input_owner_bytes(&request, &loaded);
     load_hint = admit_load_hint(
         load_hint,
@@ -411,6 +410,7 @@ pub fn fit_prepared_ppml_interruptible(
         loaded.adjustment,
     )?
     .with_load_hint(load_hint)
+    .with_slope_recovery(recovery_columns, request.memory)
     .with_membership_scratch(
         preliminary_plan
             .selected_inventory()
@@ -437,127 +437,55 @@ pub fn fit_prepared_ppml_interruptible(
     let ppml = request.ppml;
     let separation = request.separation;
     let output_request = request.output;
-    let memory_config = request.memory;
-    let allocation_snapshot_probe = request.allocation_snapshot_probe;
-    let allocation_audit_enabled = allocation_snapshot_probe.is_some();
-    let phase_allocation_probe = request.phase_allocation_probe;
-    let linear_phase_allocation_probe = request.linear_phase_allocation_probe;
-    let topology_sharing = request.inject_topology_sharing;
-    let saved_channel_count = requested_saved_channels
-        .iter()
-        .filter(|requested| **requested)
-        .count();
-    let (separation_outcome, mut fit) = fit_with_prepared_ppml_separation(
-        owner,
-        ppml,
+    let config = GenerationFit {
         separation,
-        phase_allocation_probe,
-        separation_execution,
-        interrupt,
-        |generation, preliminary_plan, resolved_linear, interrupt| {
-            let cluster_codes = cluster_code_views(generation)?;
-            let dimensions = final_memory_dimensions(
-                generation,
-                &cluster_codes,
-                separation,
-                output_request,
-                saved_channel_count,
-                resolved_linear,
-                allocation_audit_enabled,
-                preliminary_plan.preflight_dimensions.metadata,
-            )?;
-            let final_plan = (*preliminary_plan).with_final_dimensions(dimensions)?;
-            match fit_generation_ppml_irls_interruptible(
-                generation,
-                PreparedPpmlIrlsConfig {
-                    ppml,
-                    linear: resolved_linear,
-                    memory: memory_config,
-                    // The private exploratory trajectory is charged to the
-                    // outer Mu phase but must not mint or perturb the one
-                    // publication-fit steady-state allocation certificate.
-                    allocation_snapshot_probe: None,
-                    phase_allocation_probe,
-                    linear_phase_allocation_probe,
-                    solver_plan,
-                    topology_sharing,
-                },
-                final_plan,
-                None,
-                PreparedPpmlIrlsPurpose::MuExploration {
+        output: output_request,
+        saved_channels: requested_saved_channel_count,
+        bias: request.bias,
+        units: loaded.bias_units.as_ref(),
+        irls: PreparedPpmlIrlsConfig {
+            ppml,
+            linear: resolved_linear,
+            memory: request.memory,
+            allocation_snapshot_probe: request.allocation_snapshot_probe,
+            phase_allocation_probe: request.phase_allocation_probe,
+            linear_phase_allocation_probe: request.linear_phase_allocation_probe,
+            solver_plan,
+            topology_sharing: request.inject_topology_sharing,
+        },
+    };
+    let (mut separation_outcome, (fit, terminal_plan, terminal_linear)) =
+        fit_with_prepared_ppml_separation(
+            owner,
+            ppml,
+            separation,
+            request.phase_allocation_probe,
+            separation_execution,
+            interrupt,
+            |generation, plan, linear, interrupt| {
+                let purpose = PreparedPpmlIrlsPurpose::MuExploration {
                     mu_tolerance: separation.mu_tolerance,
-                },
-                None,
-                interrupt,
-            )? {
-                PreparedPpmlIrlsRun::MuExploration(exploration) => Ok(*exploration),
-                _ => Err(invalid_argument(
-                    "PPML exploration returned publication products",
-                )),
-            }
-        },
-        |generation, preliminary_plan, resolved_linear, interrupt| {
-            let cluster_codes = cluster_code_views(generation)?;
-            let dimensions = final_memory_dimensions(
-                generation,
-                &cluster_codes,
-                separation,
-                output_request,
-                saved_channel_count,
-                resolved_linear,
-                allocation_audit_enabled,
-                preliminary_plan.preflight_dimensions.metadata,
-            )?;
-            let final_plan = (*preliminary_plan).with_final_dimensions(dimensions)?;
-            let mut bias_units = Vec::new();
-            if let Some(units) = &loaded.bias_units {
-                bias_units
-                    .try_reserve_exact(generation.original_rows().len())
-                    .map_err(|_| allocation("unable to compact bias units"))?;
-                for &row in generation.original_rows() {
-                    if units.missing[row] || !units.values[row].is_finite() {
-                        return Err(invalid_argument(
-                            "bias unit is missing on a retained estimation row",
-                        ));
-                    }
-                    bias_units.push(units.values[row]);
+                };
+                match config.run(generation, plan, linear, purpose, interrupt)? {
+                    PreparedPpmlIrlsRun::MuExploration(fit) => Ok(*fit),
+                    _ => Err(invalid_argument(
+                        "PPML exploration returned publication products",
+                    )),
                 }
-            }
-            match fit_generation_ppml_irls_interruptible(
-                generation,
-                PreparedPpmlIrlsConfig {
-                    ppml,
-                    linear: resolved_linear,
-                    memory: memory_config,
-                    allocation_snapshot_probe,
-                    phase_allocation_probe,
-                    linear_phase_allocation_probe,
-                    solver_plan,
-                    topology_sharing,
-                },
-                final_plan,
-                None,
-                PreparedPpmlIrlsPurpose::Publication,
-                request.bias.map(|b| (b, bias_units.as_slice())),
-                interrupt,
-            )
-            .map_err(|mut error| {
-                if error.code == ErrorCode::NonConvergence
-                    && separation.methods == crate::ppml_separation::SeparationMethods::NONE
-                    && generation.outcome().contains(&0.0)
-                {
-                    error.message.push_str(
-                        ". IRLS failed with separation(none). Rerun with default separation detection to check for separated observations."
-                    );
-                }
-                error
-            })? {
-                PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
-                _ => Err(invalid_argument(
-                    "PPML publication returned exploratory products",
-                )),
-            }
-        },
+            },
+            |generation, plan, linear, interrupt| {
+                Ok((
+                    config.publication(generation, plan, linear, interrupt)?,
+                    *plan,
+                    linear,
+                ))
+            },
+        )?;
+    fit.validate_generation(&separation_outcome.prepared)?;
+    let mut fit = super::slope_recovery::replay_original_omission(
+        &mut separation_outcome.prepared,
+        fit,
+        |g| config.publication(g, &terminal_plan, terminal_linear, interrupt),
     )?;
     fit.validate_generation(&separation_outcome.prepared)?;
     if request.bias.is_some() && separation_outcome.separation.separated_count > 0 {
@@ -584,6 +512,26 @@ pub fn fit_prepared_ppml_interruptible(
         ppml.score_tolerance,
     )?;
     let coefficients = map_coefficients(prepared.prepared(), &fit, &omission_statuses)?;
+    let coordinates = prepared
+        .slope_recovery
+        .as_ref()
+        .map(|recovery| {
+            recovery.original_coordinates(prepared, &fit, &coefficients, ppml.tolerance)
+        })
+        .transpose()?;
+    let report_map = coordinates.as_ref().map(|c| c.map);
+    let (finite, absorbed) = coordinates
+        .as_ref()
+        .and_then(|c| c.predictors.as_ref())
+        .map_or_else(
+            || {
+                (
+                    fit.linear().finite_predictor(),
+                    fit.linear().absorbed_predictor(),
+                )
+            },
+            |(x, d)| (x.as_slice(), d.as_slice()),
+        );
     let (wald_columns, wald_reference) = wald_columns(prepared.prepared(), &coefficients, &fit)?;
     let reported_finite_rank = coefficients
         .kept_full_slots()
@@ -646,6 +594,9 @@ pub fn fit_prepared_ppml_interruptible(
             &mut poll_subset,
         )?
     };
+    if let Some(super::slope_recovery::ReportMap::Pair(map)) = report_map {
+        super::slope_information::check(map, prepared, &fit, &coefficients, &inference)?;
+    }
     interrupt(PpmlInterruptPoint::Inference)?;
     let inference_elapsed = inference_clock.elapsed();
     let inference_peak = end_phase_allocation(request.phase_allocation_probe, PpmlPhase::Inference);
@@ -653,6 +604,12 @@ pub fn fit_prepared_ppml_interruptible(
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::FeRecovery);
     let recovery_clock = PpmlPhaseClock::start();
     interrupt(PpmlInterruptPoint::FeRecovery)?;
+    let original_effect = match &prepared.slope_recovery {
+        Some(super::slope_recovery::GenerationRecovery::Absorbed(fe)) => {
+            Some((fe, coefficients.values()[fe.map.slot], absorbed))
+        }
+        _ => None,
+    };
     let (fixed_effects, saved_effects) = recover_saved_effects(
         prepared.prepared(),
         &fit,
@@ -662,6 +619,7 @@ pub fn fit_prepared_ppml_interruptible(
         request.linear,
         request.ppml.tolerance,
         request.inject_fe_recovery_allocation_failure,
+        original_effect,
     )?;
     interrupt(PpmlInterruptPoint::FeRecovery)?;
     let recovery_elapsed = recovery_clock.elapsed();
@@ -698,8 +656,8 @@ pub fn fit_prepared_ppml_interruptible(
         prepared.original_observations(),
         final_rows,
         prepared.offset(),
-        fit.linear().finite_predictor(),
-        fit.linear().absorbed_predictor(),
+        finite,
+        absorbed,
         fit.eta(),
         fit.mean(),
         prepared.outcome(),
@@ -766,6 +724,7 @@ pub fn fit_prepared_ppml_interruptible(
     // products and prepared/raw generation before independent PSD, Wald and
     // separation replay allocate their scratch; no solver state is needed.
     drop(cluster_codes);
+    drop(coordinates);
     drop(fit);
     drop(separation_outcome.prepared);
     drop(separation_outcome.original_axis_reasons);
@@ -776,7 +735,10 @@ pub fn fit_prepared_ppml_interruptible(
     drop(requested_saved_channels);
     drop(loaded.bias_units);
     trace.lap(3);
-    let result = CertifiedPpmlResult::new(result_input)?.retain_requested_outputs();
+    let mut result = CertifiedPpmlResult::new(result_input)?.retain_requested_outputs();
+    if let Some(map) = report_map {
+        result.restore_slope_coordinates(map)?;
+    }
     trace.lap(4);
     interrupt(PpmlInterruptPoint::Publication)?;
     result.with_publication_observations(
@@ -786,6 +748,95 @@ pub fn fit_prepared_ppml_interruptible(
         request.action_allocation_previous_baseline_bytes,
         request.phase_allocation_probe,
     )
+}
+
+/// Exploration, publication and an original-basis replay all bind their
+/// weighted-linear session to the same generation and fit-lifetime plan.
+struct GenerationFit<'a> {
+    irls: PreparedPpmlIrlsConfig,
+    separation: SeparationConfig,
+    output: PreparedPpmlOutputRequest,
+    saved_channels: usize,
+    bias: Option<super::PpmlBiasRequest>,
+    units: Option<&'a LoadedNumericColumn>,
+}
+
+impl GenerationFit<'_> {
+    fn run(
+        &self,
+        generation: &PreparedPpmlModelGeneration,
+        plan: &super::PpmlMemoryPlan,
+        linear: PreparedOlsFitConfig,
+        purpose: PreparedPpmlIrlsPurpose,
+        interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    ) -> Result<PreparedPpmlIrlsRun> {
+        let cluster_codes = cluster_code_views(generation)?;
+        let dimensions = final_memory_dimensions(
+            generation,
+            &cluster_codes,
+            self.separation,
+            self.output,
+            self.saved_channels,
+            linear,
+            self.irls.allocation_snapshot_probe.is_some(),
+            plan.preflight_dimensions.metadata,
+        )?;
+        let plan = (*plan).with_final_dimensions(dimensions)?;
+        let mut irls = PreparedPpmlIrlsConfig {
+            linear,
+            ..self.irls
+        };
+        let mut bias_units = Vec::new();
+        let bias = if purpose == PreparedPpmlIrlsPurpose::Publication {
+            if let Some(units) = self.units {
+                bias_units
+                    .try_reserve_exact(generation.original_rows().len())
+                    .map_err(|_| allocation("unable to compact bias units"))?;
+                for &row in generation.original_rows() {
+                    if units.missing[row] || !units.values[row].is_finite() {
+                        return Err(invalid_argument(
+                            "bias unit is missing on a retained estimation row",
+                        ));
+                    }
+                    bias_units.push(units.values[row]);
+                }
+            }
+            self.bias.map(|b| (b, bias_units.as_slice()))
+        } else {
+            // An exploratory trajectory cannot mint the production fit's
+            // warmed-allocation certificate.
+            irls.allocation_snapshot_probe = None;
+            None
+        };
+        fit_generation_ppml_irls_interruptible(
+            generation, irls, plan, None, purpose, bias, interrupt,
+        )
+    }
+
+    fn publication(
+        &self,
+        generation: &PreparedPpmlModelGeneration,
+        plan: &super::PpmlMemoryPlan,
+        linear: PreparedOlsFitConfig,
+        interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    ) -> Result<PreparedPpmlIrlsFit> {
+        let fit=self.run(generation,plan,linear,PreparedPpmlIrlsPurpose::Publication,interrupt)
+            .map_err(|mut error| {
+                if error.code == ErrorCode::NonConvergence
+                    && self.separation.methods == crate::ppml_separation::SeparationMethods::NONE
+                    && generation.outcome().contains(&0.0) {
+                    error.message.push_str(
+                        ". IRLS failed with separation(none). Rerun with default separation detection to check for separated observations.");
+                }
+                error
+            })?;
+        match fit {
+            PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
+            _ => Err(invalid_argument(
+                "PPML publication returned exploratory products",
+            )),
+        }
+    }
 }
 
 fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -> Result<()> {
@@ -1839,6 +1890,11 @@ fn recover_saved_effects(
     linear: PreparedOlsFitConfig,
     tolerance: f64,
     inject_allocation_failure: bool,
+    original: Option<(
+        &crate::slope_recovery::absorbed::AbsorbedRecovery,
+        f64,
+        &[f64],
+    )>,
 ) -> Result<(
     Vec<super::PpmlFixedEffectResult>,
     Option<super::PpmlSavedEffectOutput>,
@@ -1861,7 +1917,7 @@ fn recover_saved_effects(
                 "PPML FE recovery worker count differs from memory admission",
             ));
         }
-        recover_ppml_fixed_effects(
+        super::result::recover_ppml_fixed_effects_in_original_units(
             model,
             report,
             fit.linear().weights(),
@@ -1872,6 +1928,7 @@ fn recover_saved_effects(
             None,
             map,
             inject_allocation_failure,
+            original,
         )
     };
     let recovered = if saves_requested {

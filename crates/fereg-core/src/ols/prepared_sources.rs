@@ -78,6 +78,32 @@ impl PreparedSourceBank {
                 if *owner == categorical && *length == rows))
     }
 
+    /// Both buffers belong to the same compact row axis. The caller has certified
+    /// that the alternative values are an exactly invertible continuous column.
+    pub(super) fn swap_continuous(
+        &mut self,
+        index: usize,
+        values: &mut Vec<f64>,
+    ) -> crate::error::Result<()> {
+        let current = match &mut self.0 {
+            Storage::Raw(columns) => columns.get_mut(index),
+            Storage::Slots(slots) => match slots.get_mut(index) {
+                Some(SourceSlot::Raw(column)) => Some(column),
+                _ => None,
+            },
+        };
+        let current = current.ok_or_else(|| {
+            crate::error::invalid_argument("recovery requires a retained numeric source")
+        })?;
+        if current.len() != values.len() {
+            return Err(crate::error::invalid_argument(
+                "recovery changed the compact row axis",
+            ));
+        }
+        std::mem::swap(current, values);
+        Ok(())
+    }
+
     pub(super) fn release(&mut self, mut plan: ReleasePlan) {
         let Storage::Raw(columns) = &mut self.0 else {
             return;

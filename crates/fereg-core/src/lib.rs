@@ -20,6 +20,7 @@ pub mod ppml_separation;
 pub mod protocol;
 mod sandwich;
 pub mod selftest;
+pub mod slope_recovery;
 #[cfg(test)]
 mod test_support;
 

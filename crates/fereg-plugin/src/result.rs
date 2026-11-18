@@ -109,7 +109,7 @@ impl<'a> CertifiedOlsInference<'a> {
         }
     }
 
-    fn covariance_coordinates(&self) -> &'a [PreparedOlsBreadCoordinate] {
+    pub(crate) fn covariance_coordinates(&self) -> &'a [PreparedOlsBreadCoordinate] {
         match self {
             Self::Iid(value) => value.covariance_coordinates(),
             Self::Robust(value) => value.covariance_coordinates(),
@@ -117,7 +117,7 @@ impl<'a> CertifiedOlsInference<'a> {
         }
     }
 
-    fn covariance_values(&self) -> &'a [f64] {
+    pub(crate) fn covariance_values(&self) -> &'a [f64] {
         match self {
             Self::Iid(value) => value.covariance().values(),
             Self::Robust(value) => value.covariance().values(),
@@ -210,6 +210,7 @@ pub(crate) struct OlsShadowResult<'a> {
     pub(crate) subsets: Vec<f64>,
     pub(crate) certificates: Vec<f64>,
     pub(crate) receipt: Vec<f64>,
+    pub(crate) recovered: bool,
     pub(crate) coefficient_count: usize,
     pub(crate) coefficient_capacity: usize,
     pub(crate) covariance_dimension: usize,
@@ -247,11 +248,211 @@ impl OlsShadowResult<'_> {
     }
 }
 
+struct OlsCoefficientTables {
+    b: Vec<f64>,
+    covariance: Vec<f64>,
+    coefficient_status: Vec<f64>,
+    omission_b_marker: Vec<f64>,
+    omission_v_marker: Vec<f64>,
+}
+
+impl OlsCoefficientTables {
+    fn new(
+        coefficient_count: usize,
+        reported: Option<crate::estimate::ols_recovery::Reported>,
+    ) -> Result<Self> {
+        let matrix_dimension = coefficient_count.max(1);
+        let square = checked_product(matrix_dimension, matrix_dimension, "OLS shadow covariance")?;
+        let (b, covariance) = match reported {
+            Some(mapped) if mapped.b.len() == matrix_dimension && mapped.v.len() == square => {
+                (mapped.b, mapped.v)
+            }
+            Some(_) => {
+                return Err(invalid(
+                    "recovered OLS reporting dimensions are inconsistent",
+                ))
+            }
+            None => (
+                reserved_filled(matrix_dimension, 0.0, "OLS shadow coefficient vector")?,
+                reserved_filled(square, 0.0, "OLS shadow covariance")?,
+            ),
+        };
+        let coefficient_status = reserved_filled(
+            checked_product(
+                matrix_dimension,
+                COEFFICIENT_STATUS_COLUMNS,
+                "OLS coefficient-status table",
+            )?,
+            0.0,
+            "OLS coefficient-status table",
+        )?;
+        let omission_b_marker =
+            reserved_filled(matrix_dimension, 0.0, "OLS omission coefficient marker")?;
+        let omission_v_marker = reserved_filled(
+            checked_product(
+                matrix_dimension,
+                matrix_dimension,
+                "OLS omission covariance marker",
+            )?,
+            0.0,
+            "OLS omission covariance marker",
+        )?;
+
+        Ok(Self {
+            b,
+            covariance,
+            coefficient_status,
+            omission_b_marker,
+            omission_v_marker,
+        })
+    }
+
+    fn mark_coefficients(
+        &mut self,
+        fit: &CertifiedPreparedOlsFit,
+        coefficient_count: usize,
+        recovered: bool,
+    ) -> Result<()> {
+        if fit.coefficients().len() != coefficient_count {
+            return Err(invalid(
+                "prepared OLS fit coefficient count is inconsistent",
+            ));
+        }
+        let mut slot_seen = reserved_filled(coefficient_count, false, "OLS coefficient slots")?;
+        for coefficient in fit.coefficients() {
+            let slot = one_based_index(
+                coefficient.coefficient_slot.get(),
+                coefficient_count,
+                "prepared OLS coefficient slot",
+            )?;
+            if slot_seen[slot] {
+                return Err(invalid("prepared OLS coefficient slot is duplicated"));
+            }
+            slot_seen[slot] = true;
+            let (status, value) = match coefficient.status {
+                PreparedOlsFitStatus::Kept => {
+                    (1.0, required_finite(coefficient.value, "kept coefficient")?)
+                }
+                PreparedOlsFitStatus::SyntaxOmitted => {
+                    require_absent(coefficient.value, "syntax-omitted coefficient")?;
+                    (2.0, 0.0)
+                }
+                PreparedOlsFitStatus::CollinearWithFixedEffects => {
+                    require_absent(coefficient.value, "FE-collinear coefficient")?;
+                    (3.0, 0.0)
+                }
+                PreparedOlsFitStatus::NumericallyRankDeficient => {
+                    require_absent(coefficient.value, "rank-deficient coefficient")?;
+                    (4.0, 0.0)
+                }
+                PreparedOlsFitStatus::NormalizedAbsorbedIntercept => (
+                    5.0,
+                    required_finite(coefficient.value, "normalized absorbed intercept")?,
+                ),
+                PreparedOlsFitStatus::AbsorbedInterceptDeferred => {
+                    return Err(invalid(
+                        "deferred absorbed intercept survived the certified prepared OLS fit",
+                    ));
+                }
+            };
+            if !recovered {
+                self.b[slot] = value;
+            }
+            let offset = slot * COEFFICIENT_STATUS_COLUMNS;
+            self.coefficient_status[offset] = f64::from(coefficient.coefficient_slot.get());
+            self.coefficient_status[offset + 1] = status;
+            self.coefficient_status[offset + 2] = coefficient
+                .generated_column_index
+                .map_or(0.0, |index| (index + 1) as f64);
+        }
+        if slot_seen.iter().any(|seen| !seen) {
+            return Err(invalid("prepared OLS coefficient slots are not contiguous"));
+        }
+
+        Ok(())
+    }
+
+    fn scatter_covariance(
+        &mut self,
+        inference: &CertifiedOlsInference<'_>,
+        coefficient_count: usize,
+        recovered: bool,
+    ) -> Result<()> {
+        let matrix_dimension = coefficient_count.max(1);
+        let covariance_dimension = inference.covariance_coordinates().len();
+        let coordinates = inference.covariance_coordinates();
+        let values = inference.covariance_values();
+        if values.len()
+            != checked_product(
+                covariance_dimension,
+                covariance_dimension,
+                "compact OLS covariance",
+            )?
+        {
+            return Err(invalid(
+                "prepared OLS compact covariance has the wrong size",
+            ));
+        }
+        let mut covariance_slots =
+            reserved_filled(coefficient_count, None, "OLS covariance-coordinate slots")?;
+        for (coordinate_index, coordinate) in coordinates.iter().enumerate() {
+            let slot = one_based_index(
+                coordinate.coefficient_slot.get(),
+                coefficient_count,
+                "prepared OLS covariance slot",
+            )?;
+            if covariance_slots[slot].replace(coordinate_index).is_some() {
+                return Err(invalid("prepared OLS covariance slot is duplicated"));
+            }
+            let status_offset = slot * COEFFICIENT_STATUS_COLUMNS;
+            if !matches!(self.coefficient_status[status_offset + 1], 1.0 | 5.0) {
+                return Err(invalid(
+                    "prepared OLS covariance coordinate refers to an unreported coefficient",
+                ));
+            }
+            self.coefficient_status[status_offset + 3] = (coordinate_index + 1) as f64;
+            self.omission_b_marker[slot] = 1.0;
+            self.omission_v_marker[slot * matrix_dimension + slot] = 1.0;
+        }
+        for row in 0..covariance_dimension {
+            let target_row = one_based_index(
+                coordinates[row].coefficient_slot.get(),
+                coefficient_count,
+                "prepared OLS covariance row slot",
+            )?;
+            for column in 0..covariance_dimension {
+                let target_column = one_based_index(
+                    coordinates[column].coefficient_slot.get(),
+                    coefficient_count,
+                    "prepared OLS covariance column slot",
+                )?;
+                let value = values[row * covariance_dimension + column];
+                if !value.is_finite() {
+                    return Err(invalid(
+                        "prepared OLS covariance contains a nonfinite value",
+                    ));
+                }
+                if !recovered {
+                    self.covariance[target_row * matrix_dimension + target_column] = value;
+                }
+            }
+        }
+
+        if recovered {
+            // The private marker carries a recover-and-test tag to the Stata
+            // transaction. Its original Boolean value is restored before use.
+            self.omission_b_marker[0] += 2.0;
+        }
+        Ok(())
+    }
+}
+
 pub(crate) fn build_shadow_result<'a>(
     prepared: &'a PreparedOlsData,
     clustered_prepared: Option<&'a PreparedOlsData>,
     inference: CertifiedOlsInference<'a>,
     residual_requested: bool,
+    reported: Option<crate::estimate::ols_recovery::Reported>,
 ) -> Result<OlsShadowResult<'a>> {
     validate_alignment(prepared, clustered_prepared, &inference)?;
     let fit = inference.fit();
@@ -263,145 +464,26 @@ pub(crate) fn build_shadow_result<'a>(
         ));
     }
     let covariance_dimension = inference.covariance_coordinates().len();
+    let recovered = reported.is_some();
+    let recovered_wald = reported.as_ref().map(|r| r.wald);
+    let reported_cluster_minimum = reported.as_ref().and_then(|r| r.clustered_minimum);
+    let mut tables = OlsCoefficientTables::new(coefficient_count, reported)?;
+    tables.mark_coefficients(fit, coefficient_count, recovered)?;
+    tables.scatter_covariance(&inference, coefficient_count, recovered)?;
+    let OlsCoefficientTables {
+        b,
+        covariance,
+        coefficient_status,
+        omission_b_marker,
+        omission_v_marker,
+    } = tables;
     let matrix_dimension = coefficient_count.max(1);
-    let mut b = reserved_filled(matrix_dimension, 0.0, "OLS shadow coefficient vector")?;
-    let mut covariance = reserved_filled(
-        checked_product(matrix_dimension, matrix_dimension, "OLS shadow covariance")?,
-        0.0,
-        "OLS shadow covariance",
-    )?;
-    let mut coefficient_status = reserved_filled(
-        checked_product(
-            matrix_dimension,
-            COEFFICIENT_STATUS_COLUMNS,
-            "OLS coefficient-status table",
-        )?,
-        0.0,
-        "OLS coefficient-status table",
-    )?;
-    let mut omission_b_marker =
-        reserved_filled(matrix_dimension, 0.0, "OLS omission coefficient marker")?;
-    let mut omission_v_marker = reserved_filled(
-        checked_product(
-            matrix_dimension,
-            matrix_dimension,
-            "OLS omission covariance marker",
-        )?,
-        0.0,
-        "OLS omission covariance marker",
-    )?;
-
-    if fit.coefficients().len() != coefficient_count {
-        return Err(invalid(
-            "prepared OLS fit coefficient count is inconsistent",
-        ));
-    }
-    let mut slot_seen = reserved_filled(coefficient_count, false, "OLS coefficient slots")?;
-    for coefficient in fit.coefficients() {
-        let slot = one_based_index(
-            coefficient.coefficient_slot.get(),
-            coefficient_count,
-            "prepared OLS coefficient slot",
-        )?;
-        if slot_seen[slot] {
-            return Err(invalid("prepared OLS coefficient slot is duplicated"));
-        }
-        slot_seen[slot] = true;
-        let (status, value) = match coefficient.status {
-            PreparedOlsFitStatus::Kept => {
-                (1.0, required_finite(coefficient.value, "kept coefficient")?)
-            }
-            PreparedOlsFitStatus::SyntaxOmitted => {
-                require_absent(coefficient.value, "syntax-omitted coefficient")?;
-                (2.0, 0.0)
-            }
-            PreparedOlsFitStatus::CollinearWithFixedEffects => {
-                require_absent(coefficient.value, "FE-collinear coefficient")?;
-                (3.0, 0.0)
-            }
-            PreparedOlsFitStatus::NumericallyRankDeficient => {
-                require_absent(coefficient.value, "rank-deficient coefficient")?;
-                (4.0, 0.0)
-            }
-            PreparedOlsFitStatus::NormalizedAbsorbedIntercept => (
-                5.0,
-                required_finite(coefficient.value, "normalized absorbed intercept")?,
-            ),
-            PreparedOlsFitStatus::AbsorbedInterceptDeferred => {
-                return Err(invalid(
-                    "deferred absorbed intercept survived the certified prepared OLS fit",
-                ));
-            }
-        };
-        b[slot] = value;
-        let offset = slot * COEFFICIENT_STATUS_COLUMNS;
-        coefficient_status[offset] = f64::from(coefficient.coefficient_slot.get());
-        coefficient_status[offset + 1] = status;
-        coefficient_status[offset + 2] = coefficient
-            .generated_column_index
-            .map_or(0.0, |index| (index + 1) as f64);
-    }
-    if slot_seen.iter().any(|seen| !seen) {
-        return Err(invalid("prepared OLS coefficient slots are not contiguous"));
-    }
-
     let coordinates = inference.covariance_coordinates();
-    let values = inference.covariance_values();
-    if values.len()
-        != checked_product(
-            covariance_dimension,
-            covariance_dimension,
-            "compact OLS covariance",
-        )?
-    {
-        return Err(invalid(
-            "prepared OLS compact covariance has the wrong size",
-        ));
+    let mut statistics = inference.statistics();
+    if let Some(wald) = recovered_wald {
+        statistics.f_statistic = wald;
     }
-    let mut covariance_slots =
-        reserved_filled(coefficient_count, None, "OLS covariance-coordinate slots")?;
-    for (coordinate_index, coordinate) in coordinates.iter().enumerate() {
-        let slot = one_based_index(
-            coordinate.coefficient_slot.get(),
-            coefficient_count,
-            "prepared OLS covariance slot",
-        )?;
-        if covariance_slots[slot].replace(coordinate_index).is_some() {
-            return Err(invalid("prepared OLS covariance slot is duplicated"));
-        }
-        let status_offset = slot * COEFFICIENT_STATUS_COLUMNS;
-        if !matches!(coefficient_status[status_offset + 1], 1.0 | 5.0) {
-            return Err(invalid(
-                "prepared OLS covariance coordinate refers to an unreported coefficient",
-            ));
-        }
-        coefficient_status[status_offset + 3] = (coordinate_index + 1) as f64;
-        omission_b_marker[slot] = 1.0;
-        omission_v_marker[slot * matrix_dimension + slot] = 1.0;
-    }
-    for row in 0..covariance_dimension {
-        let target_row = one_based_index(
-            coordinates[row].coefficient_slot.get(),
-            coefficient_count,
-            "prepared OLS covariance row slot",
-        )?;
-        for column in 0..covariance_dimension {
-            let target_column = one_based_index(
-                coordinates[column].coefficient_slot.get(),
-                coefficient_count,
-                "prepared OLS covariance column slot",
-            )?;
-            let value = values[row * covariance_dimension + column];
-            if !value.is_finite() {
-                return Err(invalid(
-                    "prepared OLS covariance contains a nonfinite value",
-                ));
-            }
-            covariance[target_row * matrix_dimension + target_column] = value;
-        }
-    }
-
-    let fit_values = build_fit_statistics(inference.statistics())?;
+    let fit_values = build_fit_statistics(statistics)?;
     let dof = build_dof(prepared, &inference)?;
     let single_intercept = matches!(
         inference.absorbed_dof().effects.as_slice(),
@@ -416,7 +498,31 @@ pub(crate) fn build_shadow_result<'a>(
     } else {
         covariance.as_slice()
     };
-    let certificates = build_certificates(&inference, determinant_covariance, coefficient_count)?;
+    let mut certificates =
+        build_certificates(&inference, determinant_covariance, coefficient_count)?;
+    if let Some(minimum) = reported_cluster_minimum {
+        set_defined(
+            &mut certificates,
+            27,
+            Some(minimum),
+            "original-unit clustered PSD minimum",
+        )?;
+    }
+    if recovered && inference.kind() == OlsVceKind::Iid {
+        let minimum = coordinates
+            .iter()
+            .map(|c| {
+                let slot = c.coefficient_slot.get() as usize - 1;
+                covariance[slot * matrix_dimension + slot]
+            })
+            .fold(f64::INFINITY, f64::min);
+        set_defined(
+            &mut certificates,
+            20,
+            Some(minimum),
+            "original-unit minimum iid variance",
+        )?;
+    }
     let receipt = build_receipt(
         prepared,
         inference.kind(),
@@ -447,6 +553,7 @@ pub(crate) fn build_shadow_result<'a>(
         subsets,
         certificates,
         receipt,
+        recovered,
         coefficient_count,
         coefficient_capacity,
         covariance_dimension,

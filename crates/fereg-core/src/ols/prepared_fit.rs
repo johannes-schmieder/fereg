@@ -720,6 +720,10 @@ impl CertifiedPreparedOlsFit {
         self.initial_absorbed_outcome_sum_of_squares
     }
 
+    pub(super) fn into_residuals(self) -> Vec<f64> {
+        self.residuals.into_row_major()
+    }
+
     /// Final FE-orthogonal regression residuals on the compact prepared axis.
     #[must_use]
     pub fn residuals(&self) -> &[f64] {

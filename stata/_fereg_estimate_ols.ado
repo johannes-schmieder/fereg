@@ -647,6 +647,8 @@ program define _fereg_estimate_ols, eclass
         subsets(`subset_rows') residual(`=(`"`residual'"' != "")')
 
     local coefficient_count = r(coefficients)
+    local recovered_slopes = `marker_b_shadow'[1,1] >= 2
+    if `recovered_slopes' matrix `marker_b_shadow'[1,1] = `marker_b_shadow'[1,1] - 2
     if `coefficient_count' > 0 & `coefficient_count' < `coefficient_capacity' {
         matrix `b_shadow' = `b_shadow'[1, 1..`coefficient_count']
         matrix `v_shadow' = `v_shadow'[1..`coefficient_count', 1..`coefficient_count']
@@ -959,6 +961,24 @@ program define _fereg_estimate_ols, eclass
             ereturn scalar fereg_peak_rss_bytes = el(e(fereg_runtime), 17, 2)
     }
 
+    if `recovered_slopes' & !missing(e(F)) {
+        // Stata's constraint pivot can eliminate an estimable original
+        // slope even when its individual variance and covariance are finite.
+        local restrictions
+        forvalues j = 1/`coefficient_count' {
+            local name : word `j' of `posted_names'
+            if `status_shadow'[`j',2] == 1 & "`name'" != "_cons" ///
+                local restrictions "`restrictions' (_b[`name']=0)"
+        }
+        capture quietly test `restrictions'
+        local joint_rc = _rc
+        if `joint_rc' == 1 exit 1
+        if `joint_rc' | r(df) != e(df_m) | missing(r(F)) | ///
+            abs(r(F)-e(F)) > 1e-10 + 1e-6*abs(e(F)) {
+            di as error "original coefficient coordinates lose the joint slope test; re-express the nearly collinear regressors using their difference"
+            exit 430
+        }
+    }
     if `"`inject'"' == "postdiagnostics" exit 3498
     if `"`inject'"' == "precommit" exit 3498
 

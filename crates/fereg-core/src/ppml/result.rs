@@ -1,3 +1,5 @@
+mod slope_recovery;
+
 use super::family::replay_final_objectives_with_threads;
 use super::prepared_model::PreparedPpmlModel;
 use super::prepared_separation::candidate_ledger_hash_candidate_axis;
@@ -673,12 +675,18 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
     })
 }
 
+pub(super) type OriginalAbsorbedCoordinates<'a> = (
+    &'a crate::slope_recovery::absorbed::AbsorbedRecovery,
+    f64,
+    &'a [f64],
+);
+
 /// Recover normalized PPML FE outputs under the accepted strict-state Hessian
 /// weights `q * mu`. Passing preparation weights `q` is rejected whenever
 /// `mu` is nonconstant, so OLS's preparation-weight recovery cannot silently
 /// leak into PPML.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn recover_ppml_fixed_effects(
+pub(crate) fn recover_ppml_fixed_effects_in_original_units(
     model: &PreparedPpmlModel,
     mut report: PreparedPpmlFixedEffectReport,
     final_hessian_weights: BorrowedMapWeights<'_>,
@@ -688,6 +696,7 @@ pub(crate) fn recover_ppml_fixed_effects(
     retained: Option<&FeCoefficientBatch>,
     map: MapConfig,
     inject_allocation_failure: bool,
+    original: Option<OriginalAbsorbedCoordinates<'_>>,
 ) -> Result<PreparedPpmlRecoveredFixedEffects> {
     let requested = report
         .rows
@@ -738,25 +747,15 @@ pub(crate) fn recover_ppml_fixed_effects(
     )?;
     let recovery_iterations = recovered.iterations();
     let reconstruction_relative_infinity_norm = recovered.reconstruction_relative_infinity();
-    let (total, all_recovered_channels) = recovered.into_parts();
-    if all_recovered_channels.len() != report.rows.len()
-        || all_recovered_channels.iter().any(Option::is_none)
-    {
-        return Err(FeregError::new(
-            ErrorCode::Internal,
-            "PPML complete FE recovery omitted a declared channel",
-        ));
-    }
-    let complete_relative = complete_saved_decomposition_error(&total, &all_recovered_channels)?;
-    if !reconstruction_relative_infinity_norm.is_finite()
-        || reconstruction_relative_infinity_norm > map.tolerance
-        || complete_relative > map.tolerance
-    {
-        return Err(FeregError::new(
-            ErrorCode::NonConvergence,
-            "PPML final-Hessian FE recovery did not certify the complete decomposition",
-        ));
-    }
+    let (total, mut all_recovered_channels) = recovered.into_parts();
+    let complete_relative = certify_saved_decomposition(
+        &total,
+        &mut all_recovered_channels,
+        report.rows.len(),
+        reconstruction_relative_infinity_norm,
+        map.tolerance,
+        original,
+    )?;
 
     // `absorbed_predictor` is already the authoritative O(N) total retained
     // by the final strict fit. The recovered total exists only long enough to
@@ -820,6 +819,46 @@ pub(crate) fn recover_ppml_fixed_effects(
         recovery_iterations,
         reconstruction_relative_infinity_norm,
     })
+}
+
+fn certify_saved_decomposition(
+    total: &[f64],
+    all_recovered_channels: &mut [Option<Vec<f64>>],
+    declared: usize,
+    reconstruction_relative_infinity_norm: f64,
+    tolerance: f64,
+    original: Option<OriginalAbsorbedCoordinates<'_>>,
+) -> Result<f64> {
+    if all_recovered_channels.len() != declared
+        || all_recovered_channels.iter().any(Option::is_none)
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "PPML complete FE recovery omitted a declared channel",
+        ));
+    }
+    let complete_relative = complete_saved_decomposition_error(total, all_recovered_channels)?;
+    if !reconstruction_relative_infinity_norm.is_finite()
+        || reconstruction_relative_infinity_norm > tolerance
+        || complete_relative > tolerance
+    {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "PPML final-Hessian FE recovery did not certify the complete decomposition",
+        ));
+    }
+
+    let complete_relative = if let Some((recovery, stable_beta, raw_d)) = original {
+        complete_relative.max(recovery.saved_channels(
+            all_recovered_channels,
+            stable_beta,
+            raw_d,
+            tolerance,
+        )?)
+    } else {
+        complete_relative
+    };
+    Ok(complete_relative)
 }
 
 fn validate_ppml_hessian_weights(

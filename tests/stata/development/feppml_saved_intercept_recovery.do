@@ -60,4 +60,47 @@ foreach tol in 1e-8 1e-12 {
     drop base_d base_eta base_sample saved_d saved_eta fe1 fe2 fe3 repeat_fe*
 }
 
+* The exact finite fit has beta_u = beta_v = ln(2/3), means 1 and
+* 2/3, and zero FE contribution. The accepted predictor contains only
+* subtraction roundoff and can differ among rows of the same FE cell.
+clear
+input double (u v t y) byte retained
+0  0  0  1  1
+1  0  0  2  1
+0  1  0  0  1
+2 -1  0  0  1
+0  0  1  0  0
+2  1  1  0  0
+end
+expand 12
+bysort u v t y: generate byte replicate = _n
+generate byte g = mod(replicate, 3)
+generate byte h = mod(floor((replicate - 1) / 3), 2)
+generate long rid = _n
+generate long perm = mod(rid * 29, 107)
+generate double expected_mu = cond(u == 0 & v == 0, 1, 2.0 / 3) if retained
+
+foreach order in rid perm {
+    sort `order' rid
+    foreach method in default simplex ir none {
+        local restriction
+        if "`method'" == "none" local restriction if retained
+        quietly feppml y u v t `restriction', absorb(g h) separation(`method') ///
+            vce(robust) threads(1) d(base_d) mu(base_mu)
+        matrix base_b = e(b)
+        matrix base_V = e(V)
+        quietly feppml y u v t `restriction', absorb(fg=g fh=h) separation(`method') ///
+            vce(robust) threads(1) d(saved_d) mu(saved_mu)
+        assert mreldif(e(b), base_b) == 0
+        assert mreldif(e(V), base_V) == 0
+        assert e(sample) == retained
+        assert saved_d == base_d & saved_mu == base_mu if retained
+        assert abs(saved_mu - expected_mu) <= 1e-12 if retained
+        assert abs(fg) <= 1e-12 & abs(fh) <= 1e-12 if retained
+        assert abs(fg + fh - saved_d) <= 1e-12 if retained
+        assert missing(fg) & missing(fh) if !retained
+        drop base_d base_mu saved_d saved_mu fg fh
+    }
+}
+
 display as result "END_FIXTURE|feppml_saved_intercept_recovery|rc=0"

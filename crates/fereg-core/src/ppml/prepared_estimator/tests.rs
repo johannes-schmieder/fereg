@@ -3430,3 +3430,104 @@ fn candidate_uniform_raw_owner_memory_counts_actual_explicit_capacity() {
 
 #[path = "ibn_rebase_tests.rs"]
 mod ibn_rebase_tests;
+
+#[test]
+fn weak_pair_publishes_representable_full_wald_and_preserves_verified_raw_omission() {
+    let (mut request, mut input) = fixture(0, false, false, false, false, false);
+    let z = SourceId::new(2).unwrap();
+    request.ols.model.sources.push(source(z, "z"));
+    let mut term = continuous_term(z);
+    term.id = TermId::new(2).unwrap();
+    term.order = TermOrder::new(2).unwrap();
+    term.coefficient_slot = CoefficientSlot::new(2).unwrap();
+    term.canonical_token = "c.z".into();
+    request.ols.model.terms.push(term);
+    request.ols.bindings.extend([
+        OlsInputBinding {
+            stata_var_position: 4,
+            role: OlsInputRole::NumericSource(z),
+        },
+        OlsInputBinding {
+            stata_var_position: 5,
+            role: OlsInputRole::FrequencyWeight,
+        },
+    ]);
+    for (k, slope) in [(18, true), (40, true), (41, false)] {
+        let gap = 2f64.powi(-k);
+        let mut x = Vec::new();
+        let mut near = Vec::new();
+        let mut weight = Vec::new();
+        let mut y = Vec::new();
+        let mut expected = Vec::new();
+        for row in 0..128 {
+            let (a, b) = [(-1., 0.), (1., 0.), (0., -1.), (0., 1.)][row / 2 % 4];
+            let mean = 4. * 2f64.powf(if slope { b } else { a });
+            let noise = if slope && b != 0.0 { gap } else { 1. };
+            expected.push(mean);
+            y.push(mean + if row % 2 == 0 { noise } else { -noise });
+            x.push(a);
+            near.push(a + gap * b);
+            weight.push(if b == -1. { 4. } else { 1. });
+        }
+        input.ols.candidate = vec![true; y.len()].into();
+        input.ols.numeric_sources =
+            vec![(SourceId::new(1).unwrap(), column(&x)), (z, column(&near))];
+        input.ols.outcome = column(&y);
+        input.ols.frequency_weight = Some(column(&weight));
+        let result = fit_prepared_ppml(request.clone(), input.clone());
+        if k == 40 {
+            // The exact slope/constant covariance is O(gap). A sub-ulp
+            // Fisher error before inverse recoding otherwise becomes 1e-8.
+            match result {
+                Ok(fit) => assert!(fit.inference().vce.covariance[5].abs() < 1e-10),
+                Err(error) => assert_eq!(error.code, ErrorCode::NonConvergence),
+            }
+            continue;
+        }
+        let fit = result.expect("raw-unit replay");
+        assert!(fit
+            .output()
+            .mean()
+            .iter()
+            .zip(expected)
+            .all(|(m, e)| (m - e).abs() < 1e-8));
+        if slope {
+            let b = fit.coefficients().values();
+            assert!((gap * b[1] - 2f64.ln()).abs() < 1e-10);
+            assert!((b[0] + b[1]).abs() < 1e-9);
+            assert_eq!(fit.inference().wald.degrees_of_freedom, 2);
+            assert!(fit.inference().wald.statistic.unwrap() > 1e10);
+            // One cluster per physical row makes the frequency weight enter
+            // each score before squaring. The four equal-sized cells have
+            // diagonal Fisher information (256,512,768), and the two weak
+            // cells have cluster scores of magnitude 4*gap and gap.
+            let mut clustered = request.clone();
+            let mut rows = input.clone();
+            let id = SourceId::new(3).unwrap();
+            clustered.ols.model.sources.push(source(id, "cluster"));
+            clustered.ols.bindings.push(OlsInputBinding {
+                stata_var_position: 6,
+                role: OlsInputRole::NumericSource(id),
+            });
+            clustered.clusters.push(OlsClusterTermV1 {
+                label: "cluster".into(),
+                sources: vec![id],
+            });
+            clustered.vce = PpmlVceRequest::Clustered;
+            rows.ols
+                .numeric_sources
+                .push((id, column(&(1..=128).map(f64::from).collect::<Vec<_>>())));
+            let clustered =
+                fit_prepared_ppml(clustered, rows).expect("clustered raw coordinate fit");
+            let v = &clustered.inference().vce.covariance;
+            let correction = 128. / 127.;
+            let vzz = correction * 544. / 512f64.powi(2);
+            let vzc = correction * (-480.) * gap / (512. * 768.);
+            assert!((v[4] - vzz).abs() < 1e-10);
+            assert!((v[5] - vzc).abs() < 1e-10);
+            assert!((v[0] + 2. * v[1] + v[4] - correction * 64. / 256f64.powi(2)).abs() < 1e-10);
+        } else {
+            assert_eq!(fit.coefficients().kept_full_slots().len(), 2);
+        }
+    }
+}

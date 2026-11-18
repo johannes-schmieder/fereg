@@ -993,6 +993,11 @@ original-target, FE-moment and final-Hessian component-normalization checks.
 An uncertified attempt releases all of its workspace; CG starts from the original
 target with the remaining budget, and reported recovery iterations include the
 attempt. Allocation, interruption and input errors propagate without retry.
+For a categorical MAP pilot whose entire accepted log-scale target is within
+eight machine epsilons of zero, use the publication certificate's unit scale
+for reconstruction. Cap the error at eight machine epsilons and the requested
+tolerance. The final-Hessian projection and independent FE moments still
+resolve any identifiable variation in that target.
 The original accepted absorbed predictor remains the target. Recovery
 uses the existing admitted coefficient banks, reconstructs search directions from
 them, and permits one reliable residual replacement from the original target
@@ -1168,6 +1173,49 @@ sample. Positive changing IRLS weights cannot silently change public omission
 decisions. Revalidate that basis against the accepted final Hessian; a final
 rank loss or inconsistent rank decision is fatal. Starts, warm states and
 ordinary iteration-specific factorizations have no canonical-rank authority.
+
+An exactly invertible change of units can recover independent variation before
+the rank decision. For an eligible continuous pair `x,z`, solve in `x,v`,
+where `v = s*(z-a*x)` and `s` is a positive power of two. Check the identity
+on every compact row, a separation from source roundoff, and independence of
+the transformed columns. Use the same finalized rows, weights, controls and
+observation offsets. A change of coordinates grants no independent authority
+to remove rows. An exact alias retains its usual omission rule.
+
+Publication uses the original coefficient slots. Set `b_z = s*b_v`,
+`b_x = b_x(stable)-a*b_z` and apply the same linear transformation to both
+axes of the complete covariance, including cross-covariances with other
+slopes and the intercept. Check inference after rounding to the doubles Stata
+actually stores. The independent fit of the scaled difference can have a
+well-estimated contrast whose variance cannot be represented by the original
+three covariance entries. Recovery must decline in that case. Replay the
+finite predictor in requested column order on the final sample. Scope is one
+certified change of basis per finalized design.
+
+The search is bounded. It screens pairs for designs with at most 32 continuous
+regressors, and limits complete candidate checks to 32 Mi candidate-row visits
+(or one full candidate when N exceeds that budget). With categorical intercept
+effects, a second route can subtract a data-defined level location for the
+first declared absorbed term. The same location is restored to its reported
+effect using that term's normalization. OLS also accounts for the normalized
+constant in its returned coefficients and complete covariance. All latent
+changes take place on a finalized generation, so removed rows, fixed-effect
+codes and omitted Stata factor slots keep their identities. PPML bias correction
+and multiway clustered covariance use their existing estimation path.
+
+For recovered OLS results, independently reconstruct the weighted normal
+equations and observation or cluster scores in a bounded explicit design.
+Outward enclosures check the individual reported coefficients, each covariance
+entry and the original-data residuals. A tightly enclosed covariance in the
+well-scaled coordinates can resolve a rounding discrepancy before the complete
+original-unit covariance, Wald statistic and predictions are certified again.
+The independent replay admits up to 16 columns including the required explicit
+FE dummies, up to 64 one-way clusters, and at most 8 Mi row-by-squared-width
+cells. Inconclusive enclosures return a numerical failure. Recovered PPML
+slopes additionally check the Poisson mean obtained from the original ordered
+predictor, offset and absorbed contribution. The robust covariance replay
+checks the sensitivity of the final information and the mapped score
+contributions, including covariance with nuisance slopes and the constant.
 
 After a numerical omission, OLS and PPML can independently test the final
 residual score on a better-scaled direction in the original model. A witness

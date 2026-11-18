@@ -1571,6 +1571,7 @@ fn strict_map_pilot_certifies_independent_components_and_partial_channels() {
     let mut mode = StrictMapRecovery {
         known_connected: false,
         materialize_absorbed_sum: true,
+        reconstruction_floor: 0.0,
         iterations: 0,
     };
     let mut reservation = InjectedReservation {
@@ -1647,6 +1648,67 @@ fn strict_map_pilot_interrupts_without_fallback() {
     assert_eq!(error.code, ErrorCode::Interrupted);
     assert_eq!(crate::interrupt::test_polls::polls(), 1);
     crate::interrupt::test_polls::cancel_at(None);
+}
+
+#[test]
+fn strict_ppml_intercept_pilot_preserves_tiny_signal_amid_roundoff() {
+    let g = [0, 0, 0, 0, 1, 1, 1, 1];
+    let h = [0, 0, 1, 1, 0, 0, 1, 1];
+    let weights = [1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0];
+    let sources = [
+        CategoricalCodeView::new(&g, 2),
+        CategoricalCodeView::new(&h, 2),
+    ];
+    let topology = finalize_categorical_topology(&sources, &[&[0], &[1]], &[true; 8]).unwrap();
+    let effects = [
+        CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap(),
+        CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap(),
+    ];
+    let g_contribution = [2.0 * f64::EPSILON, 3.0 * f64::EPSILON];
+    let h_contribution = [f64::EPSILON, -0.5 * f64::EPSILON];
+    let noise = 0.25 * f64::EPSILON;
+    // Within each cell the repeated rows have equal weights and opposite
+    // errors. The exact weighted projection is the pair of level contrasts.
+    let values: Vec<_> = (0..g.len())
+        .map(|row| {
+            g_contribution[g[row] as usize]
+                + h_contribution[h[row] as usize]
+                + if row % 2 == 0 { noise } else { -noise }
+        })
+        .collect();
+    let recover = |target: &[f64]| {
+        try_strict_intercept_map(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Provided(&weights),
+            target,
+            &[true; 2],
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 8,
+                check_every: 1,
+                symmetric: true,
+            },
+            1e-12,
+            true,
+            true,
+        )
+        .unwrap()
+    };
+    let recovered = recover(&values).result.expect("near-zero reconstruction");
+    let absolute_tolerance = 1e-13 * f64::EPSILON;
+    assert!((recovered.reconstruction_relative_infinity() - noise).abs() <= absolute_tolerance);
+    for row in 0..g.len() {
+        let actual_g = recovered.channels()[0].as_ref().unwrap()[row];
+        let actual_h = recovered.channels()[1].as_ref().unwrap()[row];
+        assert!((actual_g - g_contribution[g[row] as usize]).abs() <= absolute_tolerance);
+        assert!((actual_h - h_contribution[h[row] as usize]).abs() <= absolute_tolerance);
+    }
+    let above_roundoff: Vec<_> = values
+        .iter()
+        .map(|value| value * 2.0_f64.powi(20))
+        .collect();
+    assert!(recover(&above_roundoff).result.is_none());
 }
 
 #[test]

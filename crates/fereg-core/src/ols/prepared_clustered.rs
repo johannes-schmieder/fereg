@@ -1125,6 +1125,33 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
     ))
 }
 
+/// Verify the unchanged clustered PSD policy on the exact, rounded covariance
+/// that will be posted after a change of coordinates.
+pub fn recovered_clustered_minimum(
+    matrix: &[f64],
+    dimension: usize,
+    multiway: bool,
+) -> Result<f64> {
+    let tolerance = PreparedOlsClusteredConfig::default().certificate_tolerance;
+    let eigen = symmetric_eigensystem(
+        matrix,
+        dimension,
+        tolerance,
+        &mut SystemPreparedInferenceReservation,
+    )?;
+    let minimum = eigen.values.iter().copied().fold(f64::INFINITY, f64::min);
+    let threshold = if multiway {
+        0.
+    } else {
+        -tolerance * covariance_scale(matrix, dimension)?
+    };
+    if minimum < threshold {
+        return Err(crate::error::FeregError::new(crate::error::ErrorCode::NonConvergence,
+            "original-unit clustered covariance cannot certify its required PSD policy; re-express the nearly collinear regressors using their difference"));
+    }
+    Ok(minimum)
+}
+
 fn symmetric_eigensystem<R: PreparedInferenceReservation>(
     matrix: &[f64],
     dimension: usize,

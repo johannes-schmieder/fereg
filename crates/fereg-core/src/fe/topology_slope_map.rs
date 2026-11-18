@@ -528,8 +528,11 @@ pub(crate) struct StrictMapAttempt {
 struct StrictMapRecovery {
     known_connected: bool,
     materialize_absorbed_sum: bool,
+    reconstruction_floor: f64,
     iterations: usize,
 }
+
+const PPML_LOG_PREDICTOR_ROUNDOFF: f64 = 8.0 * f64::EPSILON;
 
 /// A failed bounded attempt returns only its work count, never a residual or seed.
 /// Break, allocation and malformed-input errors cannot trigger another solver.
@@ -557,6 +560,17 @@ pub(crate) fn try_strict_intercept_map(
     let mut mode = StrictMapRecovery {
         known_connected,
         materialize_absorbed_sum,
+        // Forming an accepted log-scale target by subtracting the finite
+        // predictor can leave roundoff outside the FE span. At this scale
+        // use the output certificate's unit scale for reconstruction.
+        reconstruction_floor: if target
+            .iter()
+            .all(|value| value.abs() <= PPML_LOG_PREDICTOR_ROUNDOFF)
+        {
+            1.0
+        } else {
+            0.0
+        },
         iterations: 0,
     };
     let result = recover_with_reservation(
@@ -1417,6 +1431,7 @@ fn finish_channel_major_recovery_with_geometry(
             tolerance,
             recovery_method,
             materialize_absorbed_sum,
+            0.0,
         );
     }
     let mut absorbed_sum = fallible_filled(
@@ -1590,6 +1605,7 @@ fn finish_intercept_only_recovery(
     tolerance: f64,
     recovery_method: CategoricalRecoveryMethod,
     materialize_absorbed_sum: bool,
+    reconstruction_floor: f64,
 ) -> Result<RecoveredCategoricalEffects> {
     const RECOVERY_CHUNK_ROWS: usize = 32_768;
 
@@ -1832,10 +1848,11 @@ fn finish_intercept_only_recovery(
             "categorical recovery weighted residual norm is nonfinite",
         ));
     }
-    let reconstruction_relative_infinity = if target_infinity == 0.0 {
+    let reconstruction_scale = target_infinity.max(reconstruction_floor);
+    let reconstruction_relative_infinity = if reconstruction_scale == 0.0 {
         residual_infinity
     } else {
-        residual_infinity / target_infinity
+        residual_infinity / reconstruction_scale
     };
     if !reconstruction_relative_infinity.is_finite()
         || reconstruction_relative_infinity > recovery_reconstruction_threshold(tolerance)
@@ -2402,9 +2419,16 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
 ) -> Result<RecoveredCategoricalEffects> {
     validate_config(config)?;
     let span_tolerance = recovery_reconstruction_threshold(config.tolerance);
+    let reconstruction_floor = strict
+        .as_ref()
+        .map_or(0.0, |mode| mode.reconstruction_floor);
     let reconstruction_threshold = match reconstruction_tolerance {
         Some(tolerance) if tolerance.is_finite() && tolerance > 0.0 => {
-            tolerance.min(span_tolerance)
+            if reconstruction_floor == 0.0 {
+                tolerance.min(span_tolerance)
+            } else {
+                tolerance.min(PPML_LOG_PREDICTOR_ROUNDOFF)
+            }
         }
         Some(_) => {
             return Err(invalid_argument(
@@ -2506,7 +2530,8 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
     // each effect. Weak graphs can reach that condition before the remainder
     // is small enough to certify that the target lies in the absorbed span.
     if initial.passed
-        && recovery_reconstruction_passed(target, &residual, reconstruction_threshold)?
+        && recovery_reconstruction_relative_infinity(target, &residual, reconstruction_floor)?
+            <= reconstruction_threshold
         && reconstruction_tolerance.is_none_or(|tolerance| {
             coefficient_reconstruction_passed(
                 topology,
@@ -2576,7 +2601,11 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
                 &mut workspace,
             )?;
             if certificate.passed
-                && recovery_reconstruction_passed(target, &residual, reconstruction_threshold)?
+                && recovery_reconstruction_relative_infinity(
+                    target,
+                    &residual,
+                    reconstruction_floor,
+                )? <= reconstruction_threshold
                 && reconstruction_tolerance.is_none_or(|tolerance| {
                     coefficient_reconstruction_passed(
                         topology,
@@ -2724,7 +2753,7 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
         );
     }
     let reconstruction_relative_infinity =
-        recovery_reconstruction_relative_infinity(target, residual)?;
+        recovery_reconstruction_relative_infinity(target, residual, 0.0)?;
     if reconstruction_relative_infinity > reconstruction_threshold {
         return Err(invalid_data(format!(
             "categorical recovery target is not certified to lie in the absorbed span: relative infinity residual {reconstruction_relative_infinity:.6e}",
@@ -2848,17 +2877,19 @@ fn finish_strict_recovery(
             "strict MAP coefficient product failed original-target reconstruction",
         ));
     }
-    let recovered = finish_channel_major_recovery(
+    let recovered = finish_intercept_only_recovery(
         topology,
         effects,
         weights,
         target,
         requested_channels,
         alphas,
+        effect_offsets,
         iterations,
         tolerance,
         CategoricalRecoveryMethod::Map,
         mode.materialize_absorbed_sum,
+        mode.reconstruction_floor,
     )
     .map_err(|error| {
         if error.code == ErrorCode::InvalidData
@@ -2956,14 +2987,6 @@ fn normalized_slope_recovery(
     Ok(recovered)
 }
 
-fn recovery_reconstruction_passed(
-    target: &[f64],
-    residual: &DenseMatrix,
-    threshold: f64,
-) -> Result<bool> {
-    Ok(recovery_reconstruction_relative_infinity(target, residual)? <= threshold)
-}
-
 // Recurrence residuals can drift from the accumulated coefficient product.
 // A strict publication caller must certify that fresh product in declared
 // channel order against the original target, without allocating in the solve.
@@ -3010,6 +3033,7 @@ fn coefficient_reconstruction_passed(
 fn recovery_reconstruction_relative_infinity(
     target: &[f64],
     residual: &DenseMatrix,
+    reconstruction_floor: f64,
 ) -> Result<f64> {
     if residual.ncols() != 1 || residual.nrows() != target.len() {
         return Err(invalid_argument(
@@ -3019,7 +3043,7 @@ fn recovery_reconstruction_relative_infinity(
     let scale = target
         .iter()
         .map(|value| value.abs())
-        .fold(0.0_f64, f64::max);
+        .fold(reconstruction_floor, f64::max);
     let residual_max = residual
         .as_slice()
         .iter()

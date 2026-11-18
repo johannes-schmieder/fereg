@@ -351,7 +351,7 @@ fn measure_separation_phase<T>(
 /// fresh fit of the stable generation may cross the publication boundary.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn fit_with_prepared_ppml_separation<T, E, F>(
-    owner: PreparedPpmlModelOwner,
+    mut owner: PreparedPpmlModelOwner,
     ppml: PpmlConfig,
     config: SeparationConfig,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
@@ -375,8 +375,12 @@ where
     ) -> Result<T>,
 {
     validate_config(config)?;
+    let ordinary_plan = std::cell::Cell::new(execution.preliminary_plan);
+    let shared_plan = owner.bind_recovery_plan(execution.preliminary_plan);
+    let plan = shared_plan.as_deref().unwrap_or(&ordinary_plan);
     let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
         prepare_initial_generation(owner, phase_allocation_probe)?;
+    execution.preliminary_plan = plan.get();
     let (projection_ppml, projection_linear, retained_cg, lsmr) =
         admit_detector_projection(coordinator.view().prepared, ppml, config, &mut execution)?;
     let mut admission =
@@ -388,12 +392,12 @@ where
     }
     // A detector re-execution may charge its LSMR workspace mid-chain; the
     // later exploration and publication fits read the charged plan.
-    let plan = std::cell::Cell::new(execution.preliminary_plan);
+    plan.set(execution.preliminary_plan);
     let policy = retry::DetectorPolicy::new(
         projection_ppml,
         projection_linear,
         retained_cg,
-        lsmr.map(|admission| (admission, &plan)),
+        lsmr.map(|admission| (admission, plan)),
     );
     // Unit-metric certification uses the existing independently admitted
     // LSMR family. Weighted detection and the ordinary IRLS policy remain

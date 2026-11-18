@@ -34,6 +34,67 @@ pub(super) fn calculate_wald<R: PreparedInferenceReservation>(
     policy: WaldPolicy,
     reservation: &mut R,
 ) -> Result<WaldCalculation> {
+    solve_wald(
+        positions,
+        policy,
+        reservation,
+        |r, c| values[r * dimension + c],
+        |p| fitted_coordinate_value(fit, p),
+    )
+}
+
+/// Compute the recovered model's joint null on unit-variance coordinates.
+/// The absolute units assigned to each working regressor are arbitrary.
+pub fn recovered_wald(
+    model: &super::PreparedOlsModel,
+    fit: &CertifiedPreparedOlsFit,
+    covariance: &[f64],
+) -> Result<Option<f64>> {
+    let coordinates = fit.bread().coordinates();
+    let n = coordinates.len();
+    if covariance.len() != checked_square(n, "OLS recovered Wald dimension overflow")? {
+        return Err(invalid_argument(
+            "recovered OLS covariance dimensions disagree",
+        ));
+    }
+    let mut positions = Vec::new();
+    positions
+        .try_reserve_exact(n)
+        .map_err(|_| crate::error::allocation("recovered Wald coordinates"))?;
+    for (i, c) in coordinates.iter().enumerate() {
+        if !matches!(
+            model.columns[c.generated_column_index].kind,
+            super::PreparedOlsColumnKind::Intercept
+        ) {
+            positions.push(i);
+        }
+    }
+    if positions.is_empty() || positions.iter().any(|&i| covariance[i * n + i] == 0.) {
+        return Ok(None);
+    }
+    let sd = |i: usize| covariance[i * n + i].sqrt();
+    let result = solve_wald(
+        &positions,
+        WaldPolicy::ScaledSingularTolerance(5e-10),
+        &mut super::prepared_scores::SystemPreparedInferenceReservation,
+        |r, c| (covariance[r * n + c] / sd(r)) / sd(c),
+        |p| fitted_coordinate_value(fit, p).map(|b| b / sd(p)),
+    )?;
+    if result.solve_relative_infinity_norm > 5e-10 {
+        return Err(invalid_data(
+            "normalized recovered OLS Wald solve did not certify",
+        ));
+    }
+    Ok(result.statistic)
+}
+
+fn solve_wald<R: PreparedInferenceReservation>(
+    positions: &[usize],
+    policy: WaldPolicy,
+    reservation: &mut R,
+    covariance: impl Fn(usize, usize) -> f64,
+    beta: impl Fn(usize) -> Result<f64>,
+) -> Result<WaldCalculation> {
     let iid = matches!(policy, WaldPolicy::IidRequiresPositive);
     let finite = |value: f64, message: &'static str| {
         if iid && !value.is_finite() {
@@ -55,7 +116,7 @@ pub(super) fn calculate_wald<R: PreparedInferenceReservation>(
         WaldPolicy::ScaledSingularTolerance(tolerance) => {
             let covariance_scale = positions
                 .iter()
-                .map(|position| values[*position * dimension + *position].abs())
+                .map(|position| covariance(*position, *position).abs())
                 .fold(0.0_f64, f64::max)
                 .max(f64::MIN_POSITIVE);
             tolerance * covariance_scale
@@ -63,7 +124,7 @@ pub(super) fn calculate_wald<R: PreparedInferenceReservation>(
     };
     for row in 0..slope_dimension {
         for column in 0..=row {
-            let mut value = values[positions[row] * dimension + positions[column]];
+            let mut value = covariance(positions[row], positions[column]);
             for inner in 0..column {
                 value -= factor[row * slope_dimension + inner]
                     * factor[column * slope_dimension + inner];
@@ -99,7 +160,7 @@ pub(super) fn calculate_wald<R: PreparedInferenceReservation>(
         "unable to reserve prepared Wald solution",
     )?;
     for (slope, position) in positions.iter().copied().enumerate() {
-        solution[slope] = fitted_coordinate_value(fit, position)?;
+        solution[slope] = beta(position)?;
     }
     for row in 0..slope_dimension {
         let mut value = solution[row];
@@ -125,7 +186,7 @@ pub(super) fn calculate_wald<R: PreparedInferenceReservation>(
     let mut quadratic_correction = 0.0_f64;
     let mut solve_error = 0.0_f64;
     for row in 0..slope_dimension {
-        let coefficient = fitted_coordinate_value(fit, positions[row])?;
+        let coefficient = beta(positions[row])?;
         compensated_add(
             coefficient * solution[row],
             &mut quadratic,
@@ -140,7 +201,7 @@ pub(super) fn calculate_wald<R: PreparedInferenceReservation>(
             coefficient.abs().max(1.0)
         };
         for column in 0..slope_dimension {
-            let value = values[positions[row] * dimension + positions[column]] * solution[column];
+            let value = covariance(positions[row], positions[column]) * solution[column];
             compensated_add(value, &mut fitted, &mut correction)?;
             scale = finite(
                 scale + value.abs(),

@@ -522,6 +522,11 @@ impl PreparedPpmlIrlsFit {
         &self.coefficients
     }
 
+    /// Retire the strict fit before a replay of an original omitted basis.
+    pub(super) fn into_mean(self) -> Vec<f64> {
+        self.mean
+    }
+
     pub(crate) fn eta(&self) -> &[f64] {
         &self.eta
     }

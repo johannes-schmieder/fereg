@@ -40,6 +40,7 @@ pub(crate) use crate::ols::prepared_fit_view::SharedPreparedOlsData as PreparedP
 #[derive(Debug, PartialEq)]
 pub(crate) struct PreparedPpmlModelGeneration {
     generation: usize,
+    pub(super) slope_recovery: Option<super::slope_recovery::GenerationRecovery>,
     prepared: PreparedPpmlModel,
     offset: Vec<f64>,
     unit_prior_weights: Option<Vec<f64>>,
@@ -105,6 +106,7 @@ impl PreparedPpmlModelGeneration {
         let prepared = std::mem::size_of::<(usize, usize, PreparedOlsData)>() as u128
             + self.fit_view().owned_buffer_bytes();
         prepared
+            + self.slope_recovery.as_ref().map_or(0, |r| r.owned_bytes())
             + crate::memory::vec_capacity_bytes(&self.offset)
             + self
                 .unit_prior_weights
@@ -127,6 +129,11 @@ impl PreparedPpmlModelGeneration {
 
     pub(crate) const fn prepared(&self) -> &PreparedPpmlModel {
         &self.prepared
+    }
+
+    pub(super) fn unique_data(&mut self) -> Result<&mut PreparedOlsData> {
+        Arc::get_mut(&mut self.prepared)
+            .ok_or_else(|| invalid_argument("PPML slope replay still has a live fit binding"))
     }
 
     pub(crate) fn fit_view(&self) -> &PreparedOlsData {
@@ -254,6 +261,7 @@ pub(crate) struct PreparedPpmlModelOwner {
     load_hint: Option<crate::ols::PreparedOlsLoadHint>,
     membership_scratch: u128,
     generation_memory_bound: Option<u128>,
+    recovery_admission: Option<super::slope_recovery::RecoveryAdmission>,
     request: OlsClusteredRequestV1,
     loaded: LoadedOlsInput,
     candidate_original_rows: Arc<Vec<usize>>,
@@ -279,6 +287,23 @@ impl PreparedPpmlModelOwner {
     pub(crate) fn with_membership_scratch(mut self, bytes: u128) -> Self {
         self.membership_scratch = bytes;
         self
+    }
+
+    pub(super) fn with_slope_recovery(
+        mut self,
+        columns: usize,
+        config: super::PpmlMemoryConfig,
+    ) -> Self {
+        self.recovery_admission =
+            (columns > 0).then(|| super::slope_recovery::RecoveryAdmission::new(columns, config));
+        self
+    }
+
+    pub(super) fn bind_recovery_plan(
+        &mut self,
+        plan: super::PpmlMemoryPlan,
+    ) -> Option<std::rc::Rc<std::cell::Cell<super::PpmlMemoryPlan>>> {
+        self.recovery_admission.as_mut().map(|a| a.bind(plan))
     }
 
     pub(crate) fn with_generation_memory_bound(mut self, bytes: u128) -> Self {
@@ -382,6 +407,7 @@ impl PreparedPpmlModelOwner {
             load_hint: None,
             membership_scratch: 0,
             generation_memory_bound: None,
+            recovery_admission: None,
             request: OlsClusteredRequestV1 {
                 ols: request,
                 clusters,
@@ -681,8 +707,9 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
             .base_offset
             .as_ref()
             .map_or(0, |_| self.requested_candidate_observations);
-        let prepared = PreparedPpmlModelGeneration {
+        let mut prepared = PreparedPpmlModelGeneration {
             generation,
+            slope_recovery: None,
             prepared,
             offset,
             unit_prior_weights,
@@ -694,7 +721,14 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
             weight_report,
             adjustment_report: self.adjustment_report,
         };
-        prepared.validate_memory_bound(self.generation_memory_bound)?;
+        let mut bound = self.generation_memory_bound;
+        if let Some(admission) = &mut self.recovery_admission {
+            let overhead = prepared.owned_buffer_bytes() - prepared.fit_view().owned_buffer_bytes();
+            let (basis, admitted) = admission.prepare(prepared.unique_data()?, overhead)?;
+            prepared.slope_recovery = basis;
+            bound = Some(admitted);
+        }
+        prepared.validate_memory_bound(bound)?;
         let products_seconds = preparation_trace.lap();
         if preparation_trace.enabled() {
             eprintln!(

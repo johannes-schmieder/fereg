@@ -55,6 +55,11 @@ impl<A, D, C, K, M> CertifiedPreparedOlsInference<A, D, C, K, M> {
     }
 
     #[must_use]
+    pub fn into_residuals(self) -> Vec<f64> {
+        self.fit.into_residuals()
+    }
+
+    #[must_use]
     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
         &self.fit
     }

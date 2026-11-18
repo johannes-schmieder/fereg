@@ -321,7 +321,7 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let mut native_break = OlsNativeBreak::new(&mut action)?;
     let hold_for_break = native_break.hold_before_preparation();
     let numerical_action = &mut action;
-    let (prepared, inference, derived, phase_seconds) = crate::cancellable::run(
+    let (prepared, inference, reported, derived, phase_seconds) = crate::cancellable::run(
         team,
         move || {
             if hold_for_break {
@@ -331,32 +331,20 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     std::thread::sleep(std::time::Duration::from_millis(1));
                 }
             }
-            let (prepared, loaded_rows) = prepare_ols_pipeline(
+            let (mut prepared, loaded_rows) = prepare_ols_pipeline(
                 loaded,
                 loaded_rhs,
                 load_columns,
                 numerical_action,
                 categorical,
             )?;
-            numerical_action.admit_prepared_parent(
-                prepared.execution_admission_bytes(),
-                prepared.owned_buffer_bytes(),
-            )?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
-            let inference_started = Instant::now();
-            let inference = infer_ols(&prepared, numerical_action, loaded_rows)?;
-            numerical_action.admit_output_parent(
-                prepared.execution_admission_bytes(),
-                inference.view().owned_buffer_bytes(),
-            )?;
-            let inference_seconds = inference_started.elapsed().as_secs_f64();
-            let outputs_started = Instant::now();
-            let derived =
-                derive_observation_outputs(&prepared, inference.view(), numerical_action)?;
-            let outputs_seconds = outputs_started.elapsed().as_secs_f64();
+            let (inference, reported, derived, inference_seconds, outputs_seconds) =
+                ols_recovery::infer_and_derive(&mut prepared, numerical_action, loaded_rows)?;
             Ok((
                 prepared,
                 inference,
+                reported,
                 derived,
                 [prepare_seconds, inference_seconds, outputs_seconds],
             ))
@@ -375,6 +363,7 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &prepared,
         prepared.cluster_design().map(|_| &prepared),
         view,
+        reported,
         &derived,
         &observation,
         spi,
@@ -465,7 +454,8 @@ impl OlsNativeBreak {
 }
 
 mod ols_pipeline;
-use ols_pipeline::{infer_ols, prepare_ols_pipeline};
+pub(crate) mod ols_recovery;
+use ols_pipeline::prepare_ols_pipeline;
 
 struct OlsPhaseTrace {
     label: &'static str,
@@ -482,13 +472,20 @@ fn complete_ols(
     data: &'_ PreparedOlsData,
     clusters: Option<&'_ PreparedOlsData>,
     inference: CertifiedOlsInference<'_>,
+    reported: Option<ols_recovery::Reported>,
     derived: &DerivedObservationOutputs,
     observation: &ActionObservation,
     spi: &mut dyn SpiApi,
     trace: Option<OlsPhaseTrace>,
 ) -> Result<()> {
     let shadow_started = Instant::now();
-    let shadow = build_shadow_result(data, clusters, inference, action.outputs.residual.is_some())?;
+    let shadow = build_shadow_result(
+        data,
+        clusters,
+        inference,
+        action.outputs.residual.is_some(),
+        reported,
+    )?;
     let shadow_seconds = shadow_started.elapsed().as_secs_f64();
     if let Some(trace) = trace {
         let [prepare, inference, outputs] = trace.phase_seconds;
@@ -2456,6 +2453,7 @@ fn derive_observation_outputs(
     prepared: &PreparedOlsData,
     inference: CertifiedOlsInference<'_>,
     action: &EstimateAction,
+    reported: Option<&ols_recovery::Reported>,
 ) -> Result<DerivedObservationOutputs> {
     let categorical = prepared.uses_categorical_preparation().then_some(prepared);
     let known_connected =
@@ -2467,9 +2465,11 @@ fn derive_observation_outputs(
         &action.outputs,
         known_connected,
         action.fit,
+        reported,
     )
 }
 
+#[allow(clippy::too_many_arguments)] // Scoped original-coordinate output context is optional.
 fn build_derived_observation_outputs_in_team(
     prepared: &'_ PreparedOlsData,
     categorical: Option<&PreparedOlsData>,
@@ -2477,6 +2477,7 @@ fn build_derived_observation_outputs_in_team(
     requested: &ObservationOutputs,
     known_connected: bool,
     fit_config: PreparedOlsFitConfig,
+    reported: Option<&ols_recovery::Reported>,
 ) -> Result<DerivedObservationOutputs> {
     let any_derived = requested.xb.is_some()
         || requested.xbd.is_some()
@@ -2510,7 +2511,12 @@ fn build_derived_observation_outputs_in_team(
         match (fitted.generated_column_index, fitted.value) {
             (Some(column), Some(coefficient)) => push_reserved(
                 &mut fitted_terms,
-                (column, coefficient),
+                (
+                    column,
+                    reported.map_or(coefficient, |result| {
+                        result.b[fitted.coefficient_slot.get() as usize - 1]
+                    }),
+                ),
                 "derived OLS fitted-term capacity exhausted",
             )?,
             (None, None) => {}
@@ -2629,7 +2635,8 @@ fn build_derived_observation_outputs_in_team(
                 .as_deref()
                 .ok_or_else(|| invalid("saved fixed-effect recovery target is absent"))?,
             &mask,
-            fit.recovered_fe_coefficients(),
+            fit.recovered_fe_coefficients()
+                .filter(|_| reported.is_none_or(|r| !r.absorbed)),
             known_connected,
             requested.absorbed.is_some(),
             MapConfig {
@@ -3139,14 +3146,13 @@ fn validate_shadow_coefficients(shadow: &OlsShadowResult<'_>) -> Result<()> {
             return Err(invalid("OLS coefficient shadow identity is invalid"));
         }
         let reported = matches!(code, 1 | 5);
+        let marker =
+            shadow.omission_b_marker[row] - if shadow.recovered && row == 0 { 2. } else { 0. };
         if reported {
             reported_coordinates = reported_coordinates
                 .checked_add(1)
                 .ok_or_else(|| allocation("OLS reported-coordinate count overflows"))?;
-            if coordinate == 0
-                || coordinate > shadow.covariance_dimension
-                || shadow.omission_b_marker[row] != 1.0
-            {
+            if coordinate == 0 || coordinate > shadow.covariance_dimension || marker != 1.0 {
                 return Err(invalid("OLS reported covariance coordinate is invalid"));
             }
             let duplicates = (0..dimension)
@@ -3161,7 +3167,7 @@ fn validate_shadow_coefficients(shadow: &OlsShadowResult<'_>) -> Result<()> {
             if duplicates != 1 {
                 return Err(invalid("OLS covariance coordinate is duplicated"));
             }
-        } else if coordinate != 0 || shadow.b[row] != 0.0 || shadow.omission_b_marker[row] != 0.0 {
+        } else if coordinate != 0 || shadow.b[row] != 0.0 || marker != 0.0 {
             return Err(invalid("OLS omitted coefficient shadow is not zero"));
         }
 

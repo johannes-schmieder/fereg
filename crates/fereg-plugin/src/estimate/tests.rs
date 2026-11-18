@@ -831,6 +831,7 @@ fn coefficient_shadow(prepared: &PreparedOlsData) -> OlsShadowResult<'_> {
         subsets: Vec::new(),
         certificates: Vec::new(),
         receipt: Vec::new(),
+        recovered: false,
         coefficient_count: 2,
         coefficient_capacity: 2,
         covariance_dimension: 2,
@@ -2662,6 +2663,7 @@ fn saved_publication_validates_solver_codes_and_capacities_before_any_store() {
             result_data,
             CertifiedOlsInference::Iid(&inference),
             &action,
+            None,
         )
         .unwrap();
         let mut shadow = build_shadow_result(
@@ -2669,6 +2671,7 @@ fn saved_publication_validates_solver_codes_and_capacities_before_any_store() {
             None,
             CertifiedOlsInference::Iid(&inference),
             action.outputs.residual.is_some(),
+            None,
         )
         .unwrap();
         // Every route code of both diagnostic rows admits its vocabulary

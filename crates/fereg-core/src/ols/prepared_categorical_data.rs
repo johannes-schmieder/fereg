@@ -61,6 +61,14 @@ pub(crate) mod validated_sample {
             &self.0
         }
 
+        pub(crate) fn swap_recovery_column(
+            &mut self,
+            index: usize,
+            values: &mut Vec<f64>,
+        ) -> Result<()> {
+            self.0.regressors.swap_continuous(index, values)
+        }
+
         pub(in crate::ols) fn release(
             &mut self,
             plan: super::super::prepared_sources::ReleasePlan,

@@ -20,26 +20,96 @@ foreach memory in fast low {
     quietly fereg yl a z [pw=w], absorb(g h) memory(`memory') residuals(res)
     assert abs(yl-res-level)<1e-8
     drop res
-    quietly feppml y a z [pw=w], absorb(g h) memory(`memory') separation(none) mu(m)
+    quietly feppml y a z [pw=w], absorb(ref_g=g ref_h=h) memory(`memory') separation(none) mu(m)
     assert abs(m/mu-1)<1e-8
+    scalar ref_a = _b[a]
+    scalar ref_z = _b[z]
+    scalar ref_sz = _se[z]
+    quietly lincom a + z
+    scalar ref_contrast = r(se)
+    quietly test (a=0) (z=0)
+    scalar ref_df = r(df)
+    scalar ref_chi2 = r(chi2)
     drop m
     foreach kind in fe finite {
         if "`kind'"=="fe" quietly replace z=mod(g,2)+2^(-26)*b
         else quietly replace z=a+2^(-41)*b
-        * Both recodings preserve the true direction b exactly in binary64.
-        * The existing numerical rank choice omits it in these coordinates.
+        * Both recodings preserve b exactly in the stored data. The ordinary
+        * two-slope covariance loses the identified contrast in raw units.
         quietly regress yl a
         capture noisily fereg yl a z [pw=w], absorb(g h) memory(`memory') residuals(res)
         assert _rc==430
         assert "`e(cmd)'"=="regress"
         capture confirm variable res, exact
         assert _rc==111
-        capture noisily feppml y a z [pw=w], absorb(g h) memory(`memory') separation(none) mu(m)
-        assert _rc==430
-        assert "`e(cmd)'"=="regress"
-        capture confirm variable m, exact
-        assert _rc==111
+        if "`kind'"=="finite" {
+            capture noisily feppml y a z [pw=w], absorb(g h) memory(`memory') separation(none) mu(m)
+            assert _rc==430
+            assert "`e(cmd)'"=="regress"
+            capture confirm variable m, exact
+            assert _rc==111
+        }
+        else {
+            quietly feppml y a z [pw=w], absorb(raw_g=g raw_h=h) memory(`memory') ///
+                separation(none) mu(m) eta(eta) xb(xb) d(d)
+            assert e(N)==128 & _b[_cons]==0
+            assert abs(_b[a]-ref_a)<1e-9 & abs(_b[z]*2^(-26)-ref_z)<1e-9
+            assert abs(_se[z]*2^(-26)-ref_sz)<1e-10
+            local unit = 2^(-26)
+            quietly lincom a + `unit'*z
+            assert abs(r(se)-ref_contrast)<1e-9
+            quietly test (a=0) (z=0)
+            assert r(df)==ref_df & reldif(r(chi2),ref_chi2)<1e-7
+            predict double scored, xb
+            predict double full, mu
+            assert abs(scored-xb)<1e-8 & abs(full/mu-1)<1e-8
+            assert abs(m/mu-1)<1e-8 & abs(eta-ln(mu))<1e-8
+            assert abs(xb+d-ln(mu))<1e-8 & abs(raw_g+raw_h-d)<1e-8
+            assert abs(raw_g+mod(g,2)*_b[z]-ref_g)<1e-8 & abs(raw_h-ref_h)<1e-8
+            drop raw_g raw_h m eta xb d scored full
+        }
     }
+    drop ref_g ref_h
+
+    * With a centered anchor the normalized OLS constant and its covariance
+    * are representable, even for a much smaller within-group regressor.
+    quietly replace z=b
+    quietly fereg yl a z, absorb(ref_g=g ref_h=h) memory(`memory') residuals(res)
+    scalar ref_cons = _b[_cons]
+    scalar ref_scons = _se[_cons]
+    scalar ref_z = _b[z]
+    scalar ref_sz = _se[z]
+    quietly lincom a+z
+    scalar ref_contrast = r(se)
+    quietly test (a=0) (z=0)
+    scalar ref_df = r(df)
+    scalar ref_F = r(F)
+    drop res
+    quietly replace z=mod(g,2)-.5 + 2^(-38)*b
+    quietly fereg yl a z, absorb(raw_g=g raw_h=h) memory(`memory') residuals(res)
+    assert abs(_b[_cons]-ref_cons)<1e-9 & abs(_se[_cons]-ref_scons)<1e-9
+    assert abs(_b[z]*2^(-38)-ref_z)<1e-9 & abs(_se[z]*2^(-38)-ref_sz)<1e-9
+    local unit = 2^(-38)
+    quietly lincom a + `unit'*z
+    assert abs(r(se)-ref_contrast)<1e-9
+    quietly test (a=0) (z=0)
+    assert r(df)==ref_df & reldif(r(F),ref_F)<1e-7
+    predict double scored, xb
+    predict double d, d
+    predict double fitted, xbd
+    assert abs(yl-res-level)<1e-8 & abs(fitted-level)<1e-8 & abs(scored+d-level)<1e-8
+    assert abs(raw_g+(mod(g,2)-.5)*_b[z]-ref_g)<1e-8 & abs(raw_h-ref_h)<1e-8
+    drop ref_g ref_h res raw_g raw_h scored d fitted
+
+    * Even an exactly rescalable PPML slope and covariance do not guarantee
+    * representable XB and D. Their sum loses the log mean at this depth.
+    quietly replace z=mod(g,2) + 2^(-44)*b
+    quietly regress yl a
+    capture noisily feppml y a z [pw=w], absorb(g h) memory(`memory') separation(none) mu(m)
+    assert _rc==430
+    assert "`e(cmd)'"=="regress"
+    capture confirm variable m, exact
+    assert _rc==111
     quietly replace z=b
 }
 
@@ -57,6 +127,24 @@ foreach kind in weak exact_fe exact_finite {
     quietly feppml y a z [pw=w], absorb(g h) separation(none) mu(m)
     assert abs(m/2^(a+mod(g,2)+h)-1)<1e-8
     drop m
+}
+* The identity z = g-level function + a tiny multiple of another slope
+* remains exact. Reversing the explicit terms must preserve the original
+* pivot convention even though the centered z would be exactly a.
+quietly replace z=mod(g,2)+2^(-26)*a
+foreach rhs in "a z" "z a" {
+    foreach cmd in fereg feppml {
+        if "`cmd'"=="fereg" quietly fereg yl `rhs' [pw=w], absorb(g h) residuals(res)
+        else quietly feppml y `rhs' [pw=w], absorb(g h) separation(none) mu(res)
+        assert e(N)==128 & _b[z]==0 & _se[z]==0
+        assert abs(_b[a]-cond("`cmd'"=="fereg",3,ln(2)))<1e-8
+        matrix B=e(b)
+        _ms_omit_info B
+        matrix O=r(omit)
+        local iz=cond("`rhs'"=="a z",2,1)
+        assert O[1,`iz']==1 & O[1,3-`iz']==0
+        drop res
+    }
 }
 * An ordinary retained indicator can also hide a continuous difference.
 clear

@@ -95,6 +95,47 @@ pub(crate) fn compute_ppml_wald(
     reference: Option<&PpmlWaldReference>,
     tolerance: f64,
 ) -> Result<PpmlWaldReport> {
+    compute_wald(
+        coefficients,
+        covariance,
+        full_dimension,
+        tested,
+        reference,
+        tolerance,
+        false,
+    )
+}
+
+/// Compare the same joint zero restriction in two slope-coordinate systems.
+/// Standardizing the restrictions before the rank decision makes that decision
+/// invariant to the units of an individual coefficient or its variance.
+pub(super) fn slope_wald(
+    coefficients: &[f64],
+    covariance: &[f64],
+    tested: &[usize],
+    reference: Option<&PpmlWaldReference>,
+    tolerance: f64,
+) -> Result<PpmlWaldReport> {
+    compute_wald(
+        coefficients,
+        covariance,
+        coefficients.len(),
+        tested,
+        reference,
+        tolerance,
+        true,
+    )
+}
+
+fn compute_wald(
+    coefficients: &[f64],
+    covariance: &[f64],
+    full_dimension: usize,
+    tested: &[usize],
+    reference: Option<&PpmlWaldReference>,
+    tolerance: f64,
+    standardize: bool,
+) -> Result<PpmlWaldReport> {
     if tested.is_empty() {
         return Ok(PpmlWaldReport {
             statistic: None,
@@ -141,6 +182,9 @@ pub(crate) fn compute_ppml_wald(
                 "PPML constant contrast arithmetic is not finite",
             ));
         }
+    }
+    if standardize {
+        standardize_restrictions(&mut rhs, &mut matrix)?;
     }
     let scale = matrix
         .iter()
@@ -219,6 +263,36 @@ pub(crate) fn compute_ppml_wald(
         distribution: PpmlTestDistribution::ChiSquared,
         solve_relative_infinity_norm: solve_error,
     })
+}
+
+fn standardize_restrictions(rhs: &mut [f64], matrix: &mut [f64]) -> Result<()> {
+    let dimension = rhs.len();
+    // Positive diagonal row scaling preserves the null and the Wald
+    // quadratic form. Retain zero rows for the usual singular policy.
+    let mut sd = filled(
+        dimension,
+        1.0,
+        "unable to reserve PPML Wald restriction scales",
+    )?;
+    for i in 0..dimension {
+        let variance = matrix[i * dimension + i];
+        if variance > 0.0 {
+            sd[i] = variance.sqrt();
+        }
+    }
+    for (i, estimate) in rhs.iter_mut().enumerate() {
+        *estimate /= sd[i];
+        for j in 0..dimension {
+            matrix[i * dimension + j] = (matrix[i * dimension + j] / sd[i]) / sd[j];
+        }
+    }
+    if rhs.iter().chain(matrix.iter()).any(|v| !v.is_finite()) {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "original-unit PPML Wald standardization exceeds numerical range",
+        ));
+    }
+    Ok(())
 }
 
 fn copy_reference(reference: Option<&PpmlWaldReference>) -> Result<Option<PpmlWaldReference>> {
