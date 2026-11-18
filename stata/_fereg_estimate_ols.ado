@@ -333,7 +333,6 @@ program define _fereg_estimate_ols, eclass
         }
     }
 
-    local has_absorb_interaction 0
     local n_absorb_intercepts 0
     local n_absorb_slopes 0
     if `n_absorb_terms' > 0 {
@@ -346,30 +345,6 @@ program define _fereg_estimate_ols, eclass
             }
             local n_absorb_intercepts = `n_absorb_intercepts' + `absorb_terms'[`row',3]
             local n_absorb_slopes = `n_absorb_slopes' + `absorb_terms'[`row',4]
-            if `absorb_terms'[`row',2] > 1 | `absorb_terms'[`row',4] > 0 ///
-                local has_absorb_interaction 1
-        }
-    }
-    if `has_absorb_interaction' {
-        // ibn. includes every level; it does not choose a replacement base.
-        // Normalize only this operator for the guard, retaining parsed metadata.
-        local base_guard_rhs = subinstr(lower(`"`indepvars'"'), "ibn.", "i.", .)
-        if regexm(`"`base_guard_rhs'"', "(^|[ #])ib[^ #]*[.]") {
-            di as error "hidden categorical OLS final-sample rebasing does not yet support explicit base operators"
-            exit 498
-        }
-        if `n_components' > 0 {
-            forvalues row = 1/`n_components' {
-                if `model_components'[`row',4] == 2 {
-                    local source_id = `model_components'[`row',3]
-                    local source : word `source_id' of `source_vars'
-                    local fv_base : char `source'[_fv_base]
-                    if `"`fv_base'"' != "" {
-                        di as error "hidden categorical OLS final-sample rebasing does not yet support fvset base overrides"
-                        exit 498
-                    }
-                }
-            }
         }
     }
 

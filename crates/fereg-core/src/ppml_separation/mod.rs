@@ -8,7 +8,9 @@
 
 mod prepared_coordinator;
 mod simplex;
-pub(crate) use simplex::{model_simplex_interruptible, simplex_workspace_peak_cells};
+pub(crate) use simplex::{
+    model_simplex_interruptible, no_separation_certificate, simplex_workspace_peak_cells,
+};
 
 pub(crate) use prepared_coordinator::{
     PreparedSeparationCascade, PreparedSeparationCoordinator, PreparedSeparationRebuilder,
@@ -29,6 +31,15 @@ pub struct SeparationMethods {
     pub simplex: bool,
     pub iterated_rectifier: bool,
     pub mu: bool,
+}
+
+impl SeparationMethods {
+    pub const NONE: Self = Self {
+        fixed_effects: false,
+        simplex: false,
+        iterated_rectifier: false,
+        mu: false,
+    };
 }
 
 impl Default for SeparationMethods {
@@ -168,6 +179,14 @@ pub enum SeparationCertificateProof {
     /// direction can be zero on every positive-outcome observation.
     SimplexFullPositiveRank {
         columns: usize,
+    },
+    /// Within-level positive-row contrasts span the slopes, and every
+    /// absorbed level has a positive outcome. An optional explicit constant
+    /// belongs to the span of those levels.
+    SimplexWithinLevelPositiveRank {
+        slopes: usize,
+        levels: usize,
+        explicit_constant: bool,
     },
     /// Phase-I proved that the nonnegative boundary cone with unit slack
     /// normalization is infeasible.  The raw dual stays detector-private;

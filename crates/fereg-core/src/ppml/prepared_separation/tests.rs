@@ -1183,6 +1183,50 @@ fn over_budget_prepared_simplex_requires_ir_or_returns_allocation() {
 }
 
 #[test]
+fn over_budget_simplex_certifies_only_if_positive_rows_span_slopes_and_all_fe_levels() {
+    let run = |outcome: &[f64], x: &[f64]| {
+        let (request, clusters, mut loaded, uses) = fixture();
+        loaded.outcome = column(outcome);
+        loaded.numeric_sources[0].1 = column(x);
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
+        detect_prepared_ppml_separation(
+            owner,
+            PpmlConfig::default(),
+            SeparationConfig {
+                methods: SeparationMethods {
+                    fixed_effects: false,
+                    simplex: true,
+                    iterated_rectifier: false,
+                    mu: false,
+                },
+                drop_singletons: false,
+                simplex_max_tableau_cells: 12,
+                ..SeparationConfig::default()
+            },
+            None,
+            None,
+        )
+    };
+    let adjacent = f64::from_bits(1.0_f64.to_bits() + 1);
+    let x = [1.0, adjacent, 2.0, 2.0, 3.0, 3.0];
+    let spanning = run(&[1., 1., 1., 0., 1., 0.], &x).unwrap();
+    assert!(spanning.separation.dropped_observations.is_empty());
+    assert!(spanning.separation.methods.iter().any(|r| {
+        r.certificate.as_ref().is_some_and(|c| matches!(
+            c.proof,
+            crate::ppml_separation::SeparationCertificateProof::SimplexWithinLevelPositiveRank { slopes: 1, levels: 3, .. }
+        ))
+    }));
+    // The first group already spans x. A zero-only later FE still separates.
+    let missing_level = run(&[1., 1., 1., 1., 0., 0.], &x);
+    assert_eq!(missing_level.err().unwrap().code, ErrorCode::Allocation);
+    // The only within-level slope contrast now occurs on a zero-outcome row.
+    let one_sided = run(&[1., 0., 1., 1., 1., 1.], &x);
+    assert_eq!(one_sided.err().unwrap().code, ErrorCode::Allocation);
+}
+
+#[test]
 fn prepared_simplex_executes_the_full_absorbed_slope_model() {
     let (mut request, clusters, loaded, mut uses) = fixture();
     request.absorbed_terms[0]

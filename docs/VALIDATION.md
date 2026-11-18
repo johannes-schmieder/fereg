@@ -1,5 +1,31 @@
 # Validation status
 
+## Post-0.6.3 Mac candidate, November 18, 2026
+
+The large-OLS stability candidate now also covers three independently checked
+PPML cases. All seven calls in the large sparse-outcome example ran, including
+explicit IR and simplex-only detection. The fit kept the full sample. The
+explicit Poisson and clustered sandwich oracle agreed across thirty slopes
+to 9e-14 in coefficients and 5e-12 in relative standard errors. Default
+ppmlhdfe's final covariance used the preceding iteration's weights here;
+one additional iteration closed the difference. The separately reported
+reduced model passed at one and eight workers.
+
+An explicit nonminimum reference level survived singleton pruning and
+separation. The full and dense fits matched the reference estimation samples,
+and all active slope SEs agreed within 5e-10 relative. Turning off detection
+in the presence of a zero-only included category correctly failed atomic
+publication.
+
+For six saturated categorical small samples, independent rational
+separation directions, retained design ranks and weighted cell means
+confirmed the estimator's sample, normalization-dependent coefficients
+and fitted means. Twelve fits at two tolerances posted an exactly zero
+cluster covariance and missing Wald inference. A synthetic control in which
+the clusters split the cells retained positive sampling variation. The
+retained 2.26-million-row OLS comparison reproduced the preceding candidate's
+full coefficient and covariance matrices bit for bit.
+
 ## 0.6.3 release qualification, November 18, 2026
 
 Native source is `831cf47adddef60e9a19a6e63199be6cdff57c47`. The

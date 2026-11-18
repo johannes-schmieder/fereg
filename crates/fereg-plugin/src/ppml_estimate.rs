@@ -2782,19 +2782,9 @@ fn parse_separation_methods(value: &str) -> Result<SeparationMethods> {
         return Ok(SeparationMethods::default());
     }
     if value == "none" {
-        return Ok(SeparationMethods {
-            fixed_effects: false,
-            simplex: false,
-            iterated_rectifier: false,
-            mu: false,
-        });
+        return Ok(SeparationMethods::NONE);
     }
-    let mut methods = SeparationMethods {
-        fixed_effects: false,
-        simplex: false,
-        iterated_rectifier: false,
-        mu: false,
-    };
+    let mut methods = SeparationMethods::NONE;
     let mut seen = BTreeSet::new();
     for token in value
         .split(|character: char| character == ',' || character.is_ascii_whitespace())

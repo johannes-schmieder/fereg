@@ -206,3 +206,11 @@ fn full_model_dual_accepts_additive_alias_on_unbalanced_connected_graph() {
     loaded.numeric_sources[2].1 = column(&h);
     check_alias_support((ols, loaded, uses), "unbalanced two-effect additive alias");
 }
+
+#[test]
+fn paired_outcomes_certify_the_full_model_despite_a_numerically_omitted_contrast() {
+    // Three times binary64 0.1 is rounded: no exact scale or integer alias
+    // is available for the omitted column. Every row nevertheless has an
+    // identical partner with the other outcome, providing a signed dual.
+    check_alias_support(alias_fixture(false, 3.), "paired rounded finite contrast");
+}

@@ -60,17 +60,13 @@ forvalues case = 1/4 {
         foreach attempt in w1a w1b w4a w4b base {
             local workers = cond(substr("`attempt'",2,1) == "4",4,1)
             local rhs i.g
-            local expected_rc 459
-            if "`attempt'" == "base" {
-                local rhs ib3.g
-                local expected_rc 498
-            }
+            if "`attempt'" == "base" local rhs ib3.g
             capture noisily fereg y q v `rhs' [aw=w], absorb(g##c.(z1 z2)) ///
                 solver(lsmr, precondition(none)) memory(fast) ///
                 tolerance(1e-10) iterate(100) threads(`workers') deterministic ///
                 residuals(actual_r)
             local observed_rc = _rc
-            assert `observed_rc' == `expected_rc'
+            assert `observed_rc' == 459
             confirm new variable actual_r
             confirm new variable actual_f
             quietly datasignature confirm
@@ -236,18 +232,16 @@ forvalues case = 1/4 {
             drop actual_r actual_f
         }
     }
-    * Explicit base overrides remain unsupported with sloped absorption.
-    * Failure must preserve the accepted result and publish no new output.
+    * An explicit declaration of the default base gives the same fitted model.
     matrix accepted_b = e(b)
     matrix accepted_v = e(V)
     matrix accepted_status = e(fereg_status)
-    capture noisily fereg y q v ib3.g [aw=w], absorb(g##c.(z1 z2)) ///
-        solver(lsmr, precondition(none)) residuals(should_not_exist)
-    assert _rc == 498
-    assert "`e(cmd)'" == "fereg"
+    quietly fereg y q v ib3.g [aw=w], absorb(g##c.(z1 z2)) ///
+        solver(lsmr, precondition(none)) memory(fast) ///
+        tolerance(1e-10) iterate(100) threads(4) deterministic residuals(explicit_r)
     assert mreldif(e(b),accepted_b) == 0 & mreldif(e(V),accepted_v) == 0
     assert mreldif(e(fereg_status),accepted_status) == 0
     assert e(sample) == 1 & e(rank) == ref_rank
-    confirm new variable should_not_exist
+    assert abs(explicit_r-ref_resid) <= 1e-8
 }
 display as result "END_FIXTURE|ols_offset_slope_boundary|rc=0"

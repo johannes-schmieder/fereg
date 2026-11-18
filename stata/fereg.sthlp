@@ -570,11 +570,12 @@ baseline includes the resident segments and shared pools.
 
 {pstd}
 Fixed-width string categorical sources are supported; {cmd:strL} sources are
-not. When {cmd:absorb()} contains an interaction or absorbed slope, explicit
-RHS base operators such as {cmd:ib2.region} and {cmd:fvset} base overrides
-are unsupported. All-level {cmd:ibn.region} terms are supported, including
-within categorical interactions; final-sample filtering preserves their original
-coefficient slots without selecting a replacement base.
+not.
+Explicit RHS bases such as {cmd:ib2.region} and {cmd:fvset} base settings
+apply to factor main effects and categorical interactions, including models
+with interacted or sloped absorbed effects. The expanded base keeps its
+coefficient slot even when all observations at that level leave the sample.
+All-level {cmd:ibn.region} terms retain their original slots as well.
 
 {marker utilities}
 {title:Installation diagnostics}

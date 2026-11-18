@@ -1580,6 +1580,16 @@ fn separation_trace_digest(report: &SeparationReport) -> Result<u64> {
                         digest.usize(columns, "trace simplex positive rank")?;
                     }
                     SeparationCertificateProof::IteratedRectifierFixedPoint => digest.word(3),
+                    SeparationCertificateProof::SimplexWithinLevelPositiveRank {
+                        slopes,
+                        levels,
+                        explicit_constant,
+                    } => {
+                        digest.word(5);
+                        digest.usize(slopes, "trace within-level slope rank")?;
+                        digest.usize(levels, "trace positive fixed-effect levels")?;
+                        digest.word(u64::from(explicit_constant));
+                    }
                     SeparationCertificateProof::SimplexDualInfeasibility {
                         boundary_rows,
                         nullity,

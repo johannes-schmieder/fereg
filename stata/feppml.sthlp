@@ -223,13 +223,17 @@ An explicit request may name any nonrepeated subset of {cmd:fe},
 {cmd:simplex}, {cmd:ir}, and {cmd:mu}. {cmd:separation(none)} disables proactive
 separation detection but does not disable singleton pruning. {cmd:none} and
 {cmd:default} must appear alone.
+If the sample includes separated observations, the full-sample likelihood has
+no finite maximizer and {cmd:separation(none)} can return {cmd:r(430)} during IRLS.
 
 {pstd}
 Every accepted deletion has an independent certificate. A deletion restarts
 the registered method sequence on a newly rebased sample until a fixed point
-is reached. If the bounded simplex workspace does not fit, the default chain
-may continue only when comprehensive IR certifies the same ledger generation;
-an unresolved or simplex-only over-cap request returns {cmd:r(909)}.
+is reached. When the full simplex exceeds its workspace limit and the model
+absorbs one categorical intercept, the detector can still certify that there
+is no separation if the positive outcomes span all slopes and FE levels.
+If that proof is inconclusive, the default chain can continue with IR;
+a simplex-only request that exceeds the cap returns {cmd:r(909)}.
 
 {pstd}
 {cmd:dropreason(}{it:newvar}{cmd:)} creates a long integer variable on the
@@ -288,6 +292,15 @@ block in the original units. The reported normalized {cmd:_cons} has a zero
 covariance row. Different retained factor-variable bases can give different
 repaired standard errors. Robust and one-way clustered estimates use their
 usual covariance calculations.
+
+{pstd}
+A saturated categorical model fits a separate mean for each distinct design
+cell (adjusted for any offset). If each cell belongs to a single cluster
+and all other cluster dimensions subdivide those clusters, the cluster
+score equations imply exactly zero covariance. When {cmd:feppml} certifies
+this condition, {cmd:e(V)} is zero and the model Wald test is undefined.
+Stata returns zero for {cmd:_se[]} and displays missing standard errors,
+z statistics, p-values, and confidence limits in the coefficient table.
 
 {pstd}
 Structural residual DoF are
@@ -546,8 +559,11 @@ tolerances do not change. Unsupported topology, memory failure, invalid input, i
 internal errors remain fatal.
 
 {pstd}
-The outer IRLS tolerance defaults to 1e-8 and must lie strictly between zero
-and one. {cmd:iterate()} defaults to 10,000 and must be positive. Publication
+{cmd:tolerance()} sets the outer IRLS tolerance, which defaults to 1e-8 and
+must lie strictly between zero and one. The separation detector checks its
+projection scores against a separate internal limit. A failed separation
+score check reports the observed maximum relative score and that limit.
+{cmd:iterate()} defaults to 10,000 and must be positive. Publication
 requires two consecutive accepted iterations satisfying the deviance and
 independent score criteria, followed by a strict final solve and rank,
 predictor, Hessian, covariance, and fixed-effect certificates. {cmd:timeit}
@@ -818,12 +834,12 @@ leave the requested target absent.
 {pstd}
 Fixed-width string categorical sources are supported; {cmd:strL} sources are
 not. Categorical-by-continuous and continuous-by-continuous finite RHS
-interactions are unsupported. When {cmd:absorb()} contains an interaction or
-absorbed slope, explicit RHS base operators such as {cmd:ib2.region} and
-{cmd:fvset} base overrides are unavailable in the current final-sample
-rebasing path. All-level {cmd:ibn.region} terms are supported, including
-within categorical interactions; final-sample filtering and separation preserve
-their original coefficient slots without selecting a replacement base.
+interactions are unsupported.
+Explicit RHS bases such as {cmd:ib2.region} and {cmd:fvset} base settings
+apply to factor main effects and categorical interactions, including models
+with interacted or sloped absorbed effects. The expanded base keeps its
+coefficient slot even when all observations at that level leave the sample.
+All-level {cmd:ibn.region} terms retain their original slots as well.
 
 {pstd}
 The public surface does not include a model-based IID VCE, a preconditioner

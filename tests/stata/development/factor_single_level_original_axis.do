@@ -129,31 +129,23 @@ foreach memory in fast low {
     }
 }
 
-// Prohibited next overrides fail atomically for both absorbed grammars;
-// no-FE and ordinary intercept absorption still support minimum overrides.
+// Explicit and fvset middle bases must agree under interacted and sloped FEs.
 use `source', clear
 generate double z = cos(_n*.11)
 foreach effects in g#h g##c.z {
-    foreach method in operator fvset {
-        quietly regress y x
-        matrix old_b = e(b)
-        matrix old_V = e(V)
-        local rhs ib1.q
-        if "`method'" == "fvset" {
-            fvset base 1 q
-            local rhs i.q
-        }
-        capture noisily feppml y x `rhs', absorb(`effects') separation(none) ///
-            mu(should_not_exist)
-        assert _rc == 498
-        assert "`e(cmd)'" == "regress"
-        assert mreldif(e(b),old_b) == 0 & mreldif(e(V),old_V) == 0
-        confirm new variable should_not_exist
-        fvset clear q
-    }
+    quietly feppml y x ib2.q, absorb(`effects') separation(none) mu(explicit_mu)
+    matrix explicit_b = e(b)
+    matrix explicit_V = e(V)
+    local names : colnames e(b)
+    assert "`names'" == "x 1.q 2b.q 3.q o._cons"
+    fvset base 2 q
+    quietly feppml y x i.q, absorb(`effects') separation(none) mu(fvset_mu)
+    assert mreldif(e(b),explicit_b) == 0 & mreldif(e(V),explicit_V) == 0
+    assert explicit_mu == fvset_mu
+    quietly poisson y x ib2.q i.`effects', nolog
+    predict double ref_mu, n
+    assert abs(explicit_mu-ref_mu) < 1e-7*(1+ref_mu)
+    drop explicit_mu fvset_mu ref_mu
+    fvset clear q
 }
-quietly feppml y x ib1.q, separation(none)
-assert e(converged) == 1
-quietly feppml y x ib1.q, absorb(g) separation(none)
-assert e(converged) == 1
 display "END_FIXTURE|factor_single_level_original_axis|rc=0"

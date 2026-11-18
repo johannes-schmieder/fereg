@@ -293,5 +293,46 @@ assert `"`e(clustvar1)'"' == "FirmID"
 assert `"`e(clustvar2)'"' == "RegionID"
 assert `"`e(clustvar)'"' == "FirmID RegionID"
 
+* Two saturated cells. Each id lies in one cell, so the id and cell#id
+* meats cancel. The two cell score sums are exactly zero.
+clear
+input byte(cell y)
+1 1
+1 2
+1 3
+1 2
+2 3
+2 4
+2 6
+2 7
+end
+generate byte id = _n
+`feppml_test_command' y ib1.cell, vce(cluster cell id)
+tempname saturated_V saturated_subsets saturated_table
+matrix `saturated_V' = e(V)
+mata: assert(all(st_matrix("`saturated_V'") :== 0))
+assert abs(_b[2.cell] - ln(5/2)) < 1e-9 & _se[2.cell] == 0
+assert e(feppml_psd_final_rank) == 0 & missing(e(chi2))
+assert e(N_clust1) == 2 & e(N_clust2) == 8 & e(N_clust) == 2
+matrix `saturated_subsets' = e(feppml_subset)
+assert rowsof(`saturated_subsets') == 3
+assert `saturated_subsets'[1,2] == 2 & `saturated_subsets'[2,2] == 8
+assert `saturated_subsets'[3,2] == 8 & `saturated_subsets'[3,3] == -1
+quietly ereturn display
+matrix `saturated_table' = r(table)
+local slope = colnumb(`saturated_table', "2.cell")
+foreach statistic in se z pvalue ll ul {
+    assert missing(`saturated_table'[rownumb(`saturated_table', "`statistic'"), `slope'])
+}
+
+* With id alone, the score varies across observations within both cells.
+* V(log mean2 - log mean1) = 8/7 * (2/(4*2)^2 + 10/(4*5)^2).
+`feppml_test_command' y ib1.cell, vce(cluster id)
+assert abs(_se[2.cell]^2 - 8/7 * (2/64 + 10/400)) < 1e-9
+assert e(N_clust) == 8 & !missing(e(chi2))
+quietly ereturn display
+matrix `saturated_table' = r(table)
+assert `saturated_table'[5,`slope'] < _b[2.cell] & _b[2.cell] < `saturated_table'[6,`slope']
+
 if !`feppml_hidden_wrapper' ///
     display as result "END_FIXTURE|feppml_weights_inference|rc=0"

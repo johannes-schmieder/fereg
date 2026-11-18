@@ -121,3 +121,46 @@ fn exact_alias_prefix_cannot_bootstrap_circular_or_future_weak_aliases() {
         }
     }
 }
+
+#[test]
+fn narrow_first_positive_margin_allows_a_certified_dual() {
+    // The positive rows at both -1 and +1 span every intercept/slope value.
+    // The two boundary rows make the first projection's smallest positive
+    // margin O(delta), although no separating direction is possible.
+    let y = [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 0., 0.];
+    for delta in [1e-4, 1e-5] {
+        let x = vec![1., -1., 1., -1., 1., -1., 1., -1., 1., -1., 11. - delta, 1.];
+        let cluster = [1., 2., 1., 2., 1., 2., 1., 2., 1., 2., 1., 2.];
+        let owner = owner_with_aliases(&[x], &[1.; 12], &cluster, &y, false);
+        let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+        let generation = coordinator.view().prepared;
+        let ppml = detector_ppml(FeSolverKind::Map);
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..Default::default()
+        };
+        let config = rectifier_only();
+        let stable::Resolution::Dual(dual, _) = stable::resolve(
+            generation,
+            ppml,
+            config,
+            linear,
+            &mut |_| Ok(()),
+            DetectorAdmission::default(),
+            config.max_ir_iterations,
+        )
+        .unwrap() else {
+            panic!("full positive rank precludes a separator");
+        };
+        assert!(stable::certify_dual(
+            generation,
+            &dual,
+            ppml,
+            config,
+            linear,
+            DetectorAdmission::default()
+        )
+        .unwrap());
+    }
+}

@@ -550,6 +550,7 @@ fn admit_complete_span_workspace(
     Ok(required)
 }
 
+mod positive_rank;
 mod stable;
 mod stable_alias;
 mod stable_local;
@@ -1070,7 +1071,13 @@ where
                 } else {
                     ErrorCode::NonConvergence
                 },
-                "prepared simplex remained unresolved and IR did not certify the same generation",
+                if simplex_status == MethodStatus::SkippedMemory
+                    && !config.methods.iterated_rectifier
+                {
+                    "the full separation simplex exceeds the workspace limit and positive-outcome rank did not certify this sample; rerun with default separation to enable the iterated rectifier"
+                } else {
+                    "prepared simplex remained unresolved and IR did not certify the same generation"
+                },
             ));
         }
 
@@ -1998,6 +2005,16 @@ fn prepared_simplex_proposal(
         .ok_or_else(|| allocation("prepared simplex construction workspace overflowed"))?;
     let peak_cells = kernel_peak_cells.max(construction_peak_cells);
     if peak_cells > config.simplex_max_tableau_cells {
+        if let Some(proposal) = positive_rank::single_intercept(
+            generation,
+            &topology,
+            positive,
+            topology_cells,
+            config,
+            interrupt,
+        )? {
+            return Ok(proposal);
+        }
         return Ok(DetectionProposal::empty(
             SeparationMethod::Simplex,
             MethodStatus::SkippedMemory,
@@ -3601,6 +3618,7 @@ fn validate_prepared_numerical_metadata(
                             (
                                 SeparationMethod::Simplex,
                                 crate::ppml_separation::SeparationCertificateProof::SimplexFullPositiveRank { .. }
+                                    | crate::ppml_separation::SeparationCertificateProof::SimplexWithinLevelPositiveRank { .. }
                                     | crate::ppml_separation::SeparationCertificateProof::SimplexDualInfeasibility { .. },
                             ) | (
                                 SeparationMethod::IteratedRectifier,
@@ -4486,6 +4504,16 @@ fn digest_certificate(
         crate::ppml_separation::SeparationCertificateProof::SimplexFullPositiveRank { columns } => {
             digest.byte(2);
             digest.usize(columns)?;
+        }
+        crate::ppml_separation::SeparationCertificateProof::SimplexWithinLevelPositiveRank {
+            slopes,
+            levels,
+            explicit_constant,
+        } => {
+            digest.byte(5);
+            digest.usize(slopes)?;
+            digest.usize(levels)?;
+            digest.bool(explicit_constant);
         }
         crate::ppml_separation::SeparationCertificateProof::SimplexDualInfeasibility {
             boundary_rows,

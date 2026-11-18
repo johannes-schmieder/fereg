@@ -9,6 +9,10 @@ program define _fereg_display
     }
     if `"`e(model)'"' == "poisson" {
         DisplayPpmlHeader
+        if `"`e(vce)'"' == "cluster" & e(df_m) > 0 & e(df_m) < . & ///
+            e(feppml_psd_final_rank) == 0 & missing(e(chi2)) {
+            di as txt "note: the clustered covariance has zero rank. Wald inference is undefined."
+        }
         di
         ereturn display, `options'
         DisplayAbsorbed

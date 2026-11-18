@@ -1053,14 +1053,13 @@ all-categorical factor interactions, and Stata lag/lead/difference operators
 on continuous variables. Stata supplies authoritative base/omission flags and
 canonical names through `fvexpand`/`_ms_parse_parts`; Rust must not infer these
 flags from spelling. Do not broadly expand design columns in ado/Mata.
-All-level `ibn.` factor operators are supported with interacted or sloped
-absorption. An original graph without a declared base remains unbased; final-
-sample filtering never chooses a replacement base. Stata may discard the `bn`
-spelling from its parsed raw operators, so admission uses the authoritative
-recipe flags rather than operator text. A graph with a declared base must
-still use its original minimum level, with no conflicting declared bases.
-Explicit RHS base overrides (`ib#`, `fvset`) with interacted or sloped
-absorption remain unsupported until a separately approved extension.
+Both estimators preserve the declared RHS base in every supported absorption
+model, including interacted and sloped effects. This covers explicit
+(`ib2.region`), rule-based (`ib(last).region`), and `fvset` bases. Stata
+resolves these rules on the factor expansion sample. A declared base keeps its
+slot even if singleton pruning or separation removes every observation at that
+level. An unbased recipe, including `ibn.` in an interaction, stays unbased.
+Conflicting base declarations for one source are invalid.
 
 Preserve input-order slots and stripes for kept, base, explicitly omitted,
 FE-collinear and numerically rank-deficient columns. A vanished level becomes
@@ -1267,6 +1266,17 @@ unweighted score outer product, not f_i². Robust correction is
 `N_eff/(N_eff−1)`. Cluster scores sum the weighted scores within groups;
 one common `G_min/(G_min−1)` multiplies the complete inclusion–exclusion
 meat. No OLS residual-DoF or subset-specific multiplier applies.
+
+A bounded exact PPML certificate applies when the retained categorical design
+spans every distinct design cell and each cell has a positive outcome. The
+cell score equation sets its weighted residual sum to zero. When each cell
+belongs to one group of a declared cluster dimension, and every other
+dimension refines that partition, the coarsest cluster scores vanish.
+All finer CGM terms cancel against the same partitions intersected with the
+coarsest dimension. Publish the resulting zero covariance and undefined Wald
+test. A full row rank witness over a prime field is sufficient. An
+inconclusive witness or unavailable workspace leaves ordinary inference in
+charge.
 
 For PPML multiway clustering, measure each kept raw regressor in unweighted
 sample standard deviations (N−1 denominator, minimum 0.001) on the first
@@ -1823,11 +1833,25 @@ commit the union as one generation, compact all sources together, rebase
 topology once and restart the chain. First certified reason in canonical
 method order wins; singleton counts remain separate.
 
+A failed separation projection score check returns r(430) and reports its
+maximum relative score and the internal acceptance limit. Public `tolerance()`
+controls outer IRLS convergence. If unscreened IRLS fails to converge on a
+sample containing zeros, retain its numerical failure reason and identify
+`separation(none)` in the diagnostic. Default screening can then test for a
+recession direction. Only a certified direction establishes separation.
+
 Full-model simplex includes finite columns, every FE level and slope channel
 in its explicit width; checked capacity includes design, null-space/tableau,
-topology and certificates. A capacity skip is permitted only if later requested
-comprehensive IR on the same generation certifies no unhandled separation.
-A simplex-only or unresolved over-cap request fails r(909). An IR drop
+topology and certificates. When the dense workspace exceeds the cap and there
+is one categorical intercept effect, the detector can instead verify exact
+positive-support rank within the same cap. Within-level differences of positive
+rows must span every finite slope over an odd prime field, and every FE level
+must contain a positive observation. Together these conditions force every
+direction that vanishes on positive rows to vanish on the full model. Failure
+to find a witness gives no conclusion. After a capacity skip, a later requested
+comprehensive IR must certify that the same generation has no unhandled
+separation. If the cap prevents certification and no later method resolves
+the skip, the command returns r(909). An IR drop
 restarts the chain and cannot certify a prior generation's skipped simplex.
 Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
 a fitted start and the same independent cone certificate; accepted Mu drops
@@ -1907,8 +1931,9 @@ strictly positive on every zero-outcome row, with minimum boundary coordinate
 greater than the certificate tolerance times its Euclidean norm. Raw and
 intercept-centered finite/FE channel moments, plus a fresh unit-weight
 projection onto the complete model span, are bounded relative to that minimum
-coordinate. Every omitted finite direction requires an exact raw-source alias
-proof; a tiny projected residual, including a rounded zero, is insufficient.
+coordinate. A projection-based certificate requires an exact raw-source alias
+proof for each omitted finite direction. A tiny projected residual, including
+a rounded zero, is insufficient.
 This avoids hiding separating combinations of individually small directions.
 Exact source and power-of-two affine identities may establish redundancy.
 The ordered audit may use already-certified earlier columns as witnesses for
@@ -1981,15 +2006,25 @@ Each solve absorbs its new response and repeats the canonical rank and
 certificate checks. A numerical refusal of a reused projection retries that
 response with the full original panel. The dual check releases the panel before
 individual omitted-column projections and retries an unsuccessful span check
-from the original columns. Terminal replay always computes a fresh projection.
+from the original columns. Terminal replay rebuilds a projection-based certificate
+using a fresh projection.
 The IRLS routing policy is unchanged. Ineligible models or
 insufficient optional workspace retain the existing unit projector. Numerical
 failure retains the existing bounded retry and error behavior.
 A proposed primal direction still passes the independent full-model deletion
-certificate above. A comfortably positive dual that fails the full-span audit
-fails promptly; repeating a truncated projector cannot certify the missing
-directions. Otherwise the recurrence remains bounded by the IR iteration
-budget. Numerical failures (`NonConvergence` or `InvalidData`) of the weighted
+certificate above. When a strictly positive dual fails the full-span audit,
+the detector can scale it by its smallest boundary value and round to propose
+integer multipliers. It verifies the boundary margin and checks an exact zero
+moment for every original finite column, structural intercept, and absorbed
+intercept or slope channel. A rounded product or partial sum invalidates this
+proof. Terminal replay verifies those exact moments from the original model.
+If integer balance fails, a fresh unit projection removes the residual model
+component and the refined vector goes through the full numerical audit. The
+recurrence can continue while the normalized interior margin grows by more
+than the projection tolerance in relative terms. A stalled unresolved margin
+returns a numerical refusal. The configured IR limit bounds the number of
+recurrence iterations.
+Numerical failures (`NonConvergence` or `InvalidData`) of the weighted
 detector may use this same recovery; an unsuccessful numerical recovery retains
 the original error, while Break, allocation and internal failures propagate.
 The resulting no-drop evidence is independently replayed before publication.

@@ -134,87 +134,39 @@ fn remove_provisional_intercept(model: &mut PreparedOlsModel, slots: usize) -> R
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy)]
-struct CategoricalBasePolicy {
-    source: SourceId,
-    minimum_level_bits: u64,
-    base_level_bits: Option<u64>,
-}
-
-/// Stata's metadata does not distinguish default from explicit minimum bases,
-/// or `ibn.` from selected unbased levels. Public syntax restrictions belong
-/// to Stata. Both unbased recipes and a declared minimum base are valid;
-/// never select a replacement base or alter whole-column omission flags.
+/// Accept the base declared by Stata, including a base with no surviving
+/// observations. Unbased components (such as `ibn.`) can occur alongside a
+/// based main effect for the same source. Only contradictory declarations
+/// are invalid.
 fn validate_categorical_base_policy(graph: &CompiledTermGraph) -> Result<()> {
-    let mut policies = Vec::new();
-    policies
+    let mut bases = Vec::new();
+    bases
         .try_reserve_exact(graph.sources.len())
-        .map_err(|_| allocation("unable to reserve categorical base-policy identities"))?;
-    for term in &graph.terms {
-        for component in &term.components {
-            if component.kind != ComponentKind::Categorical
-                || component.level_state != LevelState::Present
-                || component.time_series_state != TimeSeriesState::None
-            {
-                continue;
-            }
-            let level_bits = canonical_factor_value(component.level_value).to_bits();
-            let policy = if let Some(policy) = policies
-                .iter_mut()
-                .find(|policy: &&mut CategoricalBasePolicy| policy.source == component.source)
-            {
-                policy.minimum_level_bits =
-                    minimum_level_bits(policy.minimum_level_bits, level_bits);
-                policy
-            } else {
-                if policies.len() == policies.capacity() {
-                    return Err(allocation(
-                        "categorical base-policy identity capacity exhausted",
-                    ));
-                }
-                policies.push(CategoricalBasePolicy {
-                    source: component.source,
-                    minimum_level_bits: level_bits,
-                    base_level_bits: None,
-                });
-                policies
-                    .last_mut()
-                    .ok_or_else(|| invalid("categorical base-policy identity is absent"))?
-            };
-            if component.base == MetadataFlag::True {
-                match policy.base_level_bits {
-                    None => policy.base_level_bits = Some(level_bits),
-                    Some(base) if base == level_bits => {}
-                    Some(_) => {
-                        return Err(unsupported(
-                            "categorical final-sample rebasing requires exactly one base level per source",
-                        ));
-                    }
-                }
-            }
+        .map_err(|_| allocation("unable to reserve categorical base declarations"))?;
+    bases.resize(graph.sources.len(), None);
+
+    for component in graph.terms.iter().flat_map(|term| &term.components) {
+        if component.kind != ComponentKind::Categorical
+            || component.level_state != LevelState::Present
+            || component.time_series_state != TimeSeriesState::None
+            || component.base != MetadataFlag::True
+        {
+            continue;
         }
-    }
-    for policy in policies {
-        if policy
-            .base_level_bits
-            .is_some_and(|base| base != policy.minimum_level_bits)
+        let base = bases
+            .get_mut(component.source.get() as usize - 1)
+            .ok_or_else(|| invalid("categorical base source is absent"))?;
+        let level = canonical_factor_value(component.level_value).to_bits();
+        if base
+            .replace(level)
+            .is_some_and(|previous| previous != level)
         {
             return Err(unsupported(
-                "categorical final-sample rebasing requires Stata's default minimum base policy",
+                "categorical final-sample rebasing requires exactly one base level per source",
             ));
         }
     }
     Ok(())
-}
-
-fn minimum_level_bits(left: u64, right: u64) -> u64 {
-    let left_value = f64::from_bits(left);
-    let right_value = f64::from_bits(right);
-    if right_value < left_value {
-        right
-    } else {
-        left
-    }
 }
 
 fn validate_term_grammar(term: &crate::metadata::ExpandedTerm) -> Result<()> {
@@ -465,14 +417,11 @@ mod tests {
     }
 
     #[test]
-    fn declared_bases_must_be_minimum_but_unbased_recipes_are_valid() {
+    fn accepts_default_explicit_and_unbased_recipes() {
         let default = factor_graph(Some(1.0));
         validate_categorical_base_policy(&default).expect("default minimum base");
 
-        let nonminimum = validate_categorical_base_policy(&factor_graph(Some(2.0)))
-            .expect_err("nonminimum base must fail closed");
-        assert_eq!(nonminimum.code, ErrorCode::Unsupported);
-        assert!(nonminimum.message.contains("default minimum base policy"));
+        validate_categorical_base_policy(&factor_graph(Some(2.0))).expect("explicit middle base");
 
         let no_base = factor_graph(None);
         validate_categorical_base_policy(&no_base).expect("all-level unbased recipes");

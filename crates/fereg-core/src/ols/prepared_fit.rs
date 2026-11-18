@@ -1871,7 +1871,15 @@ fn fit_projection_only_internal<'a, P: PreparedOlsFitView + ?Sized, R: FitReserv
         config.score_tolerance,
     )?;
     if !score_certificate.passed {
-        return Err(score_certificate_failure(config.absorb.map.tolerance));
+        // This projection runs inside the separation detector. The score
+        // threshold is independent of the public PPML outer tolerance.
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            format!(
+                "PPML separation projection failed its score check (maximum relative score {:e}, limit {:e})",
+                score_certificate.relative_infinity_norm, config.score_tolerance
+            ),
+        ));
     }
     let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
     // A deferred absorbed-model intercept is not part of the finite rank

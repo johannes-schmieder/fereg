@@ -6517,6 +6517,26 @@ fn projection_only_matches_full_fit_without_constructing_reported_bread() {
         None,
     )
     .expect("projection-only fit");
+    // Force a miss in this same projection so its internal threshold cannot
+    // be mistaken for an estimation tolerance that the user can adjust.
+    let strict_score = PreparedOlsFitConfig {
+        score_tolerance: 1e-30,
+        ..config
+    };
+    let error = fit_prepared_weighted_linear_projection_once(
+        &prepared_data,
+        frame,
+        strict_score,
+        None,
+        false,
+        None,
+    )
+    .unwrap_err();
+    assert_eq!(error.code, ErrorCode::NonConvergence);
+    assert!(error
+        .message
+        .contains("separation projection failed its score check"));
+    assert!(error.message.contains("limit 1e-30"));
     assert!(projection.certified());
     assert_eq!(projection.finite_rank(), full.finite_rank());
     assert_eq!(

@@ -73,7 +73,7 @@ void ibn_sandwich(string scalar vars, real scalar clustered)
 end
 
 foreach model in ols ppml {
-foreach scenario in full missing_half separated_half separated_base {
+foreach scenario in full missing_half separated_half separated_base explicit_base separated_explicit_base {
     if "`model'"=="ols" & strpos("`scenario'","separated") continue
     use `original', clear
     generate byte wanted = 1
@@ -89,7 +89,17 @@ foreach scenario in full missing_half separated_half separated_base {
         replace y = 0 if c01==1
         replace wanted = c01!=1
     }
-    fvexpand x ibn.half#i.(c01 c02) if !missing(y)
+    local rhs x ibn.half#i.(c01 c02)
+    if "`scenario'"=="explicit_base" local rhs x ibn.half#ib2.c01 ibn.half#i.c02
+    if "`scenario'"=="separated_explicit_base" {
+        * Relabel the omitted group so its explicit base is the largest level.
+        * The independent dummy design and contrasts on levels 2 and 3 persist.
+        replace c01 = 4 if c01==1
+        replace y = 0 if c01==4
+        replace wanted = c01!=4
+        local rhs x ibn.half#ib4.c01 ibn.half#i.c02
+    }
+    fvexpand `rhs' if !missing(y)
     local original_names `r(varlist)' _cons
     local slots : word count `original_names'
     foreach covariance in robust cluster {
@@ -97,14 +107,14 @@ foreach scenario in full missing_half separated_half separated_base {
         local vce robust
         if "`covariance'"=="cluster" local vce cluster cl1 cl2
         if "`model'"=="ppml" {
-            quietly feppml y x ibn.half#i.(c01 c02) [pw=pw], ///
+            quietly feppml y `rhs' [pw=pw], ///
                 absorb(period#half entry#half family#half) vce(`vce') ///
                 mu(actual) threads(1)
             matrix status = e(feppml_status)
             scalar correction = e(feppml_inference)[3,1]
         }
         else {
-            quietly fereg y x ibn.half#i.(c01 c02) [pw=pw], ///
+            quietly fereg y `rhs' [pw=pw], ///
                 absorb(period#half entry#half family#half) vce(robust) ///
                 residuals(actual) threads(1)
             matrix status = e(fereg_status)
@@ -231,7 +241,7 @@ quietly poisson y d13_0 d13_1 d22_0 d22_1 d11_0 d11_1 fe_* [pw=pw], noconstant n
 predict double reference_mu, n
 assert abs(range_mu-reference_mu)<1e-7*(1+reference_mu)
 
-* Other explicit base policies still fail atomically, even beside valid ibn.
+* Conflicting bases still fail atomically for both estimators.
 quietly regress y x
 matrix held_b=e(b)
 matrix held_V=e(V)
@@ -239,25 +249,12 @@ generate byte held_sample=e(sample)
 foreach command in fereg feppml {
     local output residuals(unpublished)
     if "`command'"=="feppml" local output mu(unpublished)
-    foreach rhs in "ib0.half#i.c01" "ib1.half#i.c01" ///
-        "ibn.half#ib1.c01" "ibn.half#ib2.c01" {
-        capture noisily `command' y `rhs', absorb(period#half) `output'
-        assert _rc==498
-        assert "`e(cmd)'"=="regress"
-        assert mreldif(e(b),held_b)==0 & mreldif(e(V),held_V)==0
-        assert e(sample)==held_sample
-        confirm new variable unpublished
-    }
-    foreach base in 1 2 {
-        fvset base `base' c01
-        capture noisily `command' y ibn.half#i.c01, absorb(period#half) `output'
-        assert _rc==498
-        assert "`e(cmd)'"=="regress"
-        assert mreldif(e(b),held_b)==0 & mreldif(e(V),held_V)==0
-        assert e(sample)==held_sample
-        confirm new variable unpublished
-        fvset clear c01
-    }
+    capture noisily `command' y ib0.half#i.c01 ib1.half#i.c02, absorb(period#half) `output'
+    assert _rc==198
+    assert "`e(cmd)'"=="regress"
+    assert mreldif(e(b),held_b)==0 & mreldif(e(V),held_V)==0
+    assert e(sample)==held_sample
+    confirm new variable unpublished
 }
 
 display as result "END_FIXTURE|stability061_ibn_interacted_absorb|rc=0"

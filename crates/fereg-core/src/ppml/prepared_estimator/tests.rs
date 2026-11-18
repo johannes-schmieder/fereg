@@ -1533,6 +1533,34 @@ fn whole_factor_level_separation_rebuilds_on_the_original_axis() {
 }
 
 #[test]
+fn saturated_categorical_cluster_zero_requires_whole_cells() {
+    let run = |dimensions: &[u32]| {
+        let (mut request, mut loaded) = factor_rebase_fixture();
+        loaded.ols.numeric_sources[1].1 = column(&(0..12).map(f64::from).collect::<Vec<_>>());
+        request.vce = PpmlVceRequest::Clustered;
+        request.clusters = dimensions
+            .iter()
+            .map(|&id| OlsClusterTermV1 {
+                label: if id == 1 { "g" } else { "x" }.into(),
+                sources: vec![SourceId::new(id).unwrap()],
+            })
+            .collect();
+        fit_prepared_ppml(request, loaded).unwrap()
+    };
+    // g is the fitted cell. x is a distinct cluster per observation; it
+    // cancels against g#x in either CGM ordering but has positive meat alone.
+    for dimensions in [&[1][..], &[1, 2], &[2, 1]] {
+        let result = run(dimensions);
+        assert!(result.inference().vce.covariance.iter().all(|&v| v == 0.));
+        assert_eq!(result.inference().vce.psd.final_rank, 0);
+        assert_eq!(result.inference().wald.statistic, None);
+    }
+    let result = run(&[2]);
+    let expected = (22.0_f64 / 9.0).ln().powi(2) / (28.0 / 729.0 + 13.0 / 1089.0);
+    assert!((result.inference().wald.statistic.unwrap() - expected).abs() < 1e-8);
+}
+
+#[test]
 fn vanished_base_ppml_preserves_original_cell_means_and_robust_covariance() {
     let (mut request, loaded) = factor_rebase_fixture();
     request.output.mean = true;
@@ -1849,6 +1877,18 @@ fn two_way_clustered_composite_publishes_every_final_subset() {
     assert!(inference.vce.psd.adjusted);
     assert_eq!(inference.vce.covariance, [0.; 4]);
     assert_eq!(inference.wald.statistic, None);
+}
+
+#[test]
+fn unscreened_nonconvergence_with_zeros_identifies_the_disabled_detector() {
+    for separated in [true, false] {
+        let (mut request, loaded) = fixture(1, false, false, false, false, separated);
+        request.separation.methods = SeparationMethods::NONE;
+        request.ppml.max_iterations = 1;
+        let error = fit_prepared_ppml(request, loaded).unwrap_err();
+        assert_eq!(error.code, ErrorCode::NonConvergence);
+        assert_eq!(error.message.contains("separation(none)"), separated);
+    }
 }
 
 #[test]

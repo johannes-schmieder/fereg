@@ -391,6 +391,7 @@ where
         input,
         ThreadConfig::default(),
         None,
+        false,
         &mut || Ok(()),
     )
 }
@@ -402,6 +403,7 @@ pub(super) fn compute_ppml_inference_interruptible_with_threads<D>(
     input: PpmlInferenceInput<'_, D>,
     threads: ThreadConfig,
     reference: Option<&ReferenceCovariance>,
+    zero_meat: bool,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<PpmlInferenceResult>
 where
@@ -423,12 +425,12 @@ where
     };
     let bread_symmetry = matrix_symmetry_error(input.identified_bread, rank)?;
     let mut reservation = SystemSandwichReservation;
-    let (production_meat, certificate_meat, cluster_subsets) = if score_dimension == 0 {
+    let (production_meat, certificate_meat, cluster_subsets) = if score_dimension == 0 || zero_meat
+    {
         let reports = if effective_kind == PpmlVceKind::Clustered {
             // The shared reducer intentionally rejects a zero-dimensional
-            // design.  This is the only path that factors cluster tuples
-            // independently; nonzero-rank inference obtains group counts from
-            // the same shared pass that builds the meat.
+            // design. A structural proof of zero clustered meat also leaves
+            // only the observed group inventory to compute.
             cluster_subset_inventory_interruptible(input.clusters, rows, interrupt)?
         } else {
             Vec::new()
@@ -575,6 +577,17 @@ where
     let (mut raw_covariance, meat_error, mut covariance_error, factor_check) =
         if score_dimension == 0 {
             (Vec::new(), 0.0, 0.0, false)
+        } else if zero_meat {
+            (
+                filled(
+                    score_dimension * score_dimension,
+                    0.0,
+                    "unable to reserve zero PPML covariance",
+                )?,
+                0.0,
+                0.0,
+                false,
+            )
         } else {
             let mut meat_error =
                 matrix_relative_difference(&production_meat, &certificate_meat, score_dimension)?;
@@ -1542,6 +1555,7 @@ mod tests {
                         },
                         ThreadConfig::from_requested(threads, true).unwrap(),
                         None,
+                        false,
                         &mut || Ok(()),
                     )
                     .expect("rank-deficient score factors define nonnegative variances");
@@ -1768,6 +1782,7 @@ mod tests {
                     },
                     ThreadConfig::from_requested(threads, true).unwrap(),
                     None,
+                    false,
                     &mut || Ok(()),
                 )
                 .unwrap();
@@ -1850,6 +1865,7 @@ mod tests {
                 },
                 ThreadConfig::from_requested(requested, true).expect("thread config"),
                 None,
+                false,
                 &mut || Ok(()),
             )
             .expect("observed PPML inference");

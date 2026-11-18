@@ -52,8 +52,8 @@ foreach kind in unit fw pw {
         assert e(separated)==256 & e(N_physical)==7936
         assert reason==cond(g==32,9,0)
         assert missing(mu_native) if g==32
-        assert e(feppml_separation_sequence)[3,7]==16
-        assert e(feppml_separation_sequence)[3,13]==0
+        assert e(feppml_separation_sequence)[3,7]==2
+        assert e(feppml_separation_sequence)[3,13]==1
         assert e(feppml_separation_sequence)[4,7]==2
         assert e(feppml_separation_sequence)[4,13]==1
         assert e(feppml_separation_sequence)[4,12]==e(feppml_receipt)[1,24]
@@ -74,7 +74,15 @@ foreach kind in unit fw pw {
     }
 }
 
-* A skipped simplex-only request still fails atomically; no IR is substituted.
+* Above the dense limit, positive rows span the full model once g==32 is
+* removed. The exact rank proof also publishes when IR was never requested.
+quietly feppml y x1 x2, absorb(g) separation(fe simplex) dropreason(sxreason)
+assert e(sample)==(g<32) & sxreason==cond(g==32,9,0)
+assert e(feppml_separation_sequence)[3,7]==2
+assert e(feppml_separation_sequence)[3,13]==1
+
+* Without FE pruning, g==32 provides a real separation direction. Positive
+* rows cannot certify no separation. The over-cap request fails atomically.
 quietly regress y x1 x2
 matrix before_b=e(b)
 matrix before_V=e(V)

@@ -22,7 +22,9 @@ separately from canonical tokens and are materialized against the active
 time/panel settings before native binding.
 
 Stata's base/omission flags are authoritative; Rust does not infer them from
-token spelling. After final sample construction, vanished factor levels become
+token spelling. The expansion records the chosen base for each source, including
+explicit nonminimum and `fvset` bases. Final-sample construction preserves that
+base and its original slot. Vanished factor levels become
 canonical all-zero/omitted recipes without changing coefficient-slot identity.
 
 ## Tables

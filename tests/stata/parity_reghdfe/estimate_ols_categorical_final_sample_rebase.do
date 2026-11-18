@@ -141,24 +141,31 @@ foreach inference in iid robust cluster {
     }
 }
 
-// Restore an accepted next result before checking fail-closed unsupported syntax.
-_fereg_estimate_ols_test y c.x i.f##i.z, absorb(a#b)
-tempname accepted_b accepted_V
-matrix `accepted_b' = e(b)
-matrix `accepted_V' = e(V)
-foreach specification in "ib1.f" "ib3.f" {
-    capture noisily _fereg_estimate_ols_test y c.x `specification', absorb(a#b)
-    assert _rc == 498
-    assert mreldif(e(b), `accepted_b') == 0
-    assert mreldif(e(V), `accepted_V') == 0
+// The singleton groups contain every row of level 1. Its explicit base
+// coordinate survives their removal. Other bases keep their original slots.
+foreach specification in ib1.f ib(first).f ib2.f ib3.f ib(last).f fvset {
+    local rhs `specification'
+    local base 1
+    if "`rhs'" == "ib2.f" local base 2
+    if inlist("`rhs'", "ib3.f", "ib(last).f", "fvset") local base 3
+    if "`rhs'" == "fvset" {
+        fvset base 3 f
+        local rhs i.f
+    }
+    quietly fereg y x `rhs', absorb(a#b) residuals(explicit_r)
+    assert e(sample) == inrange(obs_id,2,9)
+    local names : colnames e(b)
+    local base_name : word `=`base'+1' of `names'
+    assert "`base_name'" == "`base'b.f" & e(fereg_status)[`base'+1,2] == 2
+    scalar bx = _b[x]
+    scalar sex = _se[x]
+    quietly regress y x `rhs' i.ab if inrange(obs_id,2,9)
+    predict double ref_r if e(sample), residuals
+    assert abs(ref_r-explicit_r) <= 5e-9 if e(sample)
+    assert abs(bx-_b[x]) <= 5e-9 & abs(sex-_se[x]) <= 5e-9
+    drop explicit_r ref_r
+    fvset clear f
 }
-
-fvset base 3 f
-capture noisily _fereg_estimate_ols_test y c.x i.f, absorb(a#b)
-assert _rc == 498
-assert mreldif(e(b), `accepted_b') == 0
-assert mreldif(e(V), `accepted_V') == 0
-fvset clear f
 
 capture noisily fereg y x, absorb(a#b)
 assert _rc == 0

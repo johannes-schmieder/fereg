@@ -13,6 +13,8 @@
 
 use super::*;
 
+mod integer_dual;
+
 // Keep the certified proposal inline: boxing would add an unadmitted heap
 // allocation and alter the detector proof's allocation/lifetime envelope.
 #[allow(clippy::large_enum_variant)]
@@ -47,6 +49,7 @@ pub(super) fn resolve(
             .iter()
             .all(|spec| spec.slopes.is_empty());
     let mut design = None;
+    let mut unresolved_margin = 0.;
     for iteration in 1..=iteration_limit.min(config.max_ir_iterations) {
         interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
         for (value, &y) in response.iter_mut().zip(outcome) {
@@ -88,75 +91,60 @@ pub(super) fn resolve(
             return Ok(Resolution::Dual(dual, iteration));
         }
         let mut direction = projection.fitted;
-        let scale = infinity_norm(&direction);
-        if scale > f64::MIN_POSITIVE {
-            direction
-                .iter_mut()
-                .for_each(|value| *value = -*value / scale);
-            let dropped = fallible_collect(
-                outcome
-                    .iter()
-                    .zip(&direction)
-                    .enumerate()
-                    .filter_map(|(row, (&y, &z))| {
-                        (y == 0. && z < -config.tolerance).then_some(row)
-                    }),
-                outcome.len(),
-                "unable to reserve unit-metric separation rows",
-            )?;
-            if !dropped.is_empty()
-                && outcome.iter().zip(&direction).all(|(&y, &z)| {
-                    if y > 0. {
-                        z.abs() <= config.certificate_tolerance
-                    } else {
-                        z <= config.certificate_tolerance
-                    }
-                })
-                && dropped
-                    .iter()
-                    .all(|&row| -direction[row] >= config.certificate_tolerance)
-            {
-                let certificate = detector_direction_certificate(
-                    outcome,
-                    &direction,
-                    &dropped,
-                    config.certificate_tolerance,
-                )?;
-                if certificate.passed {
-                    return Ok(Resolution::Direction(bind_numerical_proposal(
-                        generation,
-                        DetectionProposal {
-                            method: SeparationMethod::IteratedRectifier,
-                            dropped,
-                            iterations: iteration,
-                            status: MethodStatus::Certified,
-                            certificate: Some(certificate),
-                            exact_fe_certificate: None,
-                            direction: Some(direction),
-                            note: "prepared iterated-rectifier candidate direction".into(),
-                        },
-                    )?));
-                }
-            }
+        if let Some(proposal) = primal_proposal(generation, config, iteration, &mut direction)? {
+            return Ok(Resolution::Direction(proposal));
         }
         // A nearly exact primal separator can leave a tiny, positive
         // projection residual made only of roundoff. Test the independent
         // primal certificate above before interpreting that residual as an
         // unresolved dual; its relative margin alone cannot distinguish it.
-        // Every exact projection residual is already in the full orthogonal
-        // complement. A comfortably positive dual failing its span audit is
-        // therefore numerical ambiguity, not a cone-feasibility iteration.
-        // Repeating the same truncated projector cannot repair that evidence.
+        // A small first positive margin makes response-relative projection
+        // error visible. Before refusing, try an exact lattice witness, then
+        // remove the measured span component with a fresh projection. Both
+        // must meet the same full-model certificate used at terminal replay.
         let margin = outcome
             .iter()
             .zip(&dual)
             .filter_map(|(&y, &value)| (y == 0.).then_some(value))
             .fold(f64::INFINITY, f64::min);
-        if margin.is_finite() && margin > config.certificate_tolerance * stable_norm(&dual) {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                "unit-metric separation dual has unresolved full-model orthogonality",
-            ));
+        let relative_margin = margin / stable_norm(&dual);
+        if margin.is_finite() && relative_margin > config.certificate_tolerance {
+            for (integer, &value) in direction.iter_mut().zip(&dual) {
+                *integer = (value / margin).round();
+            }
+            if integer_dual::certify(generation, &direction, config.certificate_tolerance)? {
+                return Ok(Resolution::Dual(direction, iteration));
+            }
+            drop(direction);
+            drop(design.take());
+            let refined =
+                prepared_project(generation, &dual, &unit, ppml, config, linear)?.residual;
+            drop(dual);
+            if certify_dual_with_weights(
+                generation,
+                &refined,
+                &unit,
+                ppml,
+                config,
+                linear,
+                admission.full_span_bytes,
+                &mut design,
+            )? {
+                return Ok(Resolution::Dual(refined, iteration));
+            }
+            // The first strictly positive margin can be too small to resolve
+            // scale-dependent roundoff. Continue the cone recurrence while its
+            // normalized interior margin improves. Stagnation preserves the
+            // numerical refusal for an unproved or truncated model span.
+            if relative_margin <= unresolved_margin * (1. + config.projection_tolerance) {
+                return Err(FeregError::new(
+                    ErrorCode::NonConvergence,
+                    "unit-metric separation dual has unresolved full-model orthogonality",
+                ));
+            }
+            unresolved_margin = relative_margin;
+            response = refined;
+            continue;
         }
         response = dual;
     }
@@ -164,6 +152,66 @@ pub(super) fn resolve(
         ErrorCode::NonConvergence,
         "unit-metric separation check exhausted its primal/dual iteration budget",
     ))
+}
+
+/// Test the fitted primal direction before interpreting its dual residual.
+fn primal_proposal(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    iteration: usize,
+    direction: &mut Vec<f64>,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let outcome = generation.outcome();
+    let scale = infinity_norm(direction);
+    if scale > f64::MIN_POSITIVE {
+        direction
+            .iter_mut()
+            .for_each(|value| *value = -*value / scale);
+        let dropped = fallible_collect(
+            outcome
+                .iter()
+                .zip(direction.iter())
+                .enumerate()
+                .filter_map(|(row, (&y, &z))| (y == 0. && z < -config.tolerance).then_some(row)),
+            outcome.len(),
+            "unable to reserve unit-metric separation rows",
+        )?;
+        if !dropped.is_empty()
+            && outcome.iter().zip(direction.iter()).all(|(&y, &z)| {
+                if y > 0. {
+                    z.abs() <= config.certificate_tolerance
+                } else {
+                    z <= config.certificate_tolerance
+                }
+            })
+            && dropped
+                .iter()
+                .all(|&row| -direction[row] >= config.certificate_tolerance)
+        {
+            let certificate = detector_direction_certificate(
+                outcome,
+                direction,
+                &dropped,
+                config.certificate_tolerance,
+            )?;
+            if certificate.passed {
+                return Ok(Some(bind_numerical_proposal(
+                    generation,
+                    DetectionProposal {
+                        method: SeparationMethod::IteratedRectifier,
+                        dropped,
+                        iterations: iteration,
+                        status: MethodStatus::Certified,
+                        certificate: Some(certificate),
+                        exact_fe_certificate: None,
+                        direction: Some(std::mem::take(direction)),
+                        note: "prepared iterated-rectifier candidate direction".into(),
+                    },
+                )?));
+            }
+        }
+    }
+    Ok(None)
 }
 
 /// Check the full model, including finite columns omitted by the weighted
@@ -178,6 +226,9 @@ pub(super) fn certify_dual(
     linear: PreparedOlsFitConfig,
     admission: DetectorAdmission,
 ) -> Result<bool> {
+    if integer_dual::certify(generation, dual, config.certificate_tolerance)? {
+        return Ok(true);
+    }
     let unit = fallible_filled(dual.len(), 1., "unable to reserve dual certificate weights")?;
     if let Some((fast_ppml, fast_linear)) = fast_unit_policy(generation, ppml, linear, admission) {
         match certify_dual_with_weights(

@@ -3134,6 +3134,23 @@ fn validate_separation_method(
             (
                 SeparationMethod::Simplex,
                 MethodStatus::NoSeparation,
+                SeparationCertificateProof::SimplexWithinLevelPositiveRank {
+                    slopes,
+                    levels,
+                    explicit_constant,
+                },
+            ) => {
+                matches!(fixed_effects, [e] if e.kind == PpmlFixedEffectChannelKind::Intercept && e.levels == levels)
+                    && slopes > 0
+                    && levels > 0
+                    && slopes
+                        .checked_add(levels)
+                        .and_then(|v| v.checked_add(usize::from(explicit_constant)))
+                        == Some(full_model_columns)
+            }
+            (
+                SeparationMethod::Simplex,
+                MethodStatus::NoSeparation,
                 SeparationCertificateProof::SimplexDualInfeasibility {
                     boundary_rows,
                     nullity,
@@ -3336,7 +3353,8 @@ fn separation_note_compatible(
         | (
             SeparationMethod::Simplex,
             MethodStatus::NoSeparation,
-            "finite regressors have full column rank on the positive-outcome sample",
+            "finite regressors have full column rank on the positive-outcome sample"
+            | "exact positive-outcome rank spans the finite regressors and absorbed intercept levels",
         )
         | (
             SeparationMethod::Simplex,
@@ -3413,6 +3431,9 @@ fn validate_separation_certificate(
         && match certificate.proof {
             SeparationCertificateProof::RecessionDirection => {
                 certificate.direction_scale == 0.0 && nonnegative.iter().all(|value| *value == 0.0)
+            }
+            SeparationCertificateProof::SimplexWithinLevelPositiveRank { .. } => {
+                certificate.direction_scale == 0.0 && nonnegative.iter().all(|v| *v == 0.0)
             }
             SeparationCertificateProof::SimplexFullPositiveRank { columns } => {
                 columns > 0

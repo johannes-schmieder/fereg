@@ -221,7 +221,11 @@ pub(crate) fn model_simplex_interruptible(
             dropped: Vec::new(),
             iterations: 0,
             status: MethodStatus::NoSeparation,
-            certificate: Some(no_separation_certificate(regressors.ncols())),
+            certificate: Some(no_separation_certificate(
+                SeparationCertificateProof::SimplexFullPositiveRank {
+                    columns: regressors.ncols(),
+                },
+            )),
             exact_fe_certificate: None,
             direction: None,
             note: "finite regressors have full column rank on the positive-outcome sample".into(),
@@ -398,9 +402,11 @@ fn verify_phase_one_farkas_certificate(
     Ok(Some(certificate))
 }
 
-fn no_separation_certificate(columns: usize) -> SeparationCertificate {
+pub(crate) fn no_separation_certificate(
+    proof: SeparationCertificateProof,
+) -> SeparationCertificate {
     SeparationCertificate {
-        proof: SeparationCertificateProof::SimplexFullPositiveRank { columns },
+        proof,
         interior_zero_relative: 0.0,
         boundary_violation_relative: 0.0,
         span_residual_relative: 0.0,

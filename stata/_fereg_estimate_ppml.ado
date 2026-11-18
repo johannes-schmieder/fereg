@@ -517,35 +517,10 @@ program define _fereg_estimate_ppml, eclass
 
     local n_absorb_intercepts 0
     local n_absorb_slopes 0
-    local has_absorb_interaction 0
     if `n_absorb_terms' > 0 {
         forvalues row = 1/`n_absorb_terms' {
             local n_absorb_intercepts = `n_absorb_intercepts' + `absorb_terms'[`row',3]
             local n_absorb_slopes = `n_absorb_slopes' + `absorb_terms'[`row',4]
-            if `absorb_terms'[`row',2] > 1 | `absorb_terms'[`row',4] > 0 ///
-                local has_absorb_interaction 1
-        }
-    }
-    if `has_absorb_interaction' {
-        // ibn. includes every level; it does not choose a replacement base.
-        // Normalize only this operator for the guard, retaining parsed metadata.
-        local base_guard_rhs = subinstr(lower(`"`indepvars'"'), "ibn.", "i.", .)
-        if regexm(`"`base_guard_rhs'"', "(^|[ #])ib[^ #]*[.]") {
-            di as error "categorical PPML does not support explicit RHS base operators with interacted or sloped absorption"
-            exit 498
-        }
-        if `n_components' > 0 {
-            forvalues row = 1/`n_components' {
-                if `model_components'[`row',4] == 2 {
-                    local source_id = `model_components'[`row',3]
-                    local source : word `source_id' of `source_vars'
-                    local fv_base : char `source'[_fv_base]
-                    if `"`fv_base'"' != "" {
-                        di as error "categorical PPML does not support fvset base overrides with interacted or sloped absorption"
-                        exit 498
-                    }
-                }
-            }
         }
     }
     if `has_bias' & (`n_absorb_terms' != 2 | `n_absorb_intercepts' != 2 | `n_absorb_slopes' != 0) {

@@ -540,7 +540,18 @@ pub fn fit_prepared_ppml_interruptible(
                 PreparedPpmlIrlsPurpose::Publication,
                 request.bias.map(|b| (b, bias_units.as_slice())),
                 interrupt,
-            )? {
+            )
+            .map_err(|mut error| {
+                if error.code == ErrorCode::NonConvergence
+                    && separation.methods == crate::ppml_separation::SeparationMethods::NONE
+                    && generation.outcome().contains(&0.0)
+                {
+                    error.message.push_str(
+                        ". IRLS failed with separation(none). Rerun with default separation detection to check for separated observations."
+                    );
+                }
+                error
+            })? {
                 PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
                 _ => Err(invalid_argument(
                     "PPML publication returned exploratory products",
@@ -578,6 +589,12 @@ pub fn fit_prepared_ppml_interruptible(
     interrupt(PpmlInterruptPoint::Inference)?;
     let inference = {
         let mut poll_subset = || interrupt(PpmlInterruptPoint::InferenceSubset);
+        let zero_meat = super::saturated_cluster::certified(
+            prepared,
+            fit.linear().basis().kept_generated_columns(),
+            &cluster_codes,
+            &mut poll_subset,
+        )?;
         let reference = separation_outcome
             .covariance_scales
             .as_ref()
@@ -613,6 +630,7 @@ pub fn fit_prepared_ppml_interruptible(
             },
             resolved_linear.execution.threads,
             reference.as_ref(),
+            zero_meat,
             &mut poll_subset,
         )?
     };
