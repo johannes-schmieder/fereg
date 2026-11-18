@@ -219,7 +219,11 @@ program define _fereg_estimate_ols, eclass
             `absorb_option' `cluster_option'
     }
     else {
-        fereg_parse `indepvars', touse(`factor_sample') `absorb_option' `cluster_option'
+        local original `"`publiccmdline'"'
+        if `"`original'"' == "" local original `"`hidden_cmdline'"'
+        local factorial
+        if strpos(`"`original'"', "##") local factorial `"modelcmdline(`"`original'"')"'
+        fereg_parse `indepvars', touse(`factor_sample') `absorb_option' `cluster_option' `factorial'
     }
 
     local source_vars `"`r(source_vars)'"'

@@ -229,11 +229,14 @@ no finite maximizer and {cmd:separation(none)} can return {cmd:r(430)} during IR
 {pstd}
 Every accepted deletion has an independent certificate. A deletion restarts
 the registered method sequence on a newly rebased sample until a fixed point
-is reached. When the full simplex exceeds its workspace limit and the model
-absorbs one categorical intercept, the detector can still certify that there
-is no separation if the positive outcomes span all slopes and FE levels.
-If that proof is inconclusive, the default chain can continue with IR;
-a simplex-only request that exceeds the cap returns {cmd:r(909)}.
+is reached. The command can sometimes prove directly that the positive
+outcomes identify all fitted directions. For example, a zero outcome that
+shares its entire design row with a positive outcome cannot be separated.
+A second check uses within-level variation among positive outcomes and
+can cover several categorical fixed effects. The default reuses a verified
+proof while the estimation sample is unchanged. If the bounded simplex
+cannot resolve a case, a requested IR check can continue. An unresolved
+simplex workspace limit returns {cmd:r(909)}.
 
 {pstd}
 {cmd:dropreason(}{it:newvar}{cmd:)} creates a long integer variable on the
@@ -294,10 +297,11 @@ repaired standard errors. Robust and one-way clustered estimates use their
 usual covariance calculations.
 
 {pstd}
-A saturated categorical model fits a separate mean for each distinct design
-cell (adjusted for any offset). If each cell belongs to a single cluster
-and all other cluster dimensions subdivide those clusters, the cluster
-score equations imply exactly zero covariance. When {cmd:feppml} certifies
+A saturated model fits a separate mean for each distinct design cell
+(adjusted for any offset). Its weighted residuals sum to zero within each
+cell. If every cluster dimension keeps whole cells, the clustered covariance
+is zero. It can also be zero when some dimensions split cells, depending on
+which observations share a cluster in at least one dimension. When {cmd:feppml} certifies
 this condition, {cmd:e(V)} is zero and the model Wald test is undefined.
 Stata returns zero for {cmd:_se[]} and displays missing standard errors,
 z statistics, p-values, and confidence limits in the coefficient table.
@@ -570,6 +574,12 @@ predictor, Hessian, covariance, and fixed-effect certificates. {cmd:timeit}
 prints native total-to-commit seconds; detailed phase, allocation, memory,
 scratch, and thread diagnostics are stored in {cmd:e(feppml_runtime)} and
 {cmd:e(feppml_*)} scalars.
+
+{pstd}
+After a numerical omission, a score check can detect a material effect
+along a difference of nearly collinear regressors. This returns {cmd:r(430)}.
+Fit the equivalent specification using that difference explicitly, for
+example {it:z}-{it:x} in place of {it:z} while retaining {it:x}.
 
 {marker saved}
 {title:Saved observation-level output}

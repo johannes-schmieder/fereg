@@ -415,6 +415,9 @@ pub(super) fn mu_step(
             exploration.certificate().accepted_iterations,
         )?,
     )?;
+    let proposal = super::reconcile::candidate(generation, proposal, config, &mut |_| {
+        crate::interrupt::checkpoint()
+    })?;
     if matches!(
         proposal.status,
         MethodStatus::MaximumIterations | MethodStatus::Uncertified

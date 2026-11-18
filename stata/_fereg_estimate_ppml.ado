@@ -329,7 +329,11 @@ program define _fereg_estimate_ppml, eclass
             `absorb_option' `cluster_option'
     }
     else {
-        fereg_parse `indepvars', touse(`factor_sample') `absorb_option' `cluster_option'
+        local original `"`publiccmdline'"'
+        if `"`original'"' == "" local original `"`hidden_cmdline'"'
+        local factorial
+        if strpos(`"`original'"', "##") local factorial `"modelcmdline(`"`original'"')"'
+        fereg_parse `indepvars', touse(`factor_sample') `absorb_option' `cluster_option' `factorial'
     }
 
     local source_vars `"`r(source_vars)'"'
@@ -1305,7 +1309,7 @@ program define _fereg_estimate_ppml, eclass
             "Inexact?" \ "Nested?")))
         ereturn matrix dof_table = `posted_dof_table', copy
     }
-    _fereg_indepvars, target(intended_indepvars) count(`n_terms') ///
+    _fereg_indepvars, ppml target(intended_indepvars) count(`n_terms') ///
         status(`status_shadow') names(`"`coefficient_names'"')
     if `"`publicmode'"' == "" {
         ereturn local cmd "_fereg_estimate_ppml"

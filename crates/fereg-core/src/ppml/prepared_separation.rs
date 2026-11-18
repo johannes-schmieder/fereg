@@ -79,6 +79,7 @@ struct PreparedNumericalProposal {
     /// Observation-space direction on this proposal's compact generation.
     direction: Option<Vec<f64>>,
     exact_intercept_span: Option<graph::ExactInterceptSpan>,
+    exact_primal: Option<primal::Witness>,
     note: SeparationNote,
     /// Stored projection of a terminal no-separation rectifier iteration; the
     /// no-drop check verifies it instead of re-running the detector.
@@ -550,7 +551,11 @@ fn admit_complete_span_workspace(
     Ok(required)
 }
 
+pub(super) mod exact_arithmetic;
 mod positive_rank;
+mod primal;
+mod primal_saturated;
+mod reconcile;
 mod stable;
 mod stable_alias;
 mod stable_local;
@@ -928,6 +933,9 @@ where
             break (fit, replay);
         }
 
+        // This capability is recreated after every ledger change. It exists
+        // only after an independent replay on the same immutable generation.
+        let mut exact_support = None;
         let (simplex_unresolved, restart_after_simplex) = measure_separation_phase(
             phase_allocation_probe,
             &mut phase_allocation_peaks,
@@ -940,9 +948,12 @@ where
                 let started = Instant::now();
                 let proposal = {
                     let view = coordinator.view();
-                    bind_numerical_proposal(
+                    let raw = prepared_simplex_proposal(view.prepared, config, interrupt)?;
+                    reconcile::candidate(
                         view.prepared,
-                        prepared_simplex_proposal(view.prepared, config, interrupt)?,
+                        bind_numerical_proposal(view.prepared, raw)?,
+                        config,
+                        interrupt,
                     )?
                 };
                 let simplex_unresolved = matches!(
@@ -978,6 +989,12 @@ where
                     interrupt,
                     None,
                 )?;
+                exact_support = replayed_certificate.as_ref().and_then(|certificate| {
+                    certificate
+                        .proof
+                        .positive_support_note()
+                        .map(|note| (certificate.clone(), note))
+                });
                 final_generation_replay_mask |= replay_bit(SeparationMethod::Simplex);
                 bounded_push(
                     &mut reports,
@@ -1002,6 +1019,32 @@ where
                     return Ok((false, false));
                 }
                 let started = Instant::now();
+                if let Some((certificate, note)) = exact_support {
+                    // No recession direction can decrease a boundary row.
+                    // Reusing a raw-design proof does not assert that an
+                    // iterated-rectifier recurrence or projection took place.
+                    let report = method_report(
+                        coordinator.view().generation,
+                        SeparationMethod::IteratedRectifier,
+                        MethodStatus::NoSeparation,
+                        0,
+                        Vec::new(),
+                        Vec::new(),
+                        Some(certificate),
+                        None,
+                        started,
+                        config,
+                        note.into(),
+                    );
+                    bounded_push(
+                        &mut reports,
+                        method_report_capacity,
+                        report,
+                        "unable to reserve prepared IR report",
+                    )?;
+                    final_generation_replay_mask |= replay_bit(SeparationMethod::IteratedRectifier);
+                    return Ok((true, false));
+                }
                 let mut lap = trace::IrPhase::new(coordinator.view().generation);
                 let (detected, ppml, linear) = {
                     let view = coordinator.view();
@@ -1396,6 +1439,7 @@ fn bind_numerical_proposal(
         exact_fe_certificate: proposal.exact_fe_certificate,
         direction: proposal.direction,
         exact_intercept_span: None,
+        exact_primal: None,
         note: proposal.note,
         fixed_point: None,
         stable_dual: None,
@@ -1943,6 +1987,28 @@ fn complete_cascade(
     })
 }
 
+fn simplex_full_model_width(
+    finite_columns: usize,
+    topology: &DetectorTopology<'_>,
+) -> Result<usize> {
+    let mut absorbed_columns = 0_usize;
+    for (effect, spec) in topology.effect_specs.iter().enumerate() {
+        let channels = usize::from(spec.intercept)
+            .checked_add(spec.slopes.len())
+            .ok_or_else(|| allocation("prepared simplex channel count overflowed"))?;
+        let levels = topology.sources[topology.effect_to_source[effect]].n_levels();
+        absorbed_columns =
+            absorbed_columns
+                .checked_add(levels.checked_mul(channels).ok_or_else(|| {
+                    allocation("prepared simplex absorbed-column count overflowed")
+                })?)
+                .ok_or_else(|| allocation("prepared simplex column count overflowed"))?;
+    }
+    finite_columns
+        .checked_add(absorbed_columns)
+        .ok_or_else(|| allocation("prepared simplex full-model width overflowed"))
+}
+
 fn prepared_simplex_proposal(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
@@ -1955,22 +2021,7 @@ fn prepared_simplex_proposal(
     let fit_view = generation.fit_view();
     let finite_columns = fit_view.model().columns.len();
     let topology = DetectorTopology::new(generation.prepared())?;
-    let mut absorbed_columns = 0_usize;
-    for (effect, spec) in categorical.effect_specs().iter().enumerate() {
-        let channels = usize::from(spec.intercept)
-            .checked_add(spec.slopes.len())
-            .ok_or_else(|| allocation("prepared simplex channel count overflowed"))?;
-        let levels = topology.sources[topology.effect_to_source[effect]].n_levels();
-        absorbed_columns =
-            absorbed_columns
-                .checked_add(levels.checked_mul(channels).ok_or_else(|| {
-                    allocation("prepared simplex absorbed-column count overflowed")
-                })?)
-                .ok_or_else(|| allocation("prepared simplex column count overflowed"))?;
-    }
-    let columns = finite_columns
-        .checked_add(absorbed_columns)
-        .ok_or_else(|| allocation("prepared simplex full-model width overflowed"))?;
+    let columns = simplex_full_model_width(finite_columns, &topology)?;
     if columns == 0 {
         return Ok(DetectionProposal::empty(
             SeparationMethod::Simplex,
@@ -2005,7 +2056,7 @@ fn prepared_simplex_proposal(
         .ok_or_else(|| allocation("prepared simplex construction workspace overflowed"))?;
     let peak_cells = kernel_peak_cells.max(construction_peak_cells);
     if peak_cells > config.simplex_max_tableau_cells {
-        if let Some(proposal) = positive_rank::single_intercept(
+        if let Some(proposal) = positive_rank::detect(
             generation,
             &topology,
             positive,
@@ -2080,7 +2131,7 @@ fn prepared_simplex_proposal(
     drop(topology);
     let design = DenseMatrix::from_row_major(rows, columns, values)?;
     let mut poll_pivot = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
-    model_simplex_interruptible(
+    let result = model_simplex_interruptible(
         generation.outcome(),
         &design,
         config.projection_tolerance,
@@ -2088,12 +2139,104 @@ fn prepared_simplex_proposal(
         config.simplex_max_iterations,
         config.simplex_max_tableau_cells,
         &mut poll_pivot,
+    );
+    drop(design);
+    resolve_dense_simplex_result(
+        generation,
+        config,
+        interrupt,
+        positive,
+        topology_cells,
+        result,
     )
+}
+
+fn resolve_dense_simplex_result(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    positive: usize,
+    topology_cells: usize,
+    result: Result<DetectionProposal>,
+) -> Result<DetectionProposal> {
+    match result.as_ref() {
+        Err(error) if error.code == ErrorCode::NonConvergence => (),
+        Ok(proposal) if proposal.status == MethodStatus::Uncertified => (),
+        _ => return result,
+    }
+    // Phase-I arithmetic can be inconclusive. Release the dense workspace
+    // before attempting a bounded proof on the original compact generation.
+    let topology = DetectorTopology::new(generation.prepared())?;
+    if let Some(proof) = positive_rank::detect(
+        generation,
+        &topology,
+        positive,
+        topology_cells,
+        config,
+        interrupt,
+    )? {
+        return Ok(proof);
+    }
+    drop(topology);
+    if let Some(proof) = reconcile::raw_candidate(generation, SeparationMethod::Simplex, config)? {
+        return Ok(proof);
+    }
+    if result.is_err() && config.methods.iterated_rectifier {
+        return Ok(DetectionProposal::empty(
+            SeparationMethod::Simplex,
+            MethodStatus::Uncertified,
+            "numerical simplex could not certify the boundary cone",
+        ));
+    }
+    result
 }
 
 /// A coefficient-backed submodel proposal is independently reconstructed at
 /// acceptance. No graph result can certify absence of full-model separation.
 fn prepared_bound_iterated_rectifier(
+    generation: &PreparedPpmlModelGeneration,
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+    graph_admitted: impl Into<DetectorAdmission>,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<PreparedNumericalProposal> {
+    let admission = graph_admitted.into();
+    let candidate =
+        prepared_rectifier_candidate(generation, ppml, config, linear, admission, interrupt);
+    match candidate {
+        Ok(candidate) => reconcile::candidate(generation, candidate, config, interrupt),
+        Err(error)
+            if matches!(
+                error.code,
+                ErrorCode::NonConvergence | ErrorCode::InvalidData
+            ) =>
+        {
+            if let Some(supported) = reconcile::support(
+                generation,
+                SeparationMethod::IteratedRectifier,
+                config,
+                interrupt,
+            )? {
+                Ok(supported)
+            } else if let Some(raw) =
+                reconcile::raw_candidate(generation, SeparationMethod::IteratedRectifier, config)?
+            {
+                reconcile::candidate(
+                    generation,
+                    bind_numerical_proposal(generation, raw)?,
+                    config,
+                    interrupt,
+                )
+            } else {
+                Err(error)
+            }
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn prepared_rectifier_candidate(
     generation: &PreparedPpmlModelGeneration,
     ppml: PpmlConfig,
     config: SeparationConfig,
@@ -3370,6 +3513,31 @@ fn ir_fe_moment_ratio(
 /// function certifies a recession direction attached to a deletion proposal,
 /// while this replay prevents a no-separation report (especially the IR
 /// fixed-point certificate) from certifying itself by pass-through.
+fn replay_positive_support(
+    generation: &PreparedPpmlModelGeneration,
+    observed: &PreparedNumericalProposal,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<SeparationCertificate>> {
+    let replay =
+        reconcile::support(generation, observed.method, config, interrupt)?.ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::NonConvergence,
+                "exact positive-support replay failed",
+            )
+        })?;
+    if replay.certificate != observed.certificate
+        || replay.note != observed.note
+        || replay.iterations != observed.iterations
+    {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "exact positive-support certificate disagrees with replay",
+        ));
+    }
+    Ok(replay.certificate)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn replay_numerical_no_drop(
     generation: &PreparedPpmlModelGeneration,
@@ -3401,6 +3569,14 @@ fn replay_numerical_no_drop(
             ErrorCode::NonConvergence,
             "terminal numerical detector did not produce a replayable no-drop status",
         ));
+    }
+    if observed.status == MethodStatus::NoSeparation
+        && observed
+            .certificate
+            .as_ref()
+            .is_some_and(|c| c.proof.positive_support_note().is_some())
+    {
+        return replay_positive_support(generation, observed, config, interrupt);
     }
     // A terminal rectifier projection is certified from its stored evidence
     // in one pass over the data. Only if that check fails, or if it does not
@@ -3452,7 +3628,7 @@ fn replay_numerical_no_drop(
             interrupt,
         )?
     } else {
-        bind_numerical_proposal(
+        let raw = bind_numerical_proposal(
             generation,
             match observed.method {
                 SeparationMethod::Simplex => {
@@ -3486,7 +3662,8 @@ fn replay_numerical_no_drop(
                     ));
                 }
             },
-        )?
+        )?;
+        reconcile::candidate(generation, raw, config, interrupt)?
     };
     if replayed.method != observed.method
         || replayed.status != observed.status
@@ -3613,18 +3790,19 @@ fn validate_prepared_numerical_metadata(
                 .as_ref()
                 .is_some_and(|certificate| {
                     certificate.passed
-                        && matches!(
+                        && (matches!(proposal.method, SeparationMethod::Simplex | SeparationMethod::IteratedRectifier | SeparationMethod::Mu)
+                            && certificate.proof.positive_support_note().is_some()
+                        || matches!(
                             (proposal.method, certificate.proof),
                             (
                                 SeparationMethod::Simplex,
                                 crate::ppml_separation::SeparationCertificateProof::SimplexFullPositiveRank { .. }
-                                    | crate::ppml_separation::SeparationCertificateProof::SimplexWithinLevelPositiveRank { .. }
                                     | crate::ppml_separation::SeparationCertificateProof::SimplexDualInfeasibility { .. },
                             ) | (
                                 SeparationMethod::IteratedRectifier,
                                 crate::ppml_separation::SeparationCertificateProof::IteratedRectifierFixedPoint,
                             )
-                        )
+                        ))
                 }),
             MethodStatus::SkippedMemory | MethodStatus::SkippedUnsupported => {
                 proposal.method == SeparationMethod::Simplex && proposal.certificate.is_none()
@@ -3736,6 +3914,77 @@ fn certify_numerical_proposal(
     linear: PreparedOlsFitConfig,
     defer_many_fe_fallback: bool,
 ) -> Result<SeparationCertificate> {
+    let (direction, mut certificate) = checked_deletion_claim(generation, proposal, config)?;
+    let span_residual_relative = if let Some(proof) = &proposal.exact_intercept_span {
+        let design = generation
+            .fit_view()
+            .fit_borrowed_intercept_map_design()?
+            .ok_or_else(|| {
+                invalid_argument("exact separation proof requires categorical intercepts")
+            })?;
+        proof.verify(&design, direction)?;
+        if generation
+            .outcome()
+            .iter()
+            .zip(direction)
+            .any(|(&y, &z)| if y > 0. { z != 0. } else { z > 0. })
+        {
+            return Err(reconcile::unresolved());
+        }
+        0.0
+    } else if let Some(bound) = match &proposal.exact_primal {
+        Some(proof) => primal::rounded_span(generation, proof, direction)?,
+        None => None,
+    } {
+        bound
+    } else {
+        projected_direction_span_residual(
+            generation,
+            direction,
+            ppml,
+            config,
+            linear,
+            defer_many_fe_fallback,
+        )?
+    };
+    certificate.span_residual_relative = span_residual_relative;
+    certificate.passed &= span_residual_relative <= config.projection_tolerance;
+    if !certificate.passed {
+        return Err(FeregError::new(ErrorCode::NonConvergence, format!(
+            "prepared separation direction failed certification: interior={:.3e}, boundary={:.3e}, span={:.3e}",
+            certificate.interior_zero_relative, certificate.boundary_violation_relative, span_residual_relative)));
+    }
+    if proposal.exact_intercept_span.is_none() {
+        let proved = match &proposal.exact_primal {
+            Some(witness) => primal::verify(
+                generation,
+                witness,
+                &proposal.dropped_original_rows,
+                config,
+                direction,
+            )?,
+            None => primal::find(
+                generation,
+                &proposal.dropped_original_rows,
+                config,
+                direction,
+                true,
+            )?
+            .is_some_and(|(_, complete)| complete),
+        };
+        if !proved {
+            return Err(reconcile::unresolved());
+        }
+    }
+    Ok(certificate)
+}
+
+/// Validate the unmodified detector claim before its rows can be reconciled.
+fn checked_deletion_claim<'a>(
+    generation: &PreparedPpmlModelGeneration,
+    proposal: &'a PreparedNumericalProposal,
+    config: SeparationConfig,
+) -> Result<(&'a [f64], SeparationCertificate)> {
     validate_prepared_numerical_metadata(generation, proposal, config)?;
     if proposal.dropped_original_rows.is_empty() {
         return Err(FeregError::new(
@@ -3786,93 +4035,23 @@ fn certify_numerical_proposal(
             "prepared numerical proposal certificate is inconsistent with its direction and stable rows",
         ));
     }
-    let span_residual_relative = if let Some(proof) = &proposal.exact_intercept_span {
-        let design = generation
-            .fit_view()
-            .fit_borrowed_intercept_map_design()?
-            .ok_or_else(|| {
-                invalid_argument("exact separation proof requires categorical intercepts")
-            })?;
-        proof.verify(&design, direction)?;
-        0.0
-    } else {
-        projected_direction_span_residual(
-            generation,
-            direction,
-            ppml,
-            config,
-            linear,
-            defer_many_fe_fallback,
-        )?
-    };
-    let interior_zero_relative = generation
+    // The producer must identify the complete ordered strict-negative set before
+    // an independent proof can replace any of its scientifically suspect rows.
+    let strict = generation
         .outcome()
         .iter()
         .zip(direction)
-        .filter(|(outcome, _)| **outcome > 0.0)
-        .fold(0.0_f64, |maximum, (_, value)| maximum.max(value.abs()))
-        / scale;
-    let positive_maximum = generation
-        .outcome()
-        .iter()
-        .zip(direction)
-        .filter(|(outcome, _)| **outcome == 0.0)
-        .map(|(_, value)| *value)
-        .fold(f64::NEG_INFINITY, f64::max);
-    let threshold = config.tolerance * scale;
-    let certified_rows = fallible_collect(
-        generation
-            .outcome()
-            .iter()
-            .zip(direction)
-            .enumerate()
-            .filter_map(|(row, (outcome, value))| {
-                (*outcome == 0.0 && *value < -threshold).then_some(generation.original_rows()[row])
-            }),
-        direction.len(),
-        "unable to reserve prepared separation certified rows",
-    )?;
-    if certified_rows != proposal.dropped_original_rows {
+        .enumerate()
+        .filter_map(|(r, (&y, &z))| {
+            (y == 0. && z < -config.tolerance * scale).then_some(generation.original_rows()[r])
+        });
+    if !strict.eq(proposal.dropped_original_rows.iter().copied()) {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "prepared numerical proposal does not equal its strict-negative certificate set",
         ));
     }
-    let negative_margin_relative = certified_rows
-        .iter()
-        .map(|row| {
-            let compact = generation
-                .original_rows()
-                .binary_search(row)
-                .expect("validated stable row belongs to the generation");
-            -direction[compact] / scale
-        })
-        .fold(f64::INFINITY, f64::min);
-    let certificate = SeparationCertificate {
-        proof: crate::ppml_separation::SeparationCertificateProof::RecessionDirection,
-        interior_zero_relative,
-        boundary_violation_relative: positive_maximum.max(0.0) / scale,
-        span_residual_relative,
-        negative_margin_relative,
-        direction_scale: scale,
-        positive_maximum: positive_maximum.max(0.0),
-        passed: interior_zero_relative <= config.certificate_tolerance
-            && positive_maximum <= config.certificate_tolerance * scale
-            && span_residual_relative <= config.projection_tolerance
-            && negative_margin_relative >= config.certificate_tolerance,
-    };
-    if !certificate.passed {
-        return Err(FeregError::new(
-            ErrorCode::NonConvergence,
-            format!(
-                "prepared separation direction failed certification: interior={:.3e}, boundary={:.3e}, span={:.3e}",
-                certificate.interior_zero_relative,
-                certificate.boundary_violation_relative,
-                certificate.span_residual_relative,
-            ),
-        ));
-    }
-    Ok(certificate)
+    Ok((direction, detector_claim))
 }
 
 fn projected_direction_span_residual(
@@ -4513,6 +4692,26 @@ fn digest_certificate(
             digest.byte(5);
             digest.usize(slopes)?;
             digest.usize(levels)?;
+            digest.bool(explicit_constant);
+        }
+        crate::ppml_separation::SeparationCertificateProof::SimplexPositiveRowCoverage {
+            boundary_rows,
+        } => {
+            digest.byte(6);
+            digest.usize(boundary_rows)?;
+        }
+        crate::ppml_separation::SeparationCertificateProof::SimplexAnchoredPositiveRank {
+            within_columns,
+            anchor_levels,
+            effects,
+            constant_finite,
+            explicit_constant,
+        } => {
+            digest.byte(7);
+            digest.usize(within_columns)?;
+            digest.usize(anchor_levels)?;
+            digest.usize(effects)?;
+            digest.usize(constant_finite)?;
             digest.bool(explicit_constant);
         }
         crate::ppml_separation::SeparationCertificateProof::SimplexDualInfeasibility {

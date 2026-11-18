@@ -188,6 +188,19 @@ pub enum SeparationCertificateProof {
         levels: usize,
         explicit_constant: bool,
     },
+    /// Every boundary design row is exactly replicated on positive support.
+    SimplexPositiveRowCoverage {
+        boundary_rows: usize,
+    },
+    /// Positive rows span the categorical-intercept model after choosing
+    /// one reference level in every non-anchor effect.
+    SimplexAnchoredPositiveRank {
+        within_columns: usize,
+        anchor_levels: usize,
+        constant_finite: usize,
+        effects: usize,
+        explicit_constant: bool,
+    },
     /// Phase-I proved that the nonnegative boundary cone with unit slack
     /// normalization is infeasible.  The raw dual stays detector-private;
     /// these dimensions and the scalar residuals bind the independently
@@ -199,6 +212,22 @@ pub enum SeparationCertificateProof {
     /// The iterated-rectifier recurrence reached its certified zero fixed
     /// point under the registered recurrence and projection tolerances.
     IteratedRectifierFixedPoint,
+}
+
+impl SeparationCertificateProof {
+    /// These raw-design witnesses are independent of the numerical method
+    /// that requested them. Keep the published note bound to the witness.
+    pub(crate) fn positive_support_note(self) -> Option<&'static str> {
+        match self {
+            Self::SimplexWithinLevelPositiveRank { .. } =>
+                Some("exact positive-outcome rank spans the finite regressors and absorbed intercept levels"),
+            Self::SimplexAnchoredPositiveRank { .. } =>
+                Some("exact positive-outcome contrasts span the finite regressors and categorical effects"),
+            Self::SimplexPositiveRowCoverage { .. } =>
+                Some("exact positive-outcome rows cover all boundary design rows"),
+            _ => None,
+        }
+    }
 }
 
 /// Collision-free identity of one accepted zero-only absorbed-intercept

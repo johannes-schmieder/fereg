@@ -7,6 +7,7 @@ use super::{
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 
+mod exact_terminal;
 mod nullspace;
 mod tableau;
 
@@ -197,7 +198,7 @@ pub(crate) fn model_simplex_interruptible(
             ),
         ));
     }
-    let positive = fallible_collect(
+    let mut positive = fallible_collect(
         outcome
             .iter()
             .enumerate()
@@ -213,9 +214,27 @@ pub(crate) fn model_simplex_interruptible(
         boundary_count,
         "unable to reserve model-simplex boundary rows",
     )?;
-    let basis = nullspace_basis(regressors, &positive, tolerance)?;
-    drop(positive);
+    let basis = nullspace_basis(regressors, &mut positive, tolerance)?;
+    // The numerical positive-row factorization above already visits a dense
+    // trailing rectangle at every pivot. Give its independent exact check
+    // that allowance on modest designs, within a fixed operation ceiling.
+    let elimination_work = positive_count
+        .saturating_mul(regressors.ncols())
+        .saturating_mul(positive_count.min(regressors.ncols()));
+    let proof_work = max_tableau_cells
+        .saturating_mul(8)
+        .max(elimination_work.min(32 << 20));
     if basis.is_empty() {
+        if !exact_terminal::full_positive_rank(
+            regressors,
+            outcome,
+            &positive[..regressors.ncols()],
+            proof_work,
+        )? {
+            return Ok(uncertified(
+                "positive-outcome rank lacks an exact full-rank minor",
+            ));
+        }
         return Ok(DetectionProposal {
             method: SeparationMethod::Simplex,
             dropped: Vec::new(),
@@ -231,9 +250,22 @@ pub(crate) fn model_simplex_interruptible(
             note: "finite regressors have full column rank on the positive-outcome sample".into(),
         });
     }
+    // Each retained pivot row ID replaces at least one full row omitted from
+    // the worst-case square nullspace basis already charged to the kernel.
+    let proposed_rank = regressors.ncols() - basis.len();
+    let pivot_rows = fallible_collect(
+        positive[..proposed_rank].iter().copied(),
+        proposed_rank,
+        "unable to reserve simplex positive pivot representatives",
+    )?;
+    drop(positive);
     let cone = boundary_cone(regressors, &boundary, &basis)?;
     drop(boundary);
-    if let Some(gamma) = signed_basis_certificate(&basis, &cone, tolerance)? {
+    let gamma = match signed_basis_certificate(&basis, &cone, tolerance)? {
+        Some(gamma) => Some(gamma),
+        None => exact_terminal::single_coordinate(regressors, outcome)?,
+    };
+    if let Some(gamma) = gamma {
         drop(cone);
         drop(basis);
         return certified_result(
@@ -296,6 +328,20 @@ pub(crate) fn model_simplex_interruptible(
                         .into(),
                 });
             };
+            drop(cone);
+            drop(basis);
+            if !exact_terminal::no_recession(
+                regressors,
+                outcome,
+                &dual[..boundary_count],
+                proof_work,
+                peak_cells - regressors.as_slice().len() - pivot_rows.len(),
+                &pivot_rows,
+            )? {
+                return Ok(uncertified(
+                    "simplex infeasibility lacks a full-design no-separation proof",
+                ));
+            }
             return Ok(DetectionProposal {
                 method: SeparationMethod::Simplex,
                 dropped: Vec::new(),
@@ -524,6 +570,10 @@ fn certified_result(
         direction: Some(z),
         note,
     })
+}
+
+fn uncertified(note: &'static str) -> DetectionProposal {
+    DetectionProposal::empty(SeparationMethod::Simplex, MethodStatus::Uncertified, note)
 }
 
 fn boundary_cone(

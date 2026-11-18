@@ -21,6 +21,7 @@ mod prepared_estimator;
 mod prepared_irls;
 mod prepared_model;
 mod prepared_separation;
+pub(crate) use prepared_separation::exact_arithmetic::{exact_dot, ExactNullspace};
 mod profiled_intercept_curve;
 mod psd;
 mod reference_covariance;

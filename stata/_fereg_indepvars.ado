@@ -6,7 +6,7 @@ program define _fereg_indepvars
     // factor component with Stata's nonbase `bn' marker. The posted b/V
     // stripe remains the full omission-marked axis. The result is returned
     // in the caller's local `target', so r() is left untouched.
-    syntax , TARGET(name) COUNT(integer) STATUS(string) [NAMES(string)]
+    syntax , TARGET(name) COUNT(integer) STATUS(string) [NAMES(string) PPML]
     // Strip the option wrapper before : word tokenization. Keeping it with
     // string asis collapses short lists and overflows Stata's quoted-word
     // parser for long coefficient axes.
@@ -14,9 +14,12 @@ program define _fereg_indepvars
     // Stata 15 cannot subscript e() matrices directly; read a copy.
     tempname status_matrix
     if `count' > 0 matrix `status_matrix' = `status'
+    // OLS combines syntax and base omissions as 2. PPML distinguishes a
+    // declared base (2) from another syntax omission (3).
+    local last_syntax_status = 2 + ("`ppml'" != "")
     if `count' > 0 {
         forvalues slot = 1/`count' {
-            if `status_matrix'[`slot',2] == 2 continue
+            if inrange(`status_matrix'[`slot',2], 2, `last_syntax_status') continue
             local name : word `slot' of `names'
             local remaining `"`name'"'
             local intended_name

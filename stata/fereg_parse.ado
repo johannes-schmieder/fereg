@@ -1,10 +1,15 @@
 *! fereg model-wire v2 metadata parser 0.6.3 18nov2026
 program define fereg_parse, rclass
     version 15.0
+    gettoken literal_rhs : 0, parse(",") bind
     syntax [varlist(fv ts numeric default=none)], ///
-        TOUSE(varname numeric) [ABSorb(string asis) CLUster(string asis) EMPTYMODEL]
+        TOUSE(varname numeric) [ABSorb(string asis) CLUster(string asis) EMPTYMODEL MODELCMDLINE(string)]
 
     local rhs `"`varlist'"'
+    // syntax varlist(fv) rewrites ## to separate terms. With an explicit
+    // unobserved base, Stata expands those two spellings to different axes.
+    if `"`modelcmdline'"' != "" _fereg_literal_rhs `modelcmdline'
+    else if strpos(`"`literal_rhs'"', "##") local rhs `"`literal_rhs'"'
     if `"`emptymodel'"' != "" local rhs
     confirm variable `touse'
 
@@ -362,4 +367,16 @@ program define fereg_parse, rclass
     return matrix absorb_components = `absorb_component_meta'
     return matrix cluster_terms = `cluster_meta'
     return matrix cluster_components = `cluster_component_meta'
+end
+
+program define _fereg_literal_rhs
+    version 15.0
+    gettoken command 0 : 0
+    syntax anything(name=terms) [if] [in] [fw aw pw iw] [, *]
+    if !strpos(`"`terms'"', "##") exit
+    // A leading range or wildcard can contain both outcome and regressors.
+    gettoken first terms : terms, bind
+    fvunab first : `first'
+    gettoken depvar remaining : first
+    c_local rhs `"`remaining' `terms'"'
 end

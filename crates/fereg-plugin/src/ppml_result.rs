@@ -1590,6 +1590,24 @@ fn separation_trace_digest(report: &SeparationReport) -> Result<u64> {
                         digest.usize(levels, "trace positive fixed-effect levels")?;
                         digest.word(u64::from(explicit_constant));
                     }
+                    SeparationCertificateProof::SimplexPositiveRowCoverage { boundary_rows } => {
+                        digest.word(6);
+                        digest.usize(boundary_rows, "trace matched boundary rows")?;
+                    }
+                    SeparationCertificateProof::SimplexAnchoredPositiveRank {
+                        within_columns,
+                        anchor_levels,
+                        effects,
+                        constant_finite,
+                        explicit_constant,
+                    } => {
+                        digest.word(7);
+                        digest.usize(within_columns, "trace within-anchor dimension")?;
+                        digest.usize(anchor_levels, "trace anchor levels")?;
+                        digest.usize(effects, "trace categorical effects")?;
+                        digest.usize(constant_finite, "trace constant finite columns")?;
+                        digest.word(u64::from(explicit_constant));
+                    }
                     SeparationCertificateProof::SimplexDualInfeasibility {
                         boundary_rows,
                         nullity,

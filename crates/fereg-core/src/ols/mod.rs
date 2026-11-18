@@ -4,6 +4,7 @@ mod canonical_products;
 mod centered;
 pub(crate) mod finite_operations;
 mod finite_wls_kernel;
+pub(crate) mod omitted_score;
 pub(crate) use canonical_products::canonical_three_workspace_bytes;
 mod implicit_centered;
 mod linear_session;

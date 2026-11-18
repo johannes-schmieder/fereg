@@ -294,10 +294,10 @@ impl<R: PreparedInferenceReservation> QualifiedClusterSubsetMeatProvider<R>
         let certificate = if self.scores.dense_view().is_some() {
             QualifiedClusterCertificateRoute::OlsIndependentRaw
         } else {
-            QualifiedClusterCertificateRoute::OlsPerGroupBread(self.fit.bread().values())
+            QualifiedClusterCertificateRoute::OlsPerGroupBread(self.scores.influence_map(self.fit))
         };
         let meats = if let Some(batch) = self.group_batch {
-            batch.reduce_subset(mask, self.fit.bread().values(), reservation)?
+            batch.reduce_subset(mask, self.scores.influence_map(self.fit), reservation)?
         } else {
             reduce_qualified_cluster_subset(
                 self.scores,
@@ -842,12 +842,17 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
         // meat.  Apply the bread only once after inclusion-exclusion instead
         // of once per cluster group; this is algebraically identical and
         // removes the dominant O(G K^2) matrix-vector work for wide designs.
-        sandwich(fit.bread().values(), &combined_influence, p, reservation)?
+        sandwich(
+            scores.influence_map(fit),
+            &combined_influence,
+            p,
+            reservation,
+        )?
     } else {
         symmetrize(&mut combined_influence, p)?;
         combined_influence
     };
-    let uncorrected = sandwich(fit.bread().values(), &combined_meat, p, reservation)?;
+    let uncorrected = sandwich(scores.influence_map(fit), &combined_meat, p, reservation)?;
     let correction = cluster_correction(weight_report, dof)?;
     let mut corrected = reserved_filled(
         reservation,
@@ -1011,7 +1016,7 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
     )?;
     symmetric.copy_from_slice(raw);
     symmetrize(&mut symmetric, p)?;
-    let raw_eigen = symmetric_eigensystem(&symmetric, p, reservation)?;
+    let raw_eigen = symmetric_eigensystem(&symmetric, p, tolerance, reservation)?;
     let minimum_raw = raw_eigen
         .values
         .iter()
@@ -1048,7 +1053,7 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
     // One eigensystem therefore serves both the pre-restore and final checks.
     symmetrize(&mut output, p)?;
     let adjusted_eigen = if full_adjusted {
-        Some(symmetric_eigensystem(&output, p, reservation)?)
+        Some(symmetric_eigensystem(&output, p, tolerance, reservation)?)
     } else {
         None
     };
@@ -1123,6 +1128,7 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
 fn symmetric_eigensystem<R: PreparedInferenceReservation>(
     matrix: &[f64],
     dimension: usize,
+    tolerance: f64,
     reservation: &mut R,
 ) -> Result<SymmetricEigensystem> {
     let square = checked_square(
@@ -1151,70 +1157,91 @@ fn symmetric_eigensystem<R: PreparedInferenceReservation>(
     for index in 0..dimension {
         vectors[index * dimension + index] = 1.0;
     }
-    if dimension > 1 {
-        let scale = covariance_scale(&work, dimension)?;
-        let threshold = 128.0 * f64::EPSILON * scale;
-        let maximum_iterations = dimension
-            .checked_mul(dimension)
-            .and_then(|value| value.checked_mul(128))
-            .ok_or_else(|| allocation("prepared clustered Jacobi iteration limit overflows"))?;
-        let mut converged = false;
-        for _ in 0..maximum_iterations {
-            let mut pivot_row = 0_usize;
-            let mut pivot_column = 1_usize;
-            let mut maximum = 0.0_f64;
-            for row in 0..dimension {
-                for column in (row + 1)..dimension {
-                    let value = work[row * dimension + column].abs();
-                    if value > maximum {
-                        maximum = value;
-                        pivot_row = row;
-                        pivot_column = column;
-                    }
-                }
-            }
-            if maximum <= threshold {
-                converged = true;
-                break;
-            }
-            if !jacobi::rotate(&mut work, &mut vectors, dimension, pivot_row, pivot_column) {
-                return Err(invalid_data(
-                    "prepared clustered Jacobi rotation is not finite",
-                ));
-            }
-        }
-        if !converged {
-            return Err(invalid_data(
-                "prepared clustered symmetric eigensystem did not converge",
-            ));
-        }
-    }
     let mut values = reserved_filled(
         reservation,
         dimension,
         0.0_f64,
         "unable to reserve prepared clustered eigenvalues",
     )?;
-    for index in 0..dimension {
-        values[index] = work[index * dimension + index];
-        if !values[index].is_finite() {
-            return Err(invalid_data("prepared clustered eigenvalue is not finite"));
+    let mut threshold = 128.0 * f64::EPSILON * covariance_scale(&work, dimension)?;
+    let mut refined = false;
+    loop {
+        if dimension > 1 {
+            jacobi_to_threshold(&mut work, &mut vectors, dimension, threshold)?;
+        }
+        for index in 0..dimension {
+            values[index] = work[index * dimension + index];
+            if !values[index].is_finite() {
+                return Err(invalid_data("prepared clustered eigenvalue is not finite"));
+            }
+        }
+        let (reconstruction_error, orthogonality_error) = jacobi::eigensystem_errors(
+            matrix,
+            &values,
+            &vectors,
+            dimension,
+            f64::MIN_POSITIVE,
+            compensated_add,
+        )?;
+        if reconstruction_error <= tolerance || refined {
+            return Ok(SymmetricEigensystem {
+                values,
+                vectors,
+                reconstruction_error,
+                orthogonality_error,
+            });
+        }
+        // The absolute stopping threshold can leave entire small covariance
+        // rows unresolved. Continue the same rotations at a precision that
+        // bounds the off-diagonal remainder relative to every nonzero row.
+        // ||Q E Q'||_infty <= sqrt(p) ||E||_2 <= p sqrt(p) max|E_ij|.
+        let smallest_row = matrix
+            .chunks_exact(dimension)
+            .map(|row| row.iter().copied().map(f64::abs).fold(0.0, f64::max))
+            .filter(|&scale| scale > 0.0)
+            .fold(f64::INFINITY, f64::min);
+        let p = dimension as f64;
+        threshold = smallest_row * (tolerance / (p * p.sqrt()));
+        refined = true;
+    }
+}
+
+fn jacobi_to_threshold(
+    work: &mut [f64],
+    vectors: &mut [f64],
+    dimension: usize,
+    threshold: f64,
+) -> Result<()> {
+    let maximum_iterations = dimension
+        .checked_mul(dimension)
+        .and_then(|value| value.checked_mul(128))
+        .ok_or_else(|| allocation("prepared clustered Jacobi iteration limit overflows"))?;
+    for _ in 0..maximum_iterations {
+        let mut pivot_row = 0_usize;
+        let mut pivot_column = 1_usize;
+        let mut maximum = 0.0_f64;
+        for row in 0..dimension {
+            for column in (row + 1)..dimension {
+                let value = work[row * dimension + column].abs();
+                if value > maximum {
+                    maximum = value;
+                    pivot_row = row;
+                    pivot_column = column;
+                }
+            }
+        }
+        if maximum <= threshold {
+            return Ok(());
+        }
+        if !jacobi::rotate(work, vectors, dimension, pivot_row, pivot_column) {
+            return Err(invalid_data(
+                "prepared clustered Jacobi rotation is not finite",
+            ));
         }
     }
-    let (reconstruction_error, orthogonality_error) = jacobi::eigensystem_errors(
-        matrix,
-        &values,
-        &vectors,
-        dimension,
-        f64::MIN_POSITIVE,
-        compensated_add,
-    )?;
-    Ok(SymmetricEigensystem {
-        values,
-        vectors,
-        reconstruction_error,
-        orthogonality_error,
-    })
+    Err(invalid_data(
+        "prepared clustered symmetric eigensystem did not converge",
+    ))
 }
 
 fn reconstruct_clipped<R: PreparedInferenceReservation>(
@@ -1331,7 +1358,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
     )?;
     raw.copy_from_slice(&covariance.raw_values);
     symmetrize(&mut raw, p)?;
-    let raw_eigen = symmetric_eigensystem(&raw, p, reservation)?;
+    let raw_eigen = symmetric_eigensystem(&raw, p, tolerance, reservation)?;
     let raw_minimum = raw_eigen
         .values
         .iter()
@@ -1343,7 +1370,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
     } else {
         (raw, 0)
     };
-    let pre_restore_eigen = symmetric_eigensystem(&expected, p, reservation)?;
+    let pre_restore_eigen = symmetric_eigensystem(&expected, p, tolerance, reservation)?;
     let pre_restore_minimum = pre_restore_eigen
         .values
         .iter()
@@ -1359,7 +1386,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
 
     symmetrize(&mut expected, p)?;
     let transform_error = matrix_relative_infinity_norm(&expected, covariance.values(), p)?;
-    let final_eigen = symmetric_eigensystem(covariance.values(), p, reservation)?;
+    let final_eigen = symmetric_eigensystem(covariance.values(), p, tolerance, reservation)?;
     let final_minimum = final_eigen
         .values
         .iter()

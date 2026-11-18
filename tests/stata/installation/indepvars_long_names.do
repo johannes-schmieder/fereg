@@ -68,4 +68,12 @@ assert `"`e(indepvars)'"' == "weight 1bn.foreign _cons"
 quietly feppml price weight i.foreign
 assert `"`e(indepvars)'"' == "weight 1bn.foreign"
 
+// The PPML status wire distinguishes explicit syntax omissions from bases.
+quietly feppml price weight o.length 1o.foreign
+assert `"`e(indepvars)'"' == "weight"
+generate byte twin = foreign
+quietly feppml price weight ibn.foreign#ibn.twin
+assert !strpos(`"`e(indepvars)'"', "0bn.foreign#1bn.twin")
+assert !strpos(`"`e(indepvars)'"', "1bn.foreign#0bn.twin")
+
 di as result "END_FIXTURE|indepvars_long_names|rc=0"

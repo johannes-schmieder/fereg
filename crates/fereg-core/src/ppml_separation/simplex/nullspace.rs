@@ -5,7 +5,7 @@ use super::{fallible_filled, reserve};
 
 pub(super) fn nullspace_basis(
     regressors: &DenseMatrix,
-    rows: &[usize],
+    rows: &mut [usize],
     tolerance: f64,
 ) -> Result<Vec<Vec<f64>>> {
     let ncols = regressors.ncols();
@@ -67,6 +67,7 @@ pub(super) fn nullspace_basis(
             break;
         };
         if pivot_row != rank {
+            rows.swap(rank, pivot_row);
             for column in 0..ncols {
                 matrix.swap(rank * ncols + column, pivot_row * ncols + column);
             }

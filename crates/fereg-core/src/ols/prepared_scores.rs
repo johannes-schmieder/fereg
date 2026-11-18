@@ -66,6 +66,7 @@ pub(super) struct CertifiedPreparedOlsScoreDesign<'a> {
     nrows: usize,
     finite_rank: usize,
     means: Vec<f64>,
+    centered_influence_map: Option<Vec<f64>>,
     finite_row_buffer: RefCell<Vec<f64>>,
     reported_to_finite: Vec<usize>,
     normalized_intercept_position: Option<usize>,
@@ -100,6 +101,12 @@ struct PreparedOlsScoreRowCache {
 }
 
 impl CertifiedPreparedOlsScoreDesign<'_> {
+    pub(super) fn influence_map<'a>(&'a self, fit: &'a CertifiedPreparedOlsFit) -> &'a [f64] {
+        self.centered_influence_map
+            .as_deref()
+            .unwrap_or_else(|| fit.bread().values())
+    }
+
     pub(super) const fn nrows(&self) -> usize {
         self.nrows
     }
@@ -543,7 +550,7 @@ pub(super) fn build_prepared_ols_score_design<
         &score_product,
         PreparedOlsScoreProduct::Fast(PreparedOlsFastScoreCache::Selected { .. })
     );
-    let (storage, means, scratch_peak_bytes) = match score_product {
+    let (storage, mut means, scratch_peak_bytes) = match score_product {
         PreparedOlsScoreProduct::Empty if rank == 0 => (
             PreparedOlsScoreStorage::Dense(DenseMatrix::from_row_major(nrows, 0, Vec::new())?),
             Vec::new(),
@@ -618,6 +625,13 @@ pub(super) fn build_prepared_ols_score_design<
             "prepared robust score-design certificate did not pass",
         ));
     }
+    let centered_influence_map = centered_influence_map(
+        normalized_intercept_position,
+        fit.bread(),
+        tolerance,
+        &mut means,
+        reservation,
+    )?;
     let certificate_seconds = phase_started.elapsed().as_secs_f64();
     let phase_started = Instant::now();
     let finite_row_buffer = reserved_filled(
@@ -640,11 +654,50 @@ pub(super) fn build_prepared_ols_score_design<
         nrows,
         finite_rank: rank,
         means,
+        centered_influence_map,
         finite_row_buffer: RefCell::new(finite_row_buffer),
         reported_to_finite,
         normalized_intercept_position,
         certificate,
     })
+}
+
+/// The reported-intercept bread corner is 1/W + mean' B mean. When W times
+/// that corner is large, forming raw score outer products and applying the
+/// expanded bread can lose the within-slope variance to cancellation.
+fn centered_influence_map<R: PreparedInferenceReservation>(
+    intercept: Option<usize>,
+    bread: &super::PreparedOlsBread,
+    tolerance: f64,
+    score_addends: &mut [f64],
+    reservation: &mut R,
+) -> Result<Option<Vec<f64>>> {
+    let Some(intercept) = intercept else {
+        return Ok(None);
+    };
+    let dimension = bread.dimension();
+    let mass_inverse = 1.0 / bread.weight_scale().reference_weight_sum;
+    let corner = bread.values()[intercept * dimension + intercept];
+    // Preserve the ordinary reduction when the estimated roundoff amplification
+    // stays below the geometric midpoint between one ulp and the requested accuracy.
+    if corner <= mass_inverse * (tolerance / f64::EPSILON).sqrt().max(1.0) {
+        return Ok(None);
+    }
+    let mut map = reserved_filled(
+        reservation,
+        bread.values().len(),
+        0.0,
+        "unable to reserve centered OLS score influence map",
+    )?;
+    map.copy_from_slice(bread.values());
+    // With [x_within, 1], the slope influence is B*x_within and the constant
+    // influence is 1/W - mean' B*x_within. Write the exact last column directly.
+    for row in map.chunks_exact_mut(dimension) {
+        row[intercept] = 0.0;
+    }
+    map[intercept * dimension + intercept] = mass_inverse;
+    score_addends.fill(0.0);
+    Ok(Some(map))
 }
 
 fn build_scratch_score_storage<

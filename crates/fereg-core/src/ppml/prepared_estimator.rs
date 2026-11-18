@@ -571,6 +571,18 @@ pub fn fit_prepared_ppml_interruptible(
         prepare_ppml_fixed_effect_report(prepared.prepared(), &requested_saved_channels)?;
     let cluster_codes = cluster_code_views(prepared)?;
 
+    crate::ols::omitted_score::check(
+        prepared.fit_view(),
+        fit.linear()
+            .basis()
+            .slots()
+            .iter()
+            .map(|slot| (slot.generated_column_index, slot.status)),
+        fit.linear().basis().kept_generated_columns(),
+        prepared.outcome(),
+        crate::ols::omitted_score::FittedResponse::Mean(fit.mean()),
+        ppml.score_tolerance,
+    )?;
     let coefficients = map_coefficients(prepared.prepared(), &fit, &omission_statuses)?;
     let (wald_columns, wald_reference) = wald_columns(prepared.prepared(), &coefficients, &fit)?;
     let reported_finite_rank = coefficients

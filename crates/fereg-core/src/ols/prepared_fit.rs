@@ -1322,6 +1322,24 @@ pub fn fit_prepared_model_coefficients(
     fit_prepared_ols_coefficients_view_map(prepared, config)
 }
 
+fn validate_final_omitted_scores<P: PreparedOlsFitView + ?Sized>(
+    data: &P,
+    fit: CertifiedPreparedOlsFit,
+    tolerance: f64,
+) -> Result<CertifiedPreparedOlsFit> {
+    super::omitted_score::check(
+        data,
+        fit.coefficients()
+            .iter()
+            .map(|slot| (slot.generated_column_index, slot.status)),
+        fit.kept_generated_columns(),
+        &data.fit_sample().outcome,
+        super::omitted_score::FittedResponse::Residual(fit.residuals()),
+        tolerance,
+    )?;
+    Ok(fit)
+}
+
 pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows<
     P: PreparedOlsFitView + Sync + ?Sized,
 >(
@@ -1333,22 +1351,24 @@ pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows<
         drop(rows);
         return fit_prepared_ols_coefficients_view_map(prepared, config);
     }
-    fit_thread_team(config).install(|| {
-        validate_config(prepared, config)?;
-        let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
-        fit_with_controls_internal_mode_with_frame(
-            prepared,
-            frame,
-            config,
-            &mut SystemFitReservation,
-            FitPerturbations::default(),
-            false,
-            MAX_FAST_SCORE_CACHE_BYTES,
-            None,
-            None,
-            Some(rows),
-        )
-    })?
+    fit_thread_team(config)
+        .install(|| {
+            validate_config(prepared, config)?;
+            let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
+            fit_with_controls_internal_mode_with_frame(
+                prepared,
+                frame,
+                config,
+                &mut SystemFitReservation,
+                FitPerturbations::default(),
+                false,
+                MAX_FAST_SCORE_CACHE_BYTES,
+                None,
+                None,
+                Some(rows),
+            )
+        })?
+        .and_then(|fit| validate_final_omitted_scores(prepared, fit, config.score_tolerance))
 }
 
 pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + Sync + ?Sized>(
@@ -1374,6 +1394,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + Syn
             ),
         }
     })?
+    .and_then(|fit| validate_final_omitted_scores(prepared, fit, config.score_tolerance))
 }
 
 pub(super) fn assemble_retained_linear_frame<'a, P: PreparedOlsFitView + Sync + ?Sized>(
@@ -2087,6 +2108,7 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
             ),
         }
     })?
+    .and_then(|fit| validate_final_omitted_scores(prepared, fit, config.score_tolerance))
 }
 
 // The immutable FE binding spans initial blocks and the terminal residual.

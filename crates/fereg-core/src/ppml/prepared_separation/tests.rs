@@ -539,6 +539,7 @@ fn numerical_proposal_boundary_rejects_every_identity_and_shape_forgery() {
         exact_fe_certificate: None,
         direction: Some(vec![-1.0; generation.original_rows().len()]),
         exact_intercept_span: None,
+        exact_primal: None,
         note: "adversarial proposal".into(),
         fixed_point: None,
         stable_dual: None,
@@ -2697,6 +2698,76 @@ fn column(values: &[f64]) -> LoadedNumericColumn {
     }
 }
 
+/// Positive cells enforce x = a[g] + b[h]. The fifth observation is an
+/// exact positive twin, while the sixth misses this equality by one unit.
+#[test]
+fn exact_primal_two_intercept_offsets_repair_an_overlapping_claim() {
+    let (mut request, _, mut loaded, mut uses) = fixture();
+    let mut h = request.absorbed_terms[0].clone();
+    h.id = AbsorbTermId::new(2).unwrap();
+    h.categorical_sources = vec![SourceId::new(3).unwrap()];
+    request.absorbed_terms.push(h);
+    uses[2] = NumericSourceUse::fixed_effect();
+    loaded.outcome = column(&[1., 1., 1., 1., 0., 0.]);
+    loaded.numeric_sources[0].1 = column(&[0., 3., 2., 5., 3., 6.]);
+    loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 1., 2.]);
+    loaded.numeric_sources[2].1 = column(&[1., 2., 1., 2., 2., 2.]);
+    let owner = PreparedPpmlModelOwner::new(
+        request,
+        Vec::new(),
+        loaded.clone(),
+        prepare_numeric(&loaded, &uses),
+    )
+    .unwrap();
+    let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+    let model = coordinator.view().prepared;
+    let hint = [0., 0., 0., 0., -0.2, -1.];
+    let config = SeparationConfig::default();
+    let (proof, complete) = primal::find(model, &[4, 5], config, &hint, false)
+        .unwrap()
+        .unwrap();
+    assert!(!complete);
+    assert!(primal::verify(model, &proof, &[5], config, &hint).unwrap());
+    assert!(!primal::verify(model, &proof, &[4], config, &hint).unwrap());
+}
+
+/// No signed coordinate direction is feasible on this cone. A strict
+/// direction requires at least two jointly chosen finite coefficients.
+#[test]
+fn exact_primal_recovers_oblique_ray_with_nonuniform_strict_margins() {
+    let (mut request, _, mut loaded, mut uses) = fixture();
+    let mut term = request.model.terms[0].clone();
+    term.id = TermId::new(2).unwrap();
+    term.order = TermOrder::new(2).unwrap();
+    term.coefficient_slot = CoefficientSlot::new(2).unwrap();
+    term.components[0].source = SourceId::new(3).unwrap();
+    term.canonical_token = "c.h".into();
+    request.model.terms.push(term);
+    uses[2] = NumericSourceUse::ordinary();
+    loaded.outcome = column(&[1., 1., 0., 0., 0., 0.]);
+    loaded.numeric_sources[0].1 = column(&[0., 0., 1., -1., 1., 0.]);
+    loaded.numeric_sources[1].1 = column(&[1.; 6]);
+    loaded.numeric_sources[2].1 = column(&[0., 0., -1., 2., 0., 1.]);
+    let owner = PreparedPpmlModelOwner::new(
+        request,
+        Vec::new(),
+        loaded.clone(),
+        prepare_numeric(&loaded, &uses),
+    )
+    .unwrap();
+    let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+    let generation = coordinator.view().prepared;
+    let expected = [2, 3, 4, 5];
+    let projected = [0., 0., -1. / 3., -2. / 3., -4. / 3., -1.];
+    let config = SeparationConfig::default();
+    // Require a materialized ray so this exercises coefficient recovery.
+    let (proof, complete) = primal::find(generation, &expected, config, &projected, false)
+        .unwrap()
+        .unwrap();
+    assert!(complete);
+    assert!(primal::verify(generation, &proof, &expected, config, &projected).unwrap());
+}
+
 /// The finite/control contrast x - 1[g=2] - 1[g=3] is exactly -1
 /// on rows 5/6 and zero elsewhere. The first two FE effects do not separate;
 /// the control may be explicit or the THIRD absorbed categorical effect.
@@ -3446,3 +3517,6 @@ mod binary_graph_tests;
 
 #[path = "alias_prefix_tests.rs"]
 mod alias_prefix_tests;
+
+#[path = "positive_rank/tests.rs"]
+mod positive_rank_tests;

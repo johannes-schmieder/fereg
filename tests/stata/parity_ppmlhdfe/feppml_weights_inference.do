@@ -334,5 +334,72 @@ quietly ereturn display
 matrix `saturated_table' = r(table)
 assert `saturated_table'[5,`slope'] < _b[2.cell] & _b[2.cell] < `saturated_table'[6,`slope']
 
+* No single dimension contains both cells. Each pair within a cell shares
+* one dimension, and no pair across cells shares either. CGM is exactly zero.
+* The offset changes the mean within each cell, so use weighted scores.
+clear
+set obs 12
+generate byte cell = 1 + (_n > 6)
+generate byte id = _n
+generate byte rep = mod(_n-1,6) + 1
+generate byte first = cond(cell==1, 1, 1+rep)
+generate byte second = cond(cell==2, 1, 1+rep)
+generate double x = cond(cell==1, -.375, .625)
+generate double xcopy = x
+generate double w = 1+mod(rep,3)
+generate double exposure = 1+mod(id,4)
+generate double y = 1+mod(3*id,7)+cell
+bysort cell: egen double wy = total(w*y)
+bysort cell: egen double we = total(w*exposure)
+generate double truth = exposure*wy/we
+egen double independent_variance = total((w*(y-truth)/wy)^2)
+scalar cell_variance = (12/11)*independent_variance[1]
+scalar slope_truth = ln((wy[12]/we[12])/(wy[1]/we[1]))
+foreach weight in pw fw {
+    `feppml_test_command' y c.x c.xcopy [`weight'=w], exposure(exposure) ///
+        vce(cluster first second) mu(mu)
+    assert abs(_b[x] - slope_truth) < 1e-8
+    assert reldif(mu,truth) < 1e-9
+    assert e(N_clust1)==7 & e(N_clust2)==7
+    assert _se[x]==0 & missing(e(chi2))
+    mata: assert(all(st_matrix("e(V)") :== 0))
+    drop mu
+
+    `feppml_test_command' y c.x [`weight'=w], exposure(exposure) vce(cluster id)
+    assert reldif(_se[x]^2, cell_variance) < 1e-9 & !missing(e(chi2))
+}
+
+* Splitting the second cell restores a genuinely small positive variance.
+generate double tiny_y = exposure*(1+cell)*(1+1e-7*(rep-3.5))
+bysort cell: egen double tiny_wy = total(w*tiny_y)
+generate double tiny_mu = exposure*tiny_wy/we
+egen double tiny_v = total((cell==2)*(w*(tiny_y-tiny_mu)/tiny_wy)^2)
+`feppml_test_command' tiny_y c.x [pw=w], exposure(exposure) vce(cluster first id)
+assert _se[x] > 0 & abs(_se[x]^2/(7/6*tiny_v)-1) < 2e-5
+
+* Four fitted categorical cells. The two crossed dimensions each keep whole
+* cells. The local slope is redundant with the absorbed group intercept.
+clear
+set obs 32
+generate byte a = mod(_n-1, 2)
+generate byte b = mod(floor((_n-1)/2), 2)
+generate double local_constant = 1+b
+generate double y = 1+mod(_n,7)+a+2*b
+`feppml_test_command' y i.a i.a#i.b, absorb(b##c.local_constant) vce(cluster a b)
+assert e(N_clust1)==2 & e(N_clust2)==2 & e(feppml_psd_final_rank)==0
+mata: assert(all(st_matrix("e(V)") :== 0))
+
+* Removing the interaction leaves four cells and a three-dimensional design.
+* The fitted cell totals in the additive Poisson model are row*column/grand.
+egen byte ab = group(a b)
+bysort a: egen double ya = total(y)
+bysort b: egen double yb = total(y)
+bysort ab: egen double yab = total(y)
+bysort ab: generate byte tag = _n==1
+egen double yt = total(y)
+egen double additive_v = total(tag*((yab-ya*yb/yt)/ya)^2)
+`feppml_test_command' y i.a i.b, vce(cluster ab)
+assert _se[1.a] > 0 & abs(_se[1.a]^2/(4/3*additive_v)-1) < 1e-8
+
 if !`feppml_hidden_wrapper' ///
     display as result "END_FIXTURE|feppml_weights_inference|rc=0"

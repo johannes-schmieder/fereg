@@ -55,6 +55,7 @@ foreach kind in unit fw pw {
         assert e(feppml_separation_sequence)[3,7]==2
         assert e(feppml_separation_sequence)[3,13]==1
         assert e(feppml_separation_sequence)[4,7]==2
+        assert e(feppml_separation_sequence)[4,8]==0
         assert e(feppml_separation_sequence)[4,13]==1
         assert e(feppml_separation_sequence)[4,12]==e(feppml_receipt)[1,24]
         matrix b_native=e(b)
@@ -95,4 +96,17 @@ assert mreldif(e(b),before_b)==0 & mreldif(e(V),before_V)==0
 assert e(sample)==before_sample
 confirm new variable rejected_mu
 confirm new variable rejected_reason
+* The direction -x is zero on positive rows and strictly negative on every
+* boundary row in either regressor unit. The retained slope z stays identified.
+foreach exponent in 0 40 {
+    clear
+    quietly set obs 24
+    generate byte g=1
+    generate byte y=cond(_n<=20,1+mod(_n,3),0)
+    generate byte z=mod(_n,2)
+    generate double x=(y==0)*2^(-`exponent')
+    quietly feppml y x z, absorb(g) separation(simplex) threads(1)
+    assert e(N)==20
+    assert e(sample)==(y>0)
+}
 display as result "END_FIXTURE|feppml_simplex_ir_publication|rc=0"

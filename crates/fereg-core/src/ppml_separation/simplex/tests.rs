@@ -111,7 +111,7 @@ fn injected_detector_reservation_failure_is_allocation_error() {
 fn injected_nullspace_reservation_failure_is_allocation_error() {
     let x = DenseMatrix::from_columns(&[vec![1.0, 1.0]]).expect("matrix");
     inject_reservation_failure(0);
-    let error = nullspace::nullspace_basis(&x, &[1], 1e-10)
+    let error = nullspace::nullspace_basis(&x, &mut [1], 1e-10)
         .expect_err("injected null-space allocation failure");
     assert_eq!(error.code, ErrorCode::Allocation);
 }
@@ -132,4 +132,56 @@ fn combined_peak_bound_covers_live_nested_kernel_storage() {
     let overflow =
         simplex_workspace_peak_cells(usize::MAX, 1, 1, 2).expect_err("overflowing peak dimensions");
     assert_eq!(overflow.code, ErrorCode::Allocation);
+}
+
+#[test]
+fn tiny_boundary_coordinate_still_reveals_an_exact_recession_direction() {
+    for scale in [1., 2f64.powi(-40)] {
+        let x = DenseMatrix::from_columns(&[vec![1., 1., 1.], vec![0., 0., scale]]).unwrap();
+        let result = model_simplex(&[1., 2., 0.], &x, 1e-10, 1e-8, 100, 100_000).unwrap();
+        assert_eq!(result.status, MethodStatus::Certified);
+        assert_eq!(result.dropped, [2]);
+        // A small floating-point Farkas residual cannot establish a dual of
+        // the raw design when every strictly positive boundary weight has a
+        // nonzero product with its unique nonzero coordinate.
+        assert!(
+            !exact_terminal::no_recession(&x, &[1., 2., 0.], &[-1.], 100_000, 100_000, &[0])
+                .unwrap()
+        );
+    }
+}
+
+#[test]
+fn rounded_pivot_is_not_a_positive_outcome_rank_proof() {
+    // The exact positive rows (1,3) and (3,9) are collinear. Floating point
+    // column normalization generates a spurious 2^-54 pivot in this system.
+    let x = DenseMatrix::from_columns(&[vec![1., 3., 0.], vec![3., 9., 1.]]).unwrap();
+    let y = [1., 2., 0.];
+    assert!(!exact_terminal::full_positive_rank(&x, &y, &[0, 1], 100_000).unwrap());
+    let result = model_simplex(&y, &x, 1e-18, 1e-8, 100, 100_000).unwrap();
+    assert_ne!(result.status, MethodStatus::NoSeparation);
+}
+
+#[test]
+fn dual_has_strict_positive_weights_for_unequal_opposing_rays_and_raw_moments() {
+    let x = DenseMatrix::from_columns(&[vec![1., 1., 1.], vec![0., 2., -3.]]).unwrap();
+    assert!(
+        exact_terminal::no_recession(&x, &[1., 0., 0.], &[-1., -1.], 100_000, 100_000, &[0])
+            .unwrap()
+    );
+    assert!(
+        !exact_terminal::no_recession(&x, &[1., 0., 0.], &[-1., -1.], 1, 100_000, &[0]).unwrap()
+    );
+}
+
+#[test]
+fn positive_pivot_order_keeps_late_independent_rows_within_work_budget() {
+    let mut x = vec![0.; 100];
+    x[99] = 1.;
+    let design = DenseMatrix::from_columns(&[vec![1.; 100], x]).unwrap();
+    let mut outcome = vec![1.; 100];
+    outcome[50] = 0.;
+    assert!(exact_terminal::full_positive_rank(&design, &outcome, &[0, 99], 6).unwrap());
+    // Nominating a dependent second pivot must never issue a certificate.
+    assert!(!exact_terminal::full_positive_rank(&design, &outcome, &[0, 1], 6).unwrap());
 }

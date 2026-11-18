@@ -123,6 +123,12 @@ does not depend on the platform, the thread count, or the variables' scale.
 {cmd:e(fereg_status)} records each coefficient's status, and omitted
 coefficients and their variances are zero.
 
+{pstd}
+After a numerical omission, a score check can detect a material effect
+along a difference of nearly collinear regressors. This returns {cmd:r(430)}.
+Fit the equivalent specification using that difference explicitly, for
+example {it:z}-{it:x} in place of {it:z} while retaining {it:x}.
+
 {marker absorb}
 {title:Absorbed terms}
 

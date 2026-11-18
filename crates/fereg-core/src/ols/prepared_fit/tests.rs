@@ -5296,9 +5296,13 @@ fn rank_threshold_separates_clear_near_collinearity_cases() {
         .zip(&z)
         .map(|(x, z)| x + 1e-10 * z)
         .collect::<Vec<_>>();
+    let weak_design = [x.clone(), dropped_column];
+    // The cutoff is a rank decision. An outcome in the retained span
+    // permits that decision to be observed without a missed score.
+    let no_weak_effect = x.iter().map(|value| 2.0 * value).collect::<Vec<_>>();
     let dropped = prepared(
-        &y,
-        &[x.clone(), dropped_column],
+        &no_weak_effect,
+        &weak_design,
         &[false, false],
         None,
         false,
@@ -5307,6 +5311,32 @@ fn rank_threshold_separates_clear_near_collinearity_cases() {
     let dropped =
         fit_prepared_model_coefficients(&dropped, config).expect("clearly below-threshold fit");
     assert_eq!(dropped.finite_rank(), 1);
+
+    // With the original outcome the restricted regression leaves a nonzero
+    // derivative. x'x=69, x'z=-11/2 and z'z=15 imply z'(y-P_x y)=4019/920.
+    // Evaluate the actual stored contrast, including rounding in x+1e-10*z.
+    let restricted_slope = 2.0 - 0.3 * 5.5 / 69.0;
+    let weak_score: f64 = x
+        .iter()
+        .zip(&weak_design[1])
+        .zip(&y)
+        .map(|((&x, &near_x), &y)| (near_x - x) * 1e10 * (y - restricted_slope * x))
+        .sum();
+    assert_close(weak_score, 4019.0 / 920.0, 2e-5);
+    let missed = prepared(
+        &y,
+        &weak_design,
+        &[false, false],
+        None,
+        false,
+        TestWeights::Unit,
+    );
+    let error = fit_prepared_model_coefficients(&missed, config)
+        .expect_err("the omitted direction has a resolved nonzero score");
+    assert_eq!(error.code, ErrorCode::NonConvergence);
+    assert!(error
+        .message
+        .contains("omitted regressor has a resolved score"));
 
     let kept_column = x
         .iter()

@@ -1,5 +1,22 @@
 # Validation status
 
+## Numerical regression tests following the November 18 examples
+
+The public Stata fixtures include an OLS and Poisson change-of-units oracle,
+a full OLS slope/intercept sandwich under translation (HC1 and cluster, four
+weight specifications, two memory modes), a mixed true and near separation
+example, tests of residual scores after numerical omission, and saturated
+cluster tests with crossed partitions. The oracles use full dummy models,
+known conditional means, or exact design identities. They check retained
+observations, off-diagonal covariances and saved predictions as applicable.
+The separation fixtures exercise alternative methods, numeric scales and
+the lifetime of certificates across changes of sample.
+
+The numerical-omission check is sufficient to reject a fit when a tested
+score is material. A bounded search over simple contrasts cannot establish
+that every omitted linear combination is harmless. Challenging data can
+still require an equivalent, better-conditioned specification.
+
 ## Post-0.6.3 Mac candidate, November 18, 2026
 
 The large-OLS stability candidate now also covers three independently checked

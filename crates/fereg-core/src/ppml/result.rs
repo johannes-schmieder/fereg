@@ -3094,6 +3094,46 @@ fn chain_error(message: &'static str) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
 }
 
+fn valid_anchored_rank_shape(
+    within: usize,
+    anchor: usize,
+    effects: usize,
+    constant_finite: usize,
+    constant: bool,
+    full_columns: usize,
+    fixed_effects: &[PpmlFixedEffectResult],
+) -> bool {
+    if effects == 0
+        || (effects == 1 && constant_finite == 0)
+        || effects != fixed_effects.len()
+        || anchor == 0
+    {
+        return false;
+    }
+    if !fixed_effects
+        .iter()
+        .all(|effect| effect.levels > 0 && effect.kind == PpmlFixedEffectChannelKind::Intercept)
+        || fixed_effects.iter().map(|effect| effect.levels).max() != Some(anchor)
+    {
+        return false;
+    }
+    // With K categorical intercepts the other K-1 reference cells and
+    // the optional explicit constant are already in the anchored span.
+    let finite_and_absorbed = within
+        .checked_add(anchor)
+        .and_then(|v| v.checked_add(effects - 1))
+        .and_then(|v| v.checked_add(constant_finite))
+        .and_then(|v| v.checked_add(usize::from(constant)));
+    let absorbed = fixed_effects
+        .iter()
+        .try_fold(0usize, |n, effect| n.checked_add(effect.levels));
+    finite_and_absorbed == Some(full_columns)
+        && absorbed
+            .and_then(|n| n.checked_add(constant_finite))
+            .and_then(|n| n.checked_add(usize::from(constant)))
+            .is_some_and(|n| n <= full_columns)
+}
+
 fn validate_separation_method(
     method: &SeparationMethodReport,
     candidate_original_rows: &[usize],
@@ -3132,7 +3172,9 @@ fn validate_separation_method(
                 SeparationCertificateProof::SimplexFullPositiveRank { columns },
             ) => columns == full_model_columns && columns > 0,
             (
-                SeparationMethod::Simplex,
+                SeparationMethod::Simplex
+                | SeparationMethod::IteratedRectifier
+                | SeparationMethod::Mu,
                 MethodStatus::NoSeparation,
                 SeparationCertificateProof::SimplexWithinLevelPositiveRank {
                     slopes,
@@ -3148,6 +3190,34 @@ fn validate_separation_method(
                         .and_then(|v| v.checked_add(usize::from(explicit_constant)))
                         == Some(full_model_columns)
             }
+            (
+                SeparationMethod::Simplex
+                | SeparationMethod::IteratedRectifier
+                | SeparationMethod::Mu,
+                MethodStatus::NoSeparation,
+                SeparationCertificateProof::SimplexPositiveRowCoverage { boundary_rows },
+            ) => boundary_rows > 0 && boundary_rows < candidate_observations,
+            (
+                SeparationMethod::Simplex
+                | SeparationMethod::IteratedRectifier
+                | SeparationMethod::Mu,
+                MethodStatus::NoSeparation,
+                SeparationCertificateProof::SimplexAnchoredPositiveRank {
+                    within_columns,
+                    anchor_levels,
+                    effects,
+                    constant_finite,
+                    explicit_constant,
+                },
+            ) => valid_anchored_rank_shape(
+                within_columns,
+                anchor_levels,
+                effects,
+                constant_finite,
+                explicit_constant,
+                full_model_columns,
+                fixed_effects,
+            ),
             (
                 SeparationMethod::Simplex,
                 MethodStatus::NoSeparation,
@@ -3296,7 +3366,15 @@ fn validate_separation_method(
             "PPML separation method status, drops, and certificate shape disagree",
         ));
     }
-    if !separation_note_compatible(method.method, method.status, method.note) {
+    let note_matches = match method
+        .certificate
+        .as_ref()
+        .and_then(|c| c.proof.positive_support_note())
+    {
+        Some(expected) => method.note.code == expected && method.note.detail == 0,
+        None => separation_note_compatible(method.method, method.status, method.note),
+    };
+    if !note_matches {
         return Err(FeregError::new(
             ErrorCode::Internal,
             "PPML separation note code does not match its method and status",
@@ -3353,8 +3431,7 @@ fn separation_note_compatible(
         | (
             SeparationMethod::Simplex,
             MethodStatus::NoSeparation,
-            "finite regressors have full column rank on the positive-outcome sample"
-            | "exact positive-outcome rank spans the finite regressors and absorbed intercept levels",
+            "finite regressors have full column rank on the positive-outcome sample",
         )
         | (
             SeparationMethod::Simplex,
@@ -3374,7 +3451,16 @@ fn separation_note_compatible(
         | (
             SeparationMethod::Simplex,
             MethodStatus::Uncertified,
-            "model simplex phase-I dual failed independent Farkas verification",
+            "model simplex phase-I dual failed independent Farkas verification"
+            | "numerical simplex could not certify the boundary cone"
+            | "positive-outcome rank lacks an exact full-rank minor"
+            | "simplex infeasibility lacks a full-design no-separation proof"
+            | "model simplex deletion lacks an exact recession proof",
+        )
+        | (
+            SeparationMethod::Simplex | SeparationMethod::IteratedRectifier | SeparationMethod::Mu,
+            MethodStatus::Certified,
+            "exact raw-design recession direction",
         )
         | (
             SeparationMethod::IteratedRectifier,
@@ -3432,7 +3518,9 @@ fn validate_separation_certificate(
             SeparationCertificateProof::RecessionDirection => {
                 certificate.direction_scale == 0.0 && nonnegative.iter().all(|value| *value == 0.0)
             }
-            SeparationCertificateProof::SimplexWithinLevelPositiveRank { .. } => {
+            SeparationCertificateProof::SimplexWithinLevelPositiveRank { .. }
+            | SeparationCertificateProof::SimplexPositiveRowCoverage { .. }
+            | SeparationCertificateProof::SimplexAnchoredPositiveRank { .. } => {
                 certificate.direction_scale == 0.0 && nonnegative.iter().all(|v| *v == 0.0)
             }
             SeparationCertificateProof::SimplexFullPositiveRank { columns } => {

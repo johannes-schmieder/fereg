@@ -628,12 +628,15 @@ fn build_covariance<R: PreparedInferenceReservation>(
     }
     if let Some(dense) = scores.dense_view() {
         return build_dense_covariance(
-            fit,
             dense,
-            weight_view,
-            weights,
+            scores.influence_map(fit),
+            OlsRobustScoreMultiplier {
+                residuals: fit.residuals(),
+                weights: weight_view,
+                weight_kind: weights.kind,
+                perturb_production: perturb_meat_multiplier,
+            },
             hc1_correction,
-            perturb_meat_multiplier,
             reservation,
         );
     }
@@ -648,7 +651,7 @@ fn build_covariance<R: PreparedInferenceReservation>(
             // `(sqrt(HC1) * weight_root) * residual`.
             correction_root: hc1_correction.sqrt(),
         },
-        fit.bread().values(),
+        scores.influence_map(fit),
         reservation,
     )?;
     let standard_errors = standard_errors(&values, dimension, reservation)?;
@@ -663,20 +666,18 @@ fn build_covariance<R: PreparedInferenceReservation>(
 }
 
 fn build_dense_covariance<R: PreparedInferenceReservation>(
-    fit: &CertifiedPreparedOlsFit,
     scores: PreparedOlsDenseScoreView<'_>,
-    weight_view: ReferenceWeightView<'_>,
-    weights: PreparedOlsReferenceWeightReport,
+    influence_map: &[f64],
+    multiplier: OlsRobustScoreMultiplier<'_>,
     hc1_correction: f64,
-    perturb_meat_multiplier: bool,
     reservation: &mut R,
 ) -> Result<PreparedOlsRobustCovarianceBuild> {
-    let dimension = fit.bread().dimension();
-    let _square = checked_square(
+    let dimension = scores.reported_dimension();
+    let square = checked_square(
         dimension,
         "prepared robust dense covariance dimensions overflow usize",
     )?;
-    if scores.reported_dimension() != dimension || fit.residuals().len() != scores.nrows() {
+    if influence_map.len() != square || multiplier.residuals.len() != scores.nrows() {
         return Err(invalid_argument(
             "prepared robust dense covariance dimensions are inconsistent",
         ));
@@ -693,12 +694,7 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
     }
     let meats = reduce_dense_score_meats(
         scores,
-        OlsRobustScoreMultiplier {
-            residuals: fit.residuals(),
-            weights: weight_view,
-            weight_kind: weights.kind,
-            perturb_production: perturb_meat_multiplier,
-        },
+        multiplier,
         FixedBlockReductionPolicy {
             rows_per_block: ROBUST_REDUCTION_ROWS,
             maximum_blocks: ROBUST_MAX_BLOCKS,
@@ -708,7 +704,7 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
         reservation,
     )?;
     let values = bread_meat_bread(
-        fit.bread().values(),
+        influence_map,
         &meats.production,
         dimension,
         SandwichCorrectionPolicy::Scale(hc1_correction),
@@ -776,6 +772,7 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
             build_scratch_certificate_meat(fit, scores, weight_view, weights.kind, reservation)?;
         &recomputed_meat
     };
+    let influence_map = scores.influence_map(fit);
     let mut left_product = reserved_filled(
         reservation,
         square,
@@ -788,8 +785,7 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
             let mut correction = 0.0_f64;
             for inner in 0..dimension {
                 compensated_add(
-                    fit.bread().values()[row * dimension + inner]
-                        * meat[inner * dimension + column],
+                    influence_map[row * dimension + inner] * meat[inner * dimension + column],
                     &mut value,
                     &mut correction,
                 )?;
@@ -811,7 +807,7 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
             for inner in 0..dimension {
                 compensated_add(
                     left_product[row * dimension + inner]
-                        * fit.bread().values()[column * dimension + inner],
+                        * influence_map[column * dimension + inner],
                     &mut expected,
                     &mut correction,
                 )?;

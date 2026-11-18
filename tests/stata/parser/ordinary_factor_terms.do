@@ -23,5 +23,14 @@ confirm variable id x g h
 assert c(k) == `before_k'
 fereg_parse ibn.g, touse(`touse')
 assert strpos("`r(coefficient_names)'", "bn.g") > 0
+// When the explicit base is absent, ## and its spelled-out expansion can
+// carry different slots. The original expression must reach fvexpand.
+replace `touse' = g!=2
+foreach spec in "ib2.g##i.h" "ib2.g i.h ib2.g#i.h" {
+    quietly fvexpand `spec' if `touse'
+    local expected `r(varlist)'
+    quietly fereg_parse `spec', touse(`touse')
+    assert strtrim(`"`r(coefficient_names)'"') == `"`expected'"'
+}
 di as result "ordinary_factor_terms.do: PASS"
 di as result "END_FIXTURE|ordinary_factor_terms|rc=0"

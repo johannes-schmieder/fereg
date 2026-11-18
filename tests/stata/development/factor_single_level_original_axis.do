@@ -148,4 +148,30 @@ foreach effects in g#h g##c.z {
     drop explicit_mu fvset_mu ref_mu
     fvset clear q
 }
+// A missing source on the rows carrying q=2 excludes that base before
+// expansion. Native fvexpand distinguishes ## from separate terms here.
+// Use a leading range to exercise the original outcome/regressor boundary.
+use `source', clear
+order y x
+replace x = .a if q==2
+foreach spec in "ib2.q##i.h" "ib2.q i.h ib2.q#i.h" {
+    quietly fvexpand x `spec' if !missing(x)
+    local slots : word count `r(varlist)'
+    foreach command in fereg feppml {
+        local output residuals(actual)
+        if "`command'"=="feppml" local output mu(actual)
+        quietly `command' y-x `spec' [pw=2+0*x], absorb(g) `output'
+        assert colsof(e(b))==`slots'+1 & e(sample)==(q!=2)
+        if "`command'"=="fereg" {
+            quietly regress y x i.q##i.h i.g if q!=2
+            predict double ref if e(sample), resid
+        }
+        else {
+            quietly poisson y x i.q##i.h i.g if q!=2, nolog
+            predict double ref if e(sample), n
+        }
+        assert abs(actual-ref)<1e-7*(1+abs(ref)) if e(sample)
+        drop actual ref
+    }
+}
 display "END_FIXTURE|factor_single_level_original_axis|rc=0"

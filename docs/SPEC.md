@@ -1169,6 +1169,23 @@ decisions. Revalidate that basis against the accepted final Hessian; a final
 rank loss or inconsistent rank decision is fatal. Starts, warm states and
 ordinary iteration-specific factorizations have no canonical-rank authority.
 
+After a numerical omission, OLS and PPML can independently test the final
+residual score on a better-scaled direction in the original model. A witness
+can subtract an intercept FE level's reference value, or form a difference
+of two regressors after centering when the requested model spans a constant.
+Pairs can include an ordinary factor indicator. Within-factor differences are
+eligible when all observed codes fit in a 512-entry buffer and their indicators
+belong to the requested model, allowing one base level if it spans a constant.
+Centered pairs of retained regressors are also eligible when the structural
+intercept is omitted.
+The test bounds arithmetic error, requires variation resolved at source scale,
+normalizes the direction and uses the existing score tolerance. A material
+score proves the fit fails a full-model first-order condition and returns
+r(430) before publication. Exact aliases and zero-score witnesses leave the
+selected basis intact. The search covers at most 32 Mi streaming row visits
+for directional witnesses. Unchecked directions give no additional
+certificate. See `tests/stata/development/omitted_direction_score.do`.
+
 Tests: `src/ols/finite_wls_kernel.rs` (with
 `retained_qr_keeps_the_earliest_of_tied_columns_under_scalings_and_permutations`
 and `retained_qr_tie_band_follows_the_rounding_of_the_column_norms`),
@@ -1267,16 +1284,24 @@ unweighted score outer product, not f_i². Robust correction is
 one common `G_min/(G_min−1)` multiplies the complete inclusion–exclusion
 meat. No OLS residual-DoF or subset-specific multiplier applies.
 
-A bounded exact PPML certificate applies when the retained categorical design
-spans every distinct design cell and each cell has a positive outcome. The
-cell score equation sets its weighted residual sum to zero. When each cell
-belongs to one group of a declared cluster dimension, and every other
-dimension refines that partition, the coarsest cluster scores vanish.
-All finer CGM terms cancel against the same partitions intersected with the
-coarsest dimension. Publish the resulting zero covariance and undefined Wald
-test. A full row rank witness over a prime field is sufficient. An
-inconclusive witness or unavailable workspace leaves ordinary inference in
-charge.
+A bounded exact PPML certificate applies when the fitted directions span
+every distinct design cell and each cell has a positive outcome. Compare the
+original generated regressors and nuisance channels on the final sample. Use
+only kept finite directions and categorical intercepts as rank witnesses. A
+full row rank witness over a prime field is sufficient. The corresponding
+cell score equations set each weighted residual sum to zero, also with
+offsets and unequal weights.
+
+A cluster dimension refining a whole-cell dimension cancels by CGM
+inclusion–exclusion. The remaining whole-cell partitions can cross freely.
+More generally, define K(i,j) to be one if i and j share any cluster and zero
+otherwise. This is the result of inclusion–exclusion for the row pair. For
+cells A and B with anchor observations a and b, the certificate can verify
+K(i,j) − K(i,b) − K(a,j) + K(a,b) = 0 for all i in A and j in B.
+These differences evaluate the complete clustered meat on a basis of cell
+residual contrasts. Publish zero covariance and an undefined Wald test when
+the geometry proves it. An inconclusive rank or geometry check, or a proof
+exceeding the work or memory budget, leaves ordinary inference in charge.
 
 For PPML multiway clustering, measure each kept raw regressor in unweighted
 sample standard deviations (N−1 denominator, minimum 0.001) on the first
@@ -1833,6 +1858,36 @@ commit the union as one generation, compact all sources together, rebase
 topology once and restart the chain. First certified reason in canonical
 method order wins; singleton counts remain separate.
 
+Before deleting any original row, verify that the detector supplied an ordered,
+unique strict-negative set, aligned generation metadata and matching sign
+certificate. For simplex, IR and Mu, also establish a recession direction in
+the stored raw binary64 model. A raw finite or FE contrast may serve directly.
+Two finite columns can also supply an exact dyadic coefficient ratio. For two
+intercept effects, binding rows determine proposed level offsets along a
+spanning forest. Check each resulting finite-plus-two-effect contrast on all
+raw rows. A bounded coefficient search may propose additional rational slopes
+and absorbed effects.
+Verify the score of every positive observation equals zero, the score of every
+zero observation is nonpositive, and each published observation has strictly
+negative score. Coordinate rescaling must round-trip each stored value exactly.
+A coefficient witness that reproduces the direction by one correctly rounded
+raw score per observation bounds its relative Euclidean span error by one
+binary64 machine epsilon. For repeated raw design patterns, exact interpolation
+of strictly negative scores on selected patterns and zero elsewhere also proves the required
+direction exists. A nonzero modular minor proves a rational rank lower bound.
+An upper bound used to establish an exact interpolation requires independent
+relations verified on all raw columns, or an integer determinant certificate
+whose modular reconstruction exceeds its rigorous determinant bound.
+
+If a numerical proposal contains spurious rows, a separately verified
+direction can certify a smaller set. Restart the detectors on the next
+generation after any deletion. An independently replayed positive-support
+proof can instead retain the entire generation. If neither conclusion can be
+proved within the admitted workspace and bounded search, report a separation
+error. This guard can change the sample and resulting inference for nearly
+dependent inputs on which numerical certification alone previously deleted a
+finite-MLE observation.
+
 A failed separation projection score check returns r(430) and reports its
 maximum relative score and the internal acceptance limit. Public `tolerance()`
 controls outer IRLS convergence. If unscreened IRLS fails to converge on a
@@ -1842,18 +1897,35 @@ recession direction. Only a certified direction establishes separation.
 
 Full-model simplex includes finite columns, every FE level and slope channel
 in its explicit width; checked capacity includes design, null-space/tableau,
-topology and certificates. When the dense workspace exceeds the cap and there
-is one categorical intercept effect, the detector can instead verify exact
-positive-support rank within the same cap. Within-level differences of positive
-rows must span every finite slope over an odd prime field, and every FE level
-must contain a positive observation. Together these conditions force every
-direction that vanishes on positive rows to vanish on the full model. Failure
-to find a witness gives no conclusion. After a capacity skip, a later requested
-comprehensive IR must certify that the same generation has no unhandled
-separation. If the cap prevents certification and no later method resolves
-the skip, the command returns r(909). An IR drop
-restarts the chain and cannot certify a prior generation's skipped simplex.
-Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
+topology and certificates. A bounded exact alternative can show that every
+direction that vanishes on positive outcomes vanishes on every observation.
+One proof matches each zero outcome to a positive observation on every
+original model coordinate, including FE slope channels. Another uses an
+exact nonzero modular minor of positive-row differences within an anchor
+categorical intercept effect. Every anchor level needs a positive row, and
+the differences must span the finite slopes and remaining categorical
+contrasts. A finite column treated as constant must be constant on the entire
+current sample. Resource limits or failure to find a witness give no conclusion.
+
+A dense simplex full-positive-rank claim requires a nonzero minor of the raw
+positive design over a prime field. Phase-I infeasibility must also pass a
+raw-design test. Either the positive and full designs have the same row span,
+or a dual vector has strictly positive weights on all boundary rows and exact
+zero moment on every model column. Modular elimination proposes coefficients.
+The verifier evaluates the dyadic products and sums exactly. An inconclusive
+check leaves simplex uncertified. These checks share the existing simplex
+scratch envelope. The work allowance is eight times the tableau cell cap,
+or the cost of the dense positive-row elimination already performed, whichever
+is larger. Credit for that previous elimination is capped at 32 Mi coordinate
+operations.
+
+When a requested simplex exceeds its cap, a later comprehensive IR check can
+close the same generation. An unresolved cap returns r(909). Numerical
+simplex nonconvergence can also be resolved by an exact support proof or a
+later requested IR check. Once an exact positive-support result has been
+independently replayed, IR can use it on that generation and records zero
+projection iterations. Any deletion invalidates that evidence and restarts
+the chain. Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
 a fitted start and the same independent cone certificate; accepted Mu drops
 discard that entire fitted session.
 
