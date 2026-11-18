@@ -1,5 +1,6 @@
 //! Coordinate changes on a prepared separation generation. The original row
 //! ledger and the finite, absorbed and offset parts remain separately checked.
+mod exchange;
 use super::prepared_irls::PreparedPpmlIrlsFit;
 use super::prepared_model::PreparedPpmlModelGeneration;
 use super::{PpmlCoefficientOutput, PpmlCoefficientStatus, PreparedPpmlRequestV1};
@@ -186,10 +187,19 @@ fn exact_alternate(
 pub(super) fn replay_original_omission(
     generation: &mut PreparedPpmlModelGeneration,
     stable: PreparedPpmlIrlsFit,
-    mut refit: impl FnMut(&PreparedPpmlModelGeneration) -> Result<PreparedPpmlIrlsFit>,
-) -> Result<PreparedPpmlIrlsFit> {
+    interrupt: &mut dyn FnMut(super::PpmlInterruptPoint) -> Result<()>,
+    mut refit: impl FnMut(
+        &PreparedPpmlModelGeneration,
+        &mut dyn FnMut(super::PpmlInterruptPoint) -> Result<()>,
+    ) -> Result<PreparedPpmlIrlsFit>,
+    mut certify: impl FnMut(
+        &PreparedPpmlModelGeneration,
+        &PreparedPpmlIrlsFit,
+        &mut dyn FnMut(super::PpmlInterruptPoint) -> Result<()>,
+    ) -> Result<super::PpmlInferenceResult>,
+) -> Result<(PreparedPpmlIrlsFit, Option<super::PpmlInferenceResult>)> {
     let Some(recovery) = &generation.slope_recovery else {
-        return Ok(stable);
+        return Ok((stable, None));
     };
     let target = match recovery {
         GenerationRecovery::Pair(pair) => pair.target_column,
@@ -200,7 +210,7 @@ pub(super) fn replay_original_omission(
         .iter()
         .find(|c| c.generated_column_index == Some(target));
     let Some(fitted_target) = fitted_target else {
-        return Ok(stable);
+        return Ok((stable, None));
     };
     let target_omitted = numerically_omitted(fitted_target.status);
     let fe_recovery = matches!(recovery, GenerationRecovery::Absorbed(_));
@@ -217,8 +227,13 @@ pub(super) fn replay_original_omission(
             break;
         }
     }
-    if !negligible && alternate.is_none() {
-        return Ok(stable);
+    let exchange = if !fe_recovery {
+        exchange::Exchange::candidate(generation, &stable, target)?
+    } else {
+        None
+    };
+    if !negligible && alternate.is_none() && exchange.is_none() {
+        return Ok((stable, None));
     }
     let reference = stable.into_mean();
     let recovery = generation.slope_recovery.take().expect("checked presence");
@@ -234,7 +249,7 @@ pub(super) fn replay_original_omission(
             [column, column]
         }
     };
-    match refit(generation) {
+    match refit(generation, interrupt) {
         Ok(raw) => {
             let omitted = |column| {
                 raw.coefficients().iter().any(|c| {
@@ -252,19 +267,36 @@ pub(super) fn replay_original_omission(
                 && target_omitted
                 && rank == stable_rank
                 && alternate.is_some_and(omitted);
-            if (member_omitted || exchanged) && raw.mean().len() == reference.len() {
+            let swapped = match exchange.as_ref() {
+                Some(eligible) => eligible.verified(generation, &raw)?,
+                None => false,
+            };
+            let legacy = (negligible || alternate.is_some()) && (member_omitted || exchanged);
+            if (legacy || swapped) && raw.mean().len() == reference.len() {
                 let mut agrees = true;
                 for (row, (raw, stable)) in raw.mean().iter().zip(&reference).enumerate() {
                     crate::interrupt::row_checkpoint(row)?;
                     agrees &= *raw > 0.0 && (raw - stable).abs() / stable <= 1e-8;
                 }
-                if agrees {
+                if agrees && swapped {
+                    match certify(generation, &raw, interrupt) {
+                        Ok(inference) => return Ok((raw, Some(inference))),
+                        Err(e)
+                            if matches!(
+                                e.code,
+                                ErrorCode::NonConvergence | ErrorCode::InvalidData
+                            ) => {}
+                        Err(e) => return Err(e),
+                    }
+                } else if agrees && legacy {
                     generation.replayed_original_omission = true;
-                    return Ok(raw);
+                    return Ok((raw, None));
                 }
             }
         }
-        Err(e) if e.code == ErrorCode::NonConvergence => {}
+        Err(e)
+            if e.code == ErrorCode::NonConvergence
+                || exchange.is_some() && e.code == ErrorCode::InvalidData => {}
         Err(e) => return Err(e),
     }
     drop(reference);
@@ -275,7 +307,7 @@ pub(super) fn replay_original_omission(
             crate::error::invalid_argument("PPML final slope basis did not replay")
         })?,
     );
-    refit(generation)
+    refit(generation, interrupt).map(|fit| (fit, None))
 }
 
 /// A generation can first expose a weak pair after deletions. Share the active

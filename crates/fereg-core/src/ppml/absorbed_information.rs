@@ -126,6 +126,38 @@ pub(super) fn check(
     coefficients: &PpmlCoefficientOutput,
     inference: &PpmlInferenceResult,
 ) -> Result<()> {
+    check_frame(map, data, fit, coefficients, inference, false)
+}
+
+pub(super) fn check_alternate(
+    data: &PreparedPpmlModelGeneration,
+    fit: &PreparedPpmlIrlsFit,
+    coefficients: &PpmlCoefficientOutput,
+    inference: &PpmlInferenceResult,
+) -> Result<()> {
+    for r in 0..fit.mean().len() {
+        row_checkpoint(r)?;
+        let mut xb = 0.;
+        for (j, col) in data.model().columns.iter().enumerate() {
+            let slot = col.coefficient_slot.get() as usize - 1;
+            xb += data.fit_view().column_value(j, r)? * coefficients.values()[slot];
+        }
+        let mu = ((xb + data.offset()[r]) + fit.linear().absorbed_predictor()[r]).exp();
+        if !mu.is_finite() || (fit.mean()[r] - mu).abs() > 1e-8 * fit.mean()[r] {
+            return Err(unverified());
+        }
+    }
+    check_frame(None, data, fit, coefficients, inference, true)
+}
+
+fn check_frame(
+    map: Option<AbsorbedMap>,
+    data: &PreparedPpmlModelGeneration,
+    fit: &PreparedPpmlIrlsFit,
+    coefficients: &PpmlCoefficientOutput,
+    inference: &PpmlInferenceResult,
+    exact_exchange: bool,
+) -> Result<()> {
     let columns = fit.linear().basis().kept_generated_columns();
     if data.fit_view().has_absorbed_slope() || data.fit_view().effect_specs().len() > MAX_WIDTH {
         return Err(unverified());
@@ -159,7 +191,16 @@ pub(super) fn check(
     let mut x = zeros(p)?;
     let b = design.fit(fit.eta(), &mut h, &mut x)?;
     if map.is_none() {
-        check_condition(&h, k, &mut x)?;
+        // For a separately proven exact exchange the original Fisher can be
+        // weak while the reported sandwich is well conditioned. Bound the
+        // accumulated guard-precision error before using the refined solution.
+        let limit = if exact_exchange {
+            (1e-15 / (f64::EPSILON.powi(2) * (p as f64).powi(3) * fit.mean().len() as f64))
+                .min(1e10)
+        } else {
+            1e4
+        };
+        check_condition(&h, k, &mut x, limit)?;
     }
     let public_scale = |s| map.filter(|m| m.slot == s).map_or(1., |m| m.scale);
     for (i, &s) in coefficients.kept_full_slots().iter().enumerate() {
@@ -233,9 +274,19 @@ pub(super) fn check(
             }
         }
     }
+    drop(h);
     if map.is_none() {
+        if exact_exchange {
+            test_original_wald(&b, &covariance, k, slots, inference)?;
+        }
+        let minimum_variance = (0..k)
+            .map(|j| covariance[j * k + j].value() * inference.vce.correction)
+            .fold(f64::INFINITY, f64::min);
         factor(&mut covariance, k)?;
-        let inflation = check_condition(&covariance, k, &mut x[..k])?;
+        let inflation = check_condition(&covariance, k, &mut x[..k], 1e4)?;
+        if exact_exchange && minimum_variance / inflation < 1e-19 {
+            return Err(unverified());
+        }
         // For every contrast t, |t_i| <= sqrt((V^-1)_ii * t' V t).
         // Applying that inequality to each error cell bounds the relative
         // quadratic-form error for every original-unit linear contrast.
@@ -245,6 +296,37 @@ pub(super) fn check(
         }
     }
     Ok(())
+}
+
+fn test_original_wald(
+    b: &[Wide],
+    covariance: &[Wide],
+    k: usize,
+    slots: &[usize],
+    inference: &PpmlInferenceResult,
+) -> Result<()> {
+    let w = &inference.wald;
+    let p = w.tested_columns.len();
+    if p == 0 || w.reference.is_some() || w.degrees_of_freedom != p {
+        return Err(unverified());
+    }
+    let reported = w.statistic.ok_or_else(unverified)?;
+    let mut a = zeros(p * p)?;
+    let mut v = zeros(p)?;
+    for (i, &s) in w.tested_columns.iter().enumerate() {
+        let u = slots.iter().position(|&x| x == s).ok_or_else(unverified)?;
+        v[i] = b[u];
+        for (j, &t) in w.tested_columns[..=i].iter().enumerate() {
+            let w = slots.iter().position(|&x| x == t).ok_or_else(unverified)?;
+            a[i * p + j] =
+                covariance[u.max(w) * k + u.min(w)] * Wide::from(inference.vce.correction);
+        }
+    }
+    factor(&mut a, p)?;
+    let mut rhs =
+        crate::memory::fallible_copy(&v, "unable to reserve alternate model Wald restrictions")?;
+    solve(&a, &mut rhs)?;
+    certify(reported, dot(&v, &rhs).value(), 1e-6)
 }
 
 fn certify(posted: f64, reference: f64, relative: f64) -> Result<()> {
@@ -260,7 +342,7 @@ fn certify(posted: f64, reference: f64, relative: f64) -> Result<()> {
 // Large variance inflation in another retained linear combination can survive
 // the original omission. An elementwise accurate public matrix then need not
 // encode stable contrasts. Certify only well-conditioned correlation matrices.
-fn check_condition(ld: &[Wide], k: usize, x: &mut [Wide]) -> Result<f64> {
+fn check_condition(ld: &[Wide], k: usize, x: &mut [Wide], limit: f64) -> Result<f64> {
     let p = x.len();
     let mut largest = 1f64;
     for i in 0..k {
@@ -272,7 +354,7 @@ fn check_condition(ld: &[Wide], k: usize, x: &mut [Wide]) -> Result<f64> {
         x[i] = Wide::ONE;
         solve(ld, x)?;
         let inflation = (diagonal * x[i]).value();
-        if !inflation.is_finite() || inflation > 1e4 {
+        if !inflation.is_finite() || inflation > limit {
             return Err(unverified());
         }
         largest = largest.max(inflation);
@@ -354,13 +436,16 @@ mod tests {
         // only by a weak direction. No pair alone shows the dependency.
         let mut h = [1., 0., 0., 0., 1., 0., 1., 1., 2. + 2f64.powi(-30)].map(Wide::from);
         factor(&mut h, 3).unwrap();
-        let error = check_condition(&h, 3, &mut [Wide::ZERO; 3]).unwrap_err();
+        let error = check_condition(&h, 3, &mut [Wide::ZERO; 3], 1e4).unwrap_err();
         assert_eq!(error.code, ErrorCode::NonConvergence);
     }
     #[test]
     fn independent_coordinates_may_have_very_different_units() {
         let mut h = [2f64.powi(-70), 0., 0., 2f64.powi(70)].map(Wide::from);
         factor(&mut h, 2).unwrap();
-        assert_eq!(check_condition(&h, 2, &mut [Wide::ZERO; 2]).unwrap(), 1.);
+        assert_eq!(
+            check_condition(&h, 2, &mut [Wide::ZERO; 2], 1e4).unwrap(),
+            1.
+        );
     }
 }

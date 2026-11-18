@@ -482,10 +482,28 @@ pub fn fit_prepared_ppml_interruptible(
             },
         )?;
     fit.validate_generation(&separation_outcome.prepared)?;
-    let mut fit = super::slope_recovery::replay_original_omission(
+    let inference_config = InferenceConfig {
+        vce: request.vce,
+        tolerance: request.ppml.tolerance,
+        threads: resolved_linear.execution.threads,
+        scales: separation_outcome.covariance_scales.as_deref(),
+    };
+    let (mut fit, checked_alternate) = super::slope_recovery::replay_original_omission(
         &mut separation_outcome.prepared,
         fit,
-        |g| config.publication(g, &terminal_plan, terminal_linear, interrupt),
+        interrupt,
+        |g, poll| config.publication(g, &terminal_plan, terminal_linear, poll),
+        |g, raw, poll| {
+            check_omitted_score(g, raw, ppml.score_tolerance)?;
+            let coefficients = map_coefficients(g.prepared(), raw, &omission_statuses)?;
+            let effects =
+                prepare_ppml_fixed_effect_report(g.prepared(), &requested_saved_channels)?;
+            let clusters = cluster_code_views(g)?;
+            let inference =
+                inference_config.compute(g, raw, &coefficients, &effects, &clusters, poll)?;
+            super::absorbed_information::check_alternate(g, raw, &coefficients, &inference)?;
+            Ok(inference)
+        },
     )?;
     fit.validate_generation(&separation_outcome.prepared)?;
     if request.bias.is_some() && separation_outcome.separation.separated_count > 0 {
@@ -499,18 +517,7 @@ pub fn fit_prepared_ppml_interruptible(
         prepare_ppml_fixed_effect_report(prepared.prepared(), &requested_saved_channels)?;
     let cluster_codes = cluster_code_views(prepared)?;
 
-    crate::ols::omitted_score::check(
-        prepared.fit_view(),
-        fit.linear()
-            .basis()
-            .slots()
-            .iter()
-            .map(|slot| (slot.generated_column_index, slot.status)),
-        fit.linear().basis().kept_generated_columns(),
-        prepared.outcome(),
-        crate::ols::omitted_score::FittedResponse::Mean(fit.mean()),
-        ppml.score_tolerance,
-    )?;
+    check_omitted_score(prepared, &fit, ppml.score_tolerance)?;
     let coefficients = map_coefficients(prepared.prepared(), &fit, &omission_statuses)?;
     let coordinates = prepared
         .slope_recovery
@@ -532,67 +539,19 @@ pub fn fit_prepared_ppml_interruptible(
             },
             |(x, d)| (x.as_slice(), d.as_slice()),
         );
-    let (wald_columns, wald_reference) = wald_columns(prepared.prepared(), &coefficients, &fit)?;
-    let reported_finite_rank = coefficients
-        .kept_full_slots()
-        .len()
-        .checked_add(
-            coefficients
-                .statuses()
-                .iter()
-                .filter(|status| **status == PpmlCoefficientStatus::NormalizedStructuralConstant)
-                .count(),
-        )
-        .ok_or_else(|| allocation("PPML reported finite rank overflows"))?;
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Inference);
     let inference_clock = PpmlPhaseClock::start();
     interrupt(PpmlInterruptPoint::Inference)?;
-    let inference = {
-        let mut poll_subset = || interrupt(PpmlInterruptPoint::InferenceSubset);
-        let zero_meat = super::saturated_cluster::certified(
+    let inference = match checked_alternate {
+        Some(inference) => inference,
+        None => inference_config.compute(
             prepared,
-            fit.linear().basis().kept_generated_columns(),
+            &fit,
+            &coefficients,
+            &fixed_effect_report,
             &cluster_codes,
-            &mut poll_subset,
-        )?;
-        let reference = separation_outcome
-            .covariance_scales
-            .as_ref()
-            .map(|scales| {
-                super::reference_covariance::ReferenceCovariance::new(
-                    prepared,
-                    &fit,
-                    scales,
-                    reported_finite_rank,
-                    &mut poll_subset,
-                )
-            })
-            .transpose()?;
-        compute_ppml_inference_interruptible_with_threads(
-            super::PpmlInferenceInput {
-                coefficients: coefficients.values(),
-                full_dimension: coefficients.values().len(),
-                within_design: fit.linear().finite_within_design(),
-                reported_finite_rank,
-                score_residuals: fit.score_residuals(),
-                prior_weights: prepared.prior_weights(),
-                weight_report: prepared.weight_report(),
-                identified_bread: fit.linear().identified_bread(),
-                kept_full_slots: coefficients.kept_full_slots(),
-                absorbed_rank: fixed_effect_report.absorbed_rank,
-                connected_components: fixed_effect_report.connected_components,
-                absorbed_rank_is_approximate: fixed_effect_report.is_approximate,
-                clusters: &cluster_codes,
-                requested_vce: request.vce,
-                wald_columns: &wald_columns,
-                wald_reference: wald_reference.as_ref(),
-                certificate_tolerance: request.ppml.tolerance,
-            },
-            resolved_linear.execution.threads,
-            reference.as_ref(),
-            zero_meat,
-            &mut poll_subset,
-        )?
+            interrupt,
+        )?,
     };
     match report_map {
         Some(super::slope_recovery::ReportMap::Pair(map)) => {
@@ -744,8 +703,6 @@ pub fn fit_prepared_ppml_interruptible(
     drop(separation_outcome.prepared);
     drop(separation_outcome.original_axis_reasons);
     drop(separation_outcome.candidate_original_rows);
-    drop(wald_columns);
-    drop(wald_reference);
     drop(omission_statuses);
     drop(requested_saved_channels);
     drop(loaded.bias_units);
@@ -762,6 +719,101 @@ pub fn fit_prepared_ppml_interruptible(
         request.action_allocation_snapshot_probe,
         request.action_allocation_previous_baseline_bytes,
         request.phase_allocation_probe,
+    )
+}
+
+struct InferenceConfig<'a> {
+    vce: PpmlVceRequest,
+    tolerance: f64,
+    threads: crate::ThreadConfig,
+    scales: Option<&'a [f64]>,
+}
+impl InferenceConfig<'_> {
+    fn compute(
+        &self,
+        prepared: &PreparedPpmlModelGeneration,
+        fit: &PreparedPpmlIrlsFit,
+        coefficients: &PpmlCoefficientOutput,
+        fixed_effect_report: &PreparedPpmlFixedEffectReport,
+        cluster_codes: &[&[u32]],
+        interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    ) -> Result<super::PpmlInferenceResult> {
+        let (wald_columns, wald_reference) = wald_columns(prepared.prepared(), coefficients, fit)?;
+        let reported_finite_rank = coefficients
+            .kept_full_slots()
+            .len()
+            .checked_add(
+                coefficients
+                    .statuses()
+                    .iter()
+                    .filter(|status| {
+                        **status == PpmlCoefficientStatus::NormalizedStructuralConstant
+                    })
+                    .count(),
+            )
+            .ok_or_else(|| allocation("PPML reported finite rank overflows"))?;
+        let mut poll_subset = || interrupt(PpmlInterruptPoint::InferenceSubset);
+        let zero_meat = super::saturated_cluster::certified(
+            prepared,
+            fit.linear().basis().kept_generated_columns(),
+            cluster_codes,
+            &mut poll_subset,
+        )?;
+        let reference = self
+            .scales
+            .map(|scales| {
+                super::reference_covariance::ReferenceCovariance::new(
+                    prepared,
+                    fit,
+                    scales,
+                    reported_finite_rank,
+                    &mut poll_subset,
+                )
+            })
+            .transpose()?;
+        compute_ppml_inference_interruptible_with_threads(
+            super::PpmlInferenceInput {
+                coefficients: coefficients.values(),
+                full_dimension: coefficients.values().len(),
+                within_design: fit.linear().finite_within_design(),
+                reported_finite_rank,
+                score_residuals: fit.score_residuals(),
+                prior_weights: prepared.prior_weights(),
+                weight_report: prepared.weight_report(),
+                identified_bread: fit.linear().identified_bread(),
+                kept_full_slots: coefficients.kept_full_slots(),
+                absorbed_rank: fixed_effect_report.absorbed_rank,
+                connected_components: fixed_effect_report.connected_components,
+                absorbed_rank_is_approximate: fixed_effect_report.is_approximate,
+                clusters: cluster_codes,
+                requested_vce: self.vce,
+                wald_columns: &wald_columns,
+                wald_reference: wald_reference.as_ref(),
+                certificate_tolerance: self.tolerance,
+            },
+            self.threads,
+            reference.as_ref(),
+            zero_meat,
+            &mut poll_subset,
+        )
+    }
+}
+fn check_omitted_score(
+    prepared: &PreparedPpmlModelGeneration,
+    fit: &PreparedPpmlIrlsFit,
+    tolerance: f64,
+) -> Result<()> {
+    crate::ols::omitted_score::check(
+        prepared.fit_view(),
+        fit.linear()
+            .basis()
+            .slots()
+            .iter()
+            .map(|slot| (slot.generated_column_index, slot.status)),
+        fit.linear().basis().kept_generated_columns(),
+        prepared.outcome(),
+        crate::ols::omitted_score::FittedResponse::Mean(fit.mean()),
+        tolerance,
     )
 }
 

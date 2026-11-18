@@ -67,4 +67,42 @@ foreach mode in fast low {
         confirm new variable rejected_mean
     }
 }
+* Two overlapping weak differences produce one exact four-column dependency.
+* The original first order reported z k u; the second order required rescue.
+clear
+set obs 48
+generate byte g=floor((_n-1)/16)
+generate byte cell=mod(floor((_n-1)/4),4)
+generate double x=cond(cell<2,2*cell-1,0)
+generate double w=cond(cell>=2,2*cell-5,0)
+generate double k=2*mod(floor((_n-1)/2),2)-1
+generate double z=x+2^(-15)*w
+generate double u=.5*k-3*2^(-15)*w
+generate double off=-.25*w+.125*k
+generate double fw=cond(w==0,1,2)
+generate double shock=cond(x!=0,.25*(1+.25*x+.125*x*k),2^(-14)*(1+.25*w*k+.125*w))
+generate double y=1+(2*mod(_n-1,2)-1)*shock
+foreach order in "z k u x" "u z x k" {
+    quietly feppml y `order' [fw=fw], absorb(g) offset(off) ///
+        separation(none) vce(robust) threads(1) mu(fitted)
+    assert e(sample) & abs(fitted-1)<1e-9
+    assert e(N)==72
+    matrix B=e(b)
+    quietly _ms_omit_info B
+    matrix O=r(omit)
+    if "`order'"=="z k u x" {
+        assert O[1,1]==0 & O[1,2]==0 & O[1,3]==0 & O[1,4]==1
+        quietly lincom k + .5*u
+        assert abs(r(estimate)+.125)<1e-9 & abs(r(se)-.01778626632)<1e-9
+        quietly test z k u
+    }
+    else {
+        assert O[1,1]==0 & O[1,2]==0 & O[1,3]==0 & O[1,4]==1
+        quietly lincom .5*u
+        assert abs(r(estimate)+.125)<1e-9 & abs(r(se)-.01778626632)<1e-9
+        quietly test u z x
+    }
+    assert r(df)==3 & abs(r(chi2)/736576653.6576401-1)<1e-6
+    drop fitted
+}
 display as result "END_FIXTURE|feppml_weak_pair_unrelated_omission|rc=0"

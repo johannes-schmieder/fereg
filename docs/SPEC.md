@@ -1224,7 +1224,12 @@ covariance. This replay admits up to 64 finite and dummy coordinates and
 8 Mi row-by-squared-width cells. If an alternative omission pattern is used, its retained
 parameterization must pass its own inference checks. Equality of fitted
 means alone cannot certify the remaining slopes. An unrelated omitted
-regressor therefore confers no authority to post a weak pair.
+regressor therefore confers no authority to post a weak pair. Where a
+row-verified exact dependence relates a participating slope to another omitted
+finite coefficient, PPML can retain the original estimator's choice of slots.
+The alternate must preserve fitted rank and means and pass independent checks
+of its reported coefficients, covariance and contrast precision. An
+inconclusive alternate returns control to the conditioned fit.
 
 After a numerical omission, OLS and PPML can independently test the final
 residual score on a better-scaled direction in the original model. A witness
