@@ -157,20 +157,40 @@ impl<'a> RawRows<'a> {
 /// Both banks belong to ordinary PPML linear algebra and are released before
 /// the independent primal proof: seven observation vectors and seven finite
 /// moment/factor squares. A requested simplex also reserves its own arena.
-pub(super) fn workspace(
-    generation: &PreparedPpmlModelGeneration,
-    config: SeparationConfig,
-) -> usize {
-    let k = generation.model().columns.len();
-    let available = generation
-        .outcome()
-        .len()
-        .saturating_add(k.saturating_mul(k))
-        .saturating_mul(7);
-    if config.methods.simplex {
-        available.max(config.simplex_max_tableau_cells)
-    } else {
-        available
+#[derive(Clone, Copy)]
+pub(super) struct ProofBudget {
+    pub(super) words: usize,
+    pub(super) work_cells: usize,
+}
+
+impl ProofBudget {
+    pub(super) fn new(
+        model: &PreparedPpmlModelGeneration,
+        method: SeparationMethod,
+        config: SeparationConfig,
+    ) -> Self {
+        let k = model.model().columns.len();
+        let projection = model
+            .outcome()
+            .len()
+            .saturating_add(k.saturating_mul(k))
+            .saturating_mul(7);
+        let words = if config.methods.simplex {
+            projection.max(config.simplex_max_tableau_cells)
+        } else {
+            projection
+        };
+        // IR and Mu also admit the shared linear projection. Credit its
+        // work when the user reduces the separate simplex tableau ceiling.
+        // This allowance is only for operations and allocates no extra words.
+        let work_cells = if method == SeparationMethod::Simplex {
+            config.simplex_max_tableau_cells
+        } else {
+            config
+                .simplex_max_tableau_cells
+                .max(projection.min(1_000_000))
+        };
+        Self { words, work_cells }
     }
 }
 
@@ -332,15 +352,15 @@ pub(super) fn verify(
     model: &PreparedPpmlModelGeneration,
     witness: &Witness,
     expected: &[usize],
-    config: SeparationConfig,
+    budget: ProofBudget,
     hint: &[f64],
 ) -> Result<bool> {
     if let Witness::Saturated { absorbed } = witness {
         return saturated(
             &RawRows::new(model, *absorbed)?,
             expected,
-            workspace(model, config),
-            cell_work(config),
+            budget.words,
+            cell_work(budget),
             hint,
         );
     }
@@ -349,11 +369,8 @@ pub(super) fn verify(
 
 /// The integer cell proof meters each elimination/reconstruction stage. The
 /// fixed cap bounds retries even if callers provide a larger simplex arena.
-fn cell_work(config: SeparationConfig) -> usize {
-    config
-        .simplex_max_tableau_cells
-        .saturating_mul(64)
-        .min(128_000_000)
+fn cell_work(budget: ProofBudget) -> usize {
+    budget.work_cells.saturating_mul(64).min(128_000_000)
 }
 
 fn saturated(
@@ -419,7 +436,7 @@ impl Search<'_> {
 pub(super) fn find(
     model: &PreparedPpmlModelGeneration,
     expected: &[usize],
-    config: SeparationConfig,
+    budget: ProofBudget,
     hint: &[f64],
     allow_existence_proof: bool,
 ) -> Result<Option<(Witness, bool)>> {
@@ -429,10 +446,10 @@ pub(super) fn find(
         best: None,
         count: 0,
     };
-    let limit = workspace(model, config);
+    let limit = budget.words;
     // Bound raw coordinate work independently of reusable allocation capacity.
     // Each of the two submodels and each proof stage receives a bounded pass.
-    let work = config.simplex_max_tableau_cells.saturating_mul(8);
+    let work = budget.work_cells.saturating_mul(8);
     if centered_columns(&mut search, work)?
         || pair::search(&mut search, work)?
         || fe_pair::search(&mut search, work, limit)?
@@ -441,7 +458,7 @@ pub(super) fn find(
     }
     for absorbed in [false, true] {
         let design = RawRows::new(model, absorbed)?;
-        if allow_existence_proof && saturated(&design, expected, limit, cell_work(config), hint)? {
+        if allow_existence_proof && saturated(&design, expected, limit, cell_work(budget), hint)? {
             return Ok(Some((Witness::Saturated { absorbed }, true)));
         }
         let k = design.width;

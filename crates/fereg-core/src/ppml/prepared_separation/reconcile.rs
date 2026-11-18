@@ -17,7 +17,7 @@ pub(super) fn support(
     let limit = if method == SeparationMethod::Simplex {
         config.simplex_max_tableau_cells
     } else {
-        primal::workspace(model, config)
+        primal::ProofBudget::new(model, method, config).words
     };
     positive_rank::detect_for(
         method,
@@ -68,14 +68,15 @@ fn checked_candidate(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedNumericalProposal> {
-    if proposal.dropped_original_rows.is_empty() || proposal.exact_intercept_span.is_some() {
+    if proposal.dropped_original_rows.is_empty() || proposal.exact_graph_span.is_some() {
         return Ok(proposal);
     }
     let (detector_direction, _) = checked_deletion_claim(model, &proposal, config)?;
+    let budget = primal::ProofBudget::new(model, proposal.method, config);
     let (proof, complete) = match primal::find(
         model,
         &proposal.dropped_original_rows,
-        config,
+        budget,
         detector_direction,
         true,
     )? {
@@ -99,7 +100,7 @@ fn checked_candidate(
             if zeros == proposal.dropped_original_rows {
                 return Err(unresolved());
             }
-            let (other, _) = primal::find(model, &zeros, config, detector_direction, false)?
+            let (other, _) = primal::find(model, &zeros, budget, detector_direction, false)?
                 .ok_or_else(unresolved)?;
             (other, false)
         }
@@ -185,7 +186,8 @@ pub(super) fn raw_candidate(
         model.outcome().len(),
         "unable to reserve boundary search targets",
     )?;
-    let Some((proof, _)) = primal::find(model, &zeros, config, &hint, false)? else {
+    let budget = primal::ProofBudget::new(model, method, config);
+    let Some((proof, _)) = primal::find(model, &zeros, budget, &hint, false)? else {
         return Ok(None);
     };
     materialize(model, &proof, method, config)

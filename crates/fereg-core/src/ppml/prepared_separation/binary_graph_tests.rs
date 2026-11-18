@@ -59,7 +59,13 @@ fn check_binary_candidate(threads: crate::ThreadConfig) {
         )
         .unwrap();
         assert_eq!(proposal.dropped_original_rows, &[5, 6]);
-        assert!(proposal.exact_intercept_span.is_none());
+        assert_eq!(
+            proposal
+                .exact_graph_span
+                .as_ref()
+                .is_some_and(|span| span.has_binary_column()),
+            admitted
+        );
         assert_eq!(proposal.iterations == 0, admitted);
         validate_numerical_proposal(generation, proposal, ppml, config, linear).unwrap();
     }
@@ -81,7 +87,7 @@ fn check_binary_candidate(threads: crate::ThreadConfig) {
             .unwrap();
     assert!(proposal.iterations > 0);
     assert_eq!(proposal.dropped_original_rows, &[5, 6]);
-    // A graph proposal cannot bypass the ordinary full-model span check.
+    // Independent raw coefficient replay rejects a forged strict row.
     let mut forged =
         prepared_bound_iterated_rectifier(generation, ppml, config, linear, true, &mut |_| Ok(()))
             .unwrap();
@@ -100,8 +106,10 @@ fn check_binary_candidate(threads: crate::ThreadConfig) {
     // Row7 duplicates the complete design of positive row0. The proposed
     // negative value is sign-valid but cannot belong to the model span.
     let error = validate_numerical_proposal(generation, forged, ppml, config, linear).unwrap_err();
-    assert_eq!(error.code, ErrorCode::NonConvergence);
-    assert!(error.message.starts_with(
-            "prepared separation direction failed certification: interior=0.000e0, boundary=0.000e0, span="
-        ), "{}", error.message);
+    assert!(
+        error
+            .message
+            .contains("coefficient replay disagrees with direction"),
+        "{error}"
+    );
 }

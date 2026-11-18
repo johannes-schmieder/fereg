@@ -124,7 +124,7 @@ impl IrPhase {
     pub(super) fn detected(&mut self, proposal: &super::PreparedNumericalProposal) {
         self.0.lap(0);
         self.0.facts(&[
-            ("graph", u64::from(proposal.exact_intercept_span.is_some())),
+            ("graph", u64::from(proposal.exact_graph_span.is_some())),
             ("iterations", proposal.iterations as u64),
             ("dropped", proposal.dropped_original_rows.len() as u64),
         ]);

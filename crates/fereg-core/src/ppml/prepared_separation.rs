@@ -78,7 +78,7 @@ struct PreparedNumericalProposal {
     exact_fe_certificate: Option<ExactFeSeparationCertificate>,
     /// Observation-space direction on this proposal's compact generation.
     direction: Option<Vec<f64>>,
-    exact_intercept_span: Option<graph::ExactInterceptSpan>,
+    exact_graph_span: Option<graph::ExactGraphSpan>,
     exact_primal: Option<primal::Witness>,
     note: SeparationNote,
     /// Stored projection of a terminal no-separation rectifier iteration; the
@@ -1334,14 +1334,14 @@ fn commit_numerical(
         status,
         exact_fe_certificate,
         direction,
-        exact_intercept_span,
+        exact_graph_span,
         note,
         ..
     } = proposal;
     // The direction has already passed the independent span/sign
     // certificate. It is not needed to construct or publish the atomic
     // deletion transaction, so release its N-vector before cascade/rebuild.
-    drop((direction, exact_intercept_span));
+    drop((direction, exact_graph_span));
     let cascade = {
         let view = coordinator.view();
         complete_cascade(view.prepared, &primary_rows, config)?
@@ -1438,7 +1438,7 @@ fn bind_numerical_proposal(
         certificate: proposal.certificate,
         exact_fe_certificate: proposal.exact_fe_certificate,
         direction: proposal.direction,
-        exact_intercept_span: None,
+        exact_graph_span: None,
         exact_primal: None,
         note: proposal.note,
         fixed_point: None,
@@ -2253,17 +2253,16 @@ fn prepared_rectifier_candidate(
                         match graph::direction(&design, generation.outcome(), &mut || {
                             interrupt(PpmlInterruptPoint::SeparationIrIteration)
                         })? {
-                            Some(candidate) => Some((candidate.direction, Some(candidate.span))),
+                            Some(candidate) => Some(candidate),
                             None => graph::binary_direction(
                                 &design,
                                 generation.outcome(),
                                 generation.fit_view().model().columns.len(),
                                 &mut |column, row| generation.fit_view().column_value(column, row),
                                 &mut || interrupt(PpmlInterruptPoint::SeparationIrIteration),
-                            )?
-                            .map(|direction| (direction, None)),
+                            )?,
                         };
-                    if let Some((direction, exact_span)) = candidate {
+                    if let Some(graph::GraphDirection { direction, span }) = candidate {
                         let scale = infinity_norm(&direction);
                         let dropped = fallible_collect(
                             direction.iter().enumerate().filter_map(|(row, &value)| {
@@ -2284,7 +2283,7 @@ fn prepared_rectifier_candidate(
                             crate::diagnostics::emit_solver_trace(&format!(
                                 "FEREG_SOLVER_TRACE|phase=separation_graph_proposal|generation={}|rows={}|kind={}|proposed={}",
                                 generation.generation(), direction.len(),
-                                if exact_span.is_some() { "categorical" } else { "binary_finite" },
+                                if span.has_binary_column() { "binary_finite" } else { "categorical" },
                                 dropped.len()));
                         }
                         let mut proposal = bind_numerical_proposal(
@@ -2300,7 +2299,7 @@ fn prepared_rectifier_candidate(
                                 note: "prepared iterated-rectifier candidate direction".into(),
                             },
                         )?;
-                        proposal.exact_intercept_span = exact_span;
+                        proposal.exact_graph_span = Some(span);
                         return Ok(proposal);
                     }
                 }
@@ -3746,7 +3745,7 @@ fn validate_prepared_numerical_metadata(
     }
 
     let has_drops = !proposal.dropped_original_rows.is_empty();
-    if proposal.exact_intercept_span.is_some()
+    if proposal.exact_graph_span.is_some()
         && (!has_drops || proposal.method != SeparationMethod::IteratedRectifier)
     {
         return Err(invalid_argument(
@@ -3915,14 +3914,16 @@ fn certify_numerical_proposal(
     defer_many_fe_fallback: bool,
 ) -> Result<SeparationCertificate> {
     let (direction, mut certificate) = checked_deletion_claim(generation, proposal, config)?;
-    let span_residual_relative = if let Some(proof) = &proposal.exact_intercept_span {
+    let span_residual_relative = if let Some(proof) = &proposal.exact_graph_span {
         let design = generation
             .fit_view()
             .fit_borrowed_intercept_map_design()?
             .ok_or_else(|| {
                 invalid_argument("exact separation proof requires categorical intercepts")
             })?;
-        proof.verify(&design, direction)?;
+        proof.replay(&design, direction, |column, row| {
+            generation.fit_view().column_value(column, row)
+        })?;
         if generation
             .outcome()
             .iter()
@@ -3954,19 +3955,20 @@ fn certify_numerical_proposal(
             "prepared separation direction failed certification: interior={:.3e}, boundary={:.3e}, span={:.3e}",
             certificate.interior_zero_relative, certificate.boundary_violation_relative, span_residual_relative)));
     }
-    if proposal.exact_intercept_span.is_none() {
+    if proposal.exact_graph_span.is_none() {
+        let budget = primal::ProofBudget::new(generation, proposal.method, config);
         let proved = match &proposal.exact_primal {
             Some(witness) => primal::verify(
                 generation,
                 witness,
                 &proposal.dropped_original_rows,
-                config,
+                budget,
                 direction,
             )?,
             None => primal::find(
                 generation,
                 &proposal.dropped_original_rows,
-                config,
+                budget,
                 direction,
                 true,
             )?

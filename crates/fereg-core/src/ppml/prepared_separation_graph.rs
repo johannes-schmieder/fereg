@@ -11,15 +11,23 @@ use crate::error::Result;
 use crate::fe::BorrowedInterceptFeDesign;
 
 #[derive(Debug, Clone, PartialEq)]
-pub(super) struct ExactInterceptSpan {
-    effects: [usize; 2],
+enum RightChannel {
+    Intercept(usize),
+    BinaryColumn(usize),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct ExactGraphSpan {
+    left: usize,
+    right: RightChannel,
     split: usize,
     potentials: Vec<usize>,
 }
 
+#[derive(Debug)]
 pub(super) struct GraphDirection {
     pub(super) direction: Vec<f64>,
-    pub(super) span: ExactInterceptSpan,
+    pub(super) span: ExactGraphSpan,
 }
 
 struct PairDirection {
@@ -28,20 +36,35 @@ struct PairDirection {
     potentials: Vec<usize>,
 }
 
-impl ExactInterceptSpan {
+impl ExactGraphSpan {
+    pub(super) fn has_binary_column(&self) -> bool {
+        matches!(self.right, RightChannel::BinaryColumn(_))
+    }
+
     /// Replay the coefficient product through group membership, independently
     /// of the detector's row-code/quotient traversal. Integers below 2^53 and
     /// their differences are exactly representable in the returned direction.
-    pub(super) fn verify(
+    pub(super) fn replay(
         &self,
         design: &BorrowedInterceptFeDesign<'_>,
         direction: &[f64],
+        mut raw_column: impl FnMut(usize, usize) -> Result<f64>,
     ) -> Result<()> {
-        if self.effects[0] >= self.effects[1]
-            || self.effects[1] >= design.effects().len()
-            || direction.len() != design.nobs()
-            || self.split != design.effects()[self.effects[0]].n_levels()
-            || self.potentials.len() != self.split + design.effects()[self.effects[1]].n_levels()
+        let Some(left) = design.effects().get(self.left) else {
+            return Err(invalid_argument(
+                "exact graph left endpoint is out of range",
+            ));
+        };
+        let right_levels = match self.right {
+            RightChannel::Intercept(i) if i > self.left => {
+                design.effects().get(i).map(|e| e.n_levels())
+            }
+            RightChannel::BinaryColumn(_) => Some(2),
+            _ => None,
+        };
+        if direction.len() != design.nobs()
+            || self.split != left.n_levels()
+            || right_levels.and_then(|n| self.split.checked_add(n)) != Some(self.potentials.len())
             || self
                 .potentials
                 .iter()
@@ -56,14 +79,39 @@ impl ExactInterceptSpan {
             0_i64,
             "unable to reserve exact separation coefficient replay",
         )?;
-        for (effect, offset, sign) in [
-            (design.effects()[self.effects[0]], 0, 1_i64),
-            (design.effects()[self.effects[1]], self.split, -1_i64),
-        ] {
-            for level in 0..effect.n_levels() {
-                let value = sign * self.potentials[offset + level] as i64;
-                for &row in effect.level_index().checked_members(level)? {
-                    reconstructed[row] += value;
+        for level in 0..left.n_levels() {
+            crate::interrupt::row_checkpoint(level)?;
+            for &row in left.level_index().checked_members(level)? {
+                reconstructed[row] = self.potentials[level] as i64;
+            }
+        }
+        match self.right {
+            RightChannel::Intercept(i) => {
+                let effect = design.effects()[i];
+                for level in 0..effect.n_levels() {
+                    crate::interrupt::row_checkpoint(level)?;
+                    for &row in effect.level_index().checked_members(level)? {
+                        reconstructed[row] -= self.potentials[self.split + level] as i64;
+                    }
+                }
+            }
+            RightChannel::BinaryColumn(column) => {
+                // For x in {0,1}, p[x] = p[0] + (p[1]-p[0])*x.
+                // The left effect supplies the constant. Re-read x from the
+                // original finite channel rather than trusting detector codes.
+                for (row, value) in reconstructed.iter_mut().enumerate() {
+                    crate::interrupt::row_checkpoint(row)?;
+                    let x = raw_column(column, row)?;
+                    let level = if x == 0. {
+                        0
+                    } else if x == 1. {
+                        1
+                    } else {
+                        return Err(invalid_argument(
+                            "exact binary graph witness has a nonbinary coordinate",
+                        ));
+                    };
+                    *value -= self.potentials[self.split + level] as i64;
                 }
             }
         }
@@ -166,15 +214,15 @@ pub(super) fn direction(
 }
 
 /// Every binary level indicator is in the span of that original finite
-/// column and the categorical intercept's constant. This is only a primal
-/// proposal: the caller must independently certify its full-model span.
+/// column and the categorical intercept's constant. Preserve both endpoint
+/// potentials for independent replay on that unmodified finite column.
 pub(super) fn binary_direction(
     design: &BorrowedInterceptFeDesign<'_>,
     outcome: &[f64],
     columns: usize,
     value: &mut impl FnMut(usize, usize) -> Result<f64>,
     interrupt: &mut dyn FnMut() -> Result<()>,
-) -> Result<Option<Vec<f64>>> {
+) -> Result<Option<GraphDirection>> {
     if workspace_bytes(design)?.is_none() || columns == 0 {
         return Ok(None);
     }
@@ -222,9 +270,15 @@ pub(super) fn binary_direction(
             outcome,
             interrupt,
         )? {
-            // Potentials and binary scratch die before independent numerical
-            // span certification. Do not manufacture an exact FE-only proof.
-            return Ok(Some(candidate.direction));
+            return Ok(Some(GraphDirection {
+                direction: candidate.direction,
+                span: ExactGraphSpan {
+                    left: anchor,
+                    right: RightChannel::BinaryColumn(column),
+                    split: candidate.split,
+                    potentials: candidate.potentials,
+                },
+            }));
         }
     }
     Ok(None)
@@ -246,8 +300,9 @@ fn categorical_pair_direction(
     )?
     .map(|candidate| GraphDirection {
         direction: candidate.direction,
-        span: ExactInterceptSpan {
-            effects,
+        span: ExactGraphSpan {
+            left: effects[0],
+            right: RightChannel::Intercept(effects[1]),
             split: candidate.split,
             potentials: candidate.potentials,
         },
@@ -519,6 +574,14 @@ mod tests {
     use super::*;
     use crate::fe::{BorrowedInterceptEffect, LevelIndex};
 
+    impl ExactGraphSpan {
+        fn verify(&self, design: &BorrowedInterceptFeDesign<'_>, direction: &[f64]) -> Result<()> {
+            self.replay(design, direction, |_, _| {
+                panic!("categorical proof requested a finite column")
+            })
+        }
+    }
+
     fn run(g: &[u32], h: &[u32], y: &[f64]) -> Option<Vec<f64>> {
         let ng = *g.iter().max().unwrap() as usize + 1;
         let nh = *h.iter().max().unwrap() as usize + 1;
@@ -556,7 +619,21 @@ mod tests {
             ],
         )
         .unwrap();
-        binary_direction(&design, y, 1, &mut |_, row| Ok(x[row]), &mut || Ok(())).unwrap()
+        binary_direction(&design, y, 1, &mut |_, row| Ok(x[row]), &mut || Ok(()))
+            .unwrap()
+            .map(|candidate| {
+                let proof = &candidate.span;
+                proof
+                    .replay(&design, &candidate.direction, |c, r| {
+                        assert_eq!(c, 0);
+                        Ok(x[r])
+                    })
+                    .unwrap();
+                assert!(proof
+                    .replay(&design, &candidate.direction, |_, _| Ok(0.5))
+                    .is_err());
+                candidate.direction
+            })
     }
 
     #[test]
@@ -737,7 +814,8 @@ mod tests {
         let candidate = direction(&design, &[1., 1., 1., 1., 1., 0., 0., 0.], &mut || Ok(()))
             .unwrap()
             .unwrap();
-        assert_eq!(candidate.span.effects, [1, 2]);
+        assert_eq!(candidate.span.left, 1);
+        assert_eq!(candidate.span.right, RightChannel::Intercept(2));
         candidate
             .span
             .verify(&design, &candidate.direction)
@@ -752,7 +830,7 @@ mod tests {
             vec![5, 6]
         );
         let mut stale = candidate.span.clone();
-        stale.effects = [0, 2];
+        stale.left = 0;
         assert!(stale.verify(&design, &candidate.direction).is_err());
     }
 }

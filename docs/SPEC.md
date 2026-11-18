@@ -1879,6 +1879,11 @@ An upper bound used to establish an exact interpolation requires independent
 relations verified on all raw columns, or an integer determinant certificate
 whose modular reconstruction exceeds its rigorous determinant bound.
 
+IR and Mu credit their independently admitted linear projection workspace when
+budgeting operations for a raw proof. That credit is capped at one million cells and
+adds no allocation to the existing phase memory envelope. A small simplex table
+can therefore skip simplex while IR still verifies a recession direction.
+
 If a numerical proposal contains spurious rows, a separately verified
 direction can certify a smaller set. Restart the detectors on the next
 generation after any deletion. An independently replayed positive-support
@@ -2111,8 +2116,13 @@ pair the same deterministic largest categorical partition with each generated
 finite column whose original active values are exactly zero or one, with both
 values present. It uses at most one scan and graph per column and reuses one
 N-element code bank; generation-zero preflight includes the virtual two-level
-partition. A binary proposal carries no exact FE-only proof: it must pass the
-unchanged independent full-original-model unit-span and sign/deletion checks.
+partition. Store the column identity and both integer endpoint potentials.
+During independent replay, re-read the raw column, check each value is exactly
+zero or one, and reconstruct the score through the original FE memberships.
+The binary potential is affine in that column, with its constant supplied by
+the categorical intercept. Require exact agreement with the reported score,
+zero on all positive outcomes, nonpositive scores on all zero outcomes and
+the original ordered strict-negative set before committing any deletion.
 Its absence leaves weighted IR and the unit detector in control. This may
 produce a certified zero-iteration proposal earlier, changing the detector
 route and iteration report without granting any new no-drop authority.

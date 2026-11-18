@@ -179,3 +179,23 @@ fn simplex_only_request_over_its_tableau_cap_fails_closed() {
     let error = fit_prepared_ppml(request, loaded).expect_err("simplex-only over cap");
     assert_eq!(error.code, ErrorCode::Allocation, "{error}");
 }
+
+#[test]
+fn ir_without_simplex_proves_the_same_rows_under_a_one_cell_tableau_setting() {
+    let primer = primers()
+        .into_iter()
+        .find(|primer| primer.name == "simplex-memory-skip-covered-by-ir")
+        .expect("two-regressor cone primer");
+    for cells in [1, 1024] {
+        let mut config = separation(&primer, Some(cells));
+        config.methods.simplex = false;
+        let (request, loaded) = support::ppml::request(&design(&primer), None, true, config);
+        let fit = fit_prepared_ppml(request, loaded).expect("IR-only exact recession proof");
+        assert_eq!(fit.separation().dropped_observations, primer.dropped);
+        assert!(fit
+            .separation()
+            .methods
+            .iter()
+            .all(|r| r.method != SeparationMethod::Simplex));
+    }
+}

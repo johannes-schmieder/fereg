@@ -538,7 +538,7 @@ fn numerical_proposal_boundary_rejects_every_identity_and_shape_forgery() {
         certificate: Some(claimed),
         exact_fe_certificate: None,
         direction: Some(vec![-1.0; generation.original_rows().len()]),
-        exact_intercept_span: None,
+        exact_graph_span: None,
         exact_primal: None,
         note: "adversarial proposal".into(),
         fixed_point: None,
@@ -2182,13 +2182,13 @@ fn admitted_graph_direction_passes_full_span_and_terminal_ledger_checks() {
     let unadmitted =
         prepared_bound_iterated_rectifier(generation, ppml, config, linear, false, &mut |_| Ok(()));
     let unadmitted = unadmitted.unwrap();
-    assert!(unadmitted.exact_intercept_span.is_none());
+    assert!(unadmitted.exact_graph_span.is_none());
     assert_eq!(unadmitted.dropped_original_rows, &[4, 5]);
     validate_numerical_proposal(generation, unadmitted, ppml, config, linear).unwrap();
     let proposal =
         prepared_bound_iterated_rectifier(generation, ppml, config, linear, true, &mut |_| Ok(()))
             .unwrap();
-    assert!(proposal.exact_intercept_span.is_some());
+    assert!(proposal.exact_graph_span.is_some());
     let certified =
         validate_numerical_proposal(generation, proposal.clone(), ppml, config, linear).unwrap();
     assert_eq!(certified.certificate.span_residual_relative, 0.0);
@@ -2723,12 +2723,13 @@ fn exact_primal_two_intercept_offsets_repair_an_overlapping_claim() {
     let model = coordinator.view().prepared;
     let hint = [0., 0., 0., 0., -0.2, -1.];
     let config = SeparationConfig::default();
-    let (proof, complete) = primal::find(model, &[4, 5], config, &hint, false)
+    let budget = primal::ProofBudget::new(model, SeparationMethod::IteratedRectifier, config);
+    let (proof, complete) = primal::find(model, &[4, 5], budget, &hint, false)
         .unwrap()
         .unwrap();
     assert!(!complete);
-    assert!(primal::verify(model, &proof, &[5], config, &hint).unwrap());
-    assert!(!primal::verify(model, &proof, &[4], config, &hint).unwrap());
+    assert!(primal::verify(model, &proof, &[5], budget, &hint).unwrap());
+    assert!(!primal::verify(model, &proof, &[4], budget, &hint).unwrap());
 }
 
 /// No signed coordinate direction is feasible on this cone. A strict
@@ -2759,13 +2760,20 @@ fn exact_primal_recovers_oblique_ray_with_nonuniform_strict_margins() {
     let generation = coordinator.view().prepared;
     let expected = [2, 3, 4, 5];
     let projected = [0., 0., -1. / 3., -2. / 3., -4. / 3., -1.];
-    let config = SeparationConfig::default();
-    // Require a materialized ray so this exercises coefficient recovery.
-    let (proof, complete) = primal::find(generation, &expected, config, &projected, false)
-        .unwrap()
-        .unwrap();
-    assert!(complete);
-    assert!(primal::verify(generation, &proof, &expected, config, &projected).unwrap());
+    let config = SeparationConfig {
+        simplex_max_tableau_cells: 1,
+        ..SeparationConfig::default()
+    };
+    // A one-cell simplex cannot build a tableau. IR and Mu independently
+    // reconstruct and replay the same exact raw coefficients.
+    for method in [SeparationMethod::IteratedRectifier, SeparationMethod::Mu] {
+        let budget = primal::ProofBudget::new(generation, method, config);
+        let (proof, complete) = primal::find(generation, &expected, budget, &projected, false)
+            .unwrap()
+            .unwrap();
+        assert!(complete);
+        assert!(primal::verify(generation, &proof, &expected, budget, &projected).unwrap());
+    }
 }
 
 /// The finite/control contrast x - 1[g=2] - 1[g=3] is exactly -1

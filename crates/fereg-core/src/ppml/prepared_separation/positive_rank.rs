@@ -37,12 +37,15 @@ pub(super) fn detect_for(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<DetectionProposal>> {
-    let work = config.simplex_max_tableau_cells.saturating_mul(8);
+    let work = primal::ProofBudget::new(generation, method, config)
+        .work_cells
+        .saturating_mul(8);
+    let bounds = (config.simplex_max_iterations, work);
     if let Some(proof) = anchored(
         generation,
         topology,
         positive,
-        config,
+        bounds,
         limit,
         &[],
         interrupt,
@@ -96,7 +99,7 @@ pub(super) fn detect_for(
             generation,
             topology,
             positive,
-            config,
+            bounds,
             limit - constant.len(),
             &constant,
             interrupt,
@@ -132,7 +135,7 @@ fn anchored(
     generation: &PreparedPpmlModelGeneration,
     topology: &DetectorTopology<'_>,
     positive: usize,
-    config: SeparationConfig,
+    (iterations, work): (usize, usize),
     limit: usize,
     constant: &[bool],
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
@@ -223,7 +226,7 @@ fn anchored(
         levels,
         width,
         width <= limit - required,
-        config,
+        (iterations, work),
         write_row,
         interrupt,
     )? {
@@ -267,7 +270,7 @@ fn positive_contrasts_span(
     levels: &LevelIndex,
     width: usize,
     cache_previous: bool,
-    config: SeparationConfig,
+    (iterations, work): (usize, usize),
     write_row: impl Fn(usize, &mut [u64]) -> Result<()>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<bool> {
@@ -293,8 +296,7 @@ fn positive_contrasts_span(
         Vec::new()
     };
     let mut rank = 0;
-    let work = config.simplex_max_tableau_cells.saturating_mul(8);
-    let mut contrasts = config.simplex_max_iterations.min(work / basis_cells.max(1));
+    let mut contrasts = iterations.min(work / basis_cells.max(1));
     let mut reads = work / width.max(1);
     for level in 0..levels.n_levels() {
         interrupt(PpmlInterruptPoint::SeparationSimplex)?;

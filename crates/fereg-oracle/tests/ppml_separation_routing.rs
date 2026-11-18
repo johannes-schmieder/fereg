@@ -176,7 +176,7 @@ fn classify(
         (Ok(p), Ok(h)) => {
             // Equal sample and fit; only a terminal no-separation rectifier
             // execution's iteration count and certificate differ.
-            let without_terminal_ir = |fit: &CertifiedPpmlResult| {
+            let normalized_ir = |fit: &CertifiedPpmlResult, include_deletion_iterations: bool| {
                 let mut report = fit.separation().clone();
                 for entry in &mut report.methods {
                     if entry.method == SeparationMethod::IteratedRectifier
@@ -184,16 +184,24 @@ fn classify(
                     {
                         entry.iterations = 0;
                         entry.certificate = None;
+                    } else if include_deletion_iterations
+                        && entry.method == SeparationMethod::IteratedRectifier
+                        && entry.status == MethodStatus::Certified
+                    {
+                        entry.iterations = 0;
                     }
                 }
                 decisions(&report)
             };
             let (_, p_reasons, p_b, p_v) = published(p);
             let (_, h_reasons, h_b, h_v) = published(h);
-            if (p_reasons, p_b, p_v) == (h_reasons, h_b, h_v)
-                && without_terminal_ir(p) == without_terminal_ir(h)
-            {
+            if (p_reasons, p_b, p_v) != (h_reasons, h_b, h_v) {
+                return "other";
+            }
+            if normalized_ir(p, false) == normalized_ir(h, false) {
                 "ir-iterations"
+            } else if normalized_ir(p, true) == normalized_ir(h, true) {
+                "ir-deletion-and-terminal-iterations"
             } else {
                 "other"
             }
@@ -237,25 +245,27 @@ fn classify(
 ///
 /// All 54 cells (108 arms) must complete and match the independent LP retained
 /// count/hash. Between arms, every drop, reason, generation and published
-/// coefficient/covariance bit agrees; only the terminal NoSeparation IR
-/// iteration/certificate report may differ. Fixed-worker repeatability and
+/// coefficient/covariance bit agrees. On seeds 5, 11 and 17 without simplex,
+/// the two projection routes also need different iteration counts to find the
+/// same independently verified deletion. Its proof type and original rows
+/// must agree. Fixed-worker repeatability and
 /// cross-worker decisions remain checked below.
 const DIVERGENCES: &[(usize, usize, &str)] = &[
     (2, 0, "ir-iterations"),
     (2, 1, "ir-iterations"),
     (2, 2, "ir-iterations"),
     (5, 0, "ir-iterations"),
-    (5, 1, "ir-iterations"),
-    (5, 2, "ir-iterations"),
+    (5, 1, "ir-deletion-and-terminal-iterations"),
+    (5, 2, "ir-deletion-and-terminal-iterations"),
     (8, 0, "ir-iterations"),
     (8, 1, "ir-iterations"),
     (8, 2, "ir-iterations"),
     (11, 0, "ir-iterations"),
-    (11, 1, "ir-iterations"),
-    (11, 2, "ir-iterations"),
+    (11, 1, "ir-deletion-and-terminal-iterations"),
+    (11, 2, "ir-deletion-and-terminal-iterations"),
     (17, 0, "ir-iterations"),
-    (17, 1, "ir-iterations"),
-    (17, 2, "ir-iterations"),
+    (17, 1, "ir-deletion-and-terminal-iterations"),
+    (17, 2, "ir-deletion-and-terminal-iterations"),
 ];
 
 /// Independent witness per seeded design: the number of retained rows and the
