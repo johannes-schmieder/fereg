@@ -24,25 +24,51 @@ pub(super) fn reference_norm(
     raw_norm: f64,
     value_weight: impl Fn(usize) -> Result<(f64, f64)>,
 ) -> Result<f64> {
+    reference_norm_with_summary(rows, raw_norm, None, false, value_weight)
+}
+
+/// The optional raw summary supplies the exact column maximum and compensated
+/// weight sum of the same previously validated rows. A known unit-weight
+/// column may use its exact row count outside the cache as well.
+pub(super) fn reference_norm_with_summary(
+    rows: usize,
+    raw_norm: f64,
+    raw_max_and_weight_sum: Option<(f64, f64)>,
+    unit_weights: bool,
+    value_weight: impl Fn(usize) -> Result<(f64, f64)>,
+) -> Result<f64> {
     if rows == 0 {
         return Ok(raw_norm);
     }
     let anchor = value_weight(0)?.0;
-    let mut maximum = anchor.abs();
-    let mut weight_sum = Partial::default();
-    for row in 0..rows {
-        crate::interrupt::row_checkpoint(row)?;
-        let (value, weight) = value_weight(row)?;
-        if !value.is_finite() || !weight.is_finite() || weight <= 0.0 {
-            return Err(invalid_data("centered reference input is invalid"));
+    let (maximum, total) = match raw_max_and_weight_sum {
+        Some(summary) => summary,
+        None => {
+            let exact_count = unit_weights && rows as u128 <= 1_u128 << 53;
+            let mut maximum = anchor.abs();
+            let mut weight_sum = Partial::default();
+            for row in 0..rows {
+                crate::interrupt::row_checkpoint(row)?;
+                let (value, weight) = value_weight(row)?;
+                if !value.is_finite() || !weight.is_finite() || weight <= 0.0 {
+                    return Err(invalid_data("centered reference input is invalid"));
+                }
+                maximum = maximum.max(value.abs());
+                if !exact_count {
+                    weight_sum.add(weight);
+                }
+            }
+            let total = if exact_count {
+                rows as f64
+            } else {
+                finite(
+                    weight_sum.sum + weight_sum.correction,
+                    "centered reference weight sum is not finite",
+                )?
+            };
+            (maximum, total)
         }
-        maximum = maximum.max(value.abs());
-        weight_sum.add(weight);
-    }
-    let total = finite(
-        weight_sum.sum + weight_sum.correction,
-        "centered reference weight sum is not finite",
-    )?;
+    };
     let unit = power_unit(maximum);
     let delta = |value: f64| {
         let difference = value - anchor;

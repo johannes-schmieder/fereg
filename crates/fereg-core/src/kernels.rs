@@ -219,6 +219,7 @@ const PORTABLE_NAME: &str = if cfg!(target_arch = "aarch64") {
 };
 
 static INSTALLED: OnceLock<FusedKernels> = OnceLock::new();
+static PORTABLE_UPPER_RANK_ONE: OnceLock<UpperRankOne> = OnceLock::new();
 
 /// Install host-compiled instantiations of these kernels for the process.
 /// The first installation wins. A host must install only entries whose
@@ -232,6 +233,18 @@ pub fn install(kernels: FusedKernels) {
 #[must_use]
 pub fn installed() -> Option<&'static FusedKernels> {
     INSTALLED.get()
+}
+
+/// Install a host's baseline-processor rank-one specialization. The first
+/// installation wins, and a full hardware table takes precedence.
+pub fn install_portable_upper_rank_one(update: UpperRankOne) {
+    let _ = PORTABLE_UPPER_RANK_ONE.set(update);
+}
+
+pub(crate) fn installed_upper_rank_one() -> Option<UpperRankOne> {
+    installed()
+        .map(|kernels| kernels.upper_rank_one)
+        .or_else(|| PORTABLE_UPPER_RANK_ONE.get().copied())
 }
 
 /// Doctor label for the arithmetic path currently in use.

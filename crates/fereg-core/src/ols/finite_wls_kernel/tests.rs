@@ -452,33 +452,123 @@ fn retained_dense_moments_preserve_scalar_order_across_cache_boundaries() {
 }
 
 #[test]
-fn retained_dense_moment_cache_rejects_nonfinite_selected_values() {
-    let response = [1.0; 4];
-    let scales = [1.0; 8];
-    for bad in [f64::NAN, f64::INFINITY] {
-        let mut values = [1.0; 32];
-        values[17] = bad;
+fn projected_dense_moments_match_ordered_division_and_fma_bits() {
+    let (rows, columns) = (137_usize, 49_usize);
+    for step in [1, 2] {
+        let selected = (0..columns).map(|j| 1 + step * j).collect::<Vec<_>>();
+        let stored = selected[columns - 1] + 2;
+        let mut within =
+            DenseMatrix::from_row_major(rows, stored + 1, vec![f64::NAN; rows * (stored + 1)])
+                .unwrap();
+        for row in 0..rows {
+            within[(row, 0)] = ((row * 11 % 59) as f64 - 29.0) / 7.1;
+            for (j, &column) in selected.iter().enumerate() {
+                within[(row, 1 + column)] = if j == 0 {
+                    -0.0
+                } else {
+                    ((row * 17 + j * 13) as f64 * 0.731).sin()
+                };
+            }
+        }
+        let scales = (0..columns)
+            .map(|j| 0.7 + j as f64 / 2.9)
+            .collect::<Vec<_>>();
+        let weights = (0..rows)
+            .map(|row| 0.3 + (row % 7) as f64)
+            .collect::<Vec<_>>();
+        let divisor = 2.9;
+        let mut expected_rhs = vec![0.0; columns];
+        let mut expected_gram = vec![0.0; columns * columns];
+        for left in 0..columns {
+            for row in 0..rows {
+                let weight = weights[row] / divisor;
+                let weighted = weight * (within[(row, 1 + selected[left])] / scales[left]);
+                expected_rhs[left] = weighted.mul_add(within[(row, 0)], expected_rhs[left]);
+                for right in left..columns {
+                    let x = within[(row, 1 + selected[right])] / scales[right];
+                    let index = left * columns + right;
+                    expected_gram[index] = weighted.mul_add(x, expected_gram[index]);
+                }
+            }
+            for right in left + 1..columns {
+                expected_gram[right * columns + left] = expected_gram[left * columns + right];
+            }
+        }
         let source = FixedBlockMomentSource::Dense {
-            values: FiniteDenseRows::packed(&values, 8),
-            rows: 4,
-            stored_columns: 8,
-            selected_columns: None,
-            response: (&response).into(),
-            weights: BorrowedMapWeights::Unit,
-            solver_weight_divisor: 1.0,
+            values: FiniteDenseRows::projected(&within),
+            rows,
+            stored_columns: stored,
+            selected_columns: Some(&selected),
+            response: FiniteResponse::Column(&within, 0),
+            weights: BorrowedMapWeights::Provided(&weights),
+            solver_weight_divisor: divisor,
             column_scales: Some(&scales),
         };
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(2)
-            .build()
-            .unwrap()
-            .install(|| {
-                let layout_source = validate_moment_source(source).unwrap();
-                let error =
-                    fill_finite_wls_moments(layout_source, &mut [], &mut [0.0; 8], &mut [0.0; 64])
-                        .unwrap_err();
-                assert_eq!(error.code, ErrorCode::InvalidData);
-            });
+        for threads in [1, 8] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let source = validate_moment_source(source).unwrap();
+                    let mut rhs = vec![0.0; columns];
+                    let mut gram = vec![0.0; columns * columns];
+                    fill_finite_wls_moments(source, &mut [], &mut rhs, &mut gram).unwrap();
+                    for (actual, expected) in rhs
+                        .iter()
+                        .chain(&gram)
+                        .zip(expected_rhs.iter().chain(&expected_gram))
+                    {
+                        assert_eq!(actual.to_bits(), expected.to_bits());
+                    }
+                });
+        }
+    }
+}
+
+#[test]
+fn retained_dense_moment_cache_rejects_nonfinite_selected_values() {
+    let response = [1.0; 4];
+    for columns in [8, 9, 49] {
+        for (bad, scale) in [
+            (f64::NAN, None),
+            (f64::INFINITY, Some(1.0)),
+            (f64::MAX, Some(0.5)),
+        ] {
+            let mut values = vec![1.0; response.len() * columns];
+            let mut scales = vec![1.0; columns];
+            values[3 * columns - 1] = bad;
+            scales[columns - 1] = scale.unwrap_or(1.0);
+            let source = FixedBlockMomentSource::Dense {
+                values: FiniteDenseRows::packed(&values, columns),
+                rows: response.len(),
+                stored_columns: columns,
+                selected_columns: None,
+                response: (&response).into(),
+                weights: BorrowedMapWeights::Unit,
+                solver_weight_divisor: 1.0,
+                column_scales: scale.map(|_| scales.as_slice()),
+            };
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(2)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let layout_source = validate_moment_source(source).unwrap();
+                    let error = fill_finite_wls_moments(
+                        layout_source,
+                        &mut [],
+                        &mut vec![0.0; columns],
+                        &mut vec![0.0; columns * columns],
+                    )
+                    .unwrap_err();
+                    assert_eq!(error.code, ErrorCode::InvalidData);
+                    assert_eq!(
+                        error.message,
+                        "finite-WLS standardized column is not finite"
+                    );
+                });
+        }
     }
 }
 

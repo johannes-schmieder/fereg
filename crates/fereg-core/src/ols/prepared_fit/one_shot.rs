@@ -2,6 +2,7 @@
 use super::*;
 use crate::ols::centered::{CenteredRows, CenteredSummary};
 mod centered_pipeline;
+pub(super) mod reference_norms;
 use crate::fe::routing_observer::ObserverRef;
 use crate::fe::routing_remaining::Demand;
 
@@ -637,23 +638,7 @@ fn solve_one_shot<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     retain_fast_score_cache: bool,
     cmg: &mut crate::fe::FeSession<'a>,
 ) -> Result<FiniteFit> {
-    if prepared.fit_has_absorbed_intercept() {
-        let weights = frame.weights();
-        for (column, norm) in inputs.reference_norms.iter_mut().enumerate() {
-            *norm = crate::ols::centered::reference_norm(
-                prepared.fit_sample().n_active(),
-                *norm,
-                |row| {
-                    Ok((
-                        prepared.fit_column_value(column, row)?,
-                        weights
-                            .values
-                            .map_or(1.0, |values| values[row] / weights.raw_scale),
-                    ))
-                },
-            )?;
-        }
-    }
+    reference_norms::normalize(prepared, frame.weights(), inputs)?;
     let norms = match &inputs.storage {
         ProjectedStorage::Dense(_) | ProjectedStorage::Centered(_) => &inputs.norms[1..],
         ProjectedStorage::Scratch(_) => &inputs.norms,

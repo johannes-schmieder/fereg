@@ -1,17 +1,19 @@
-//! Hardware-FMA instantiations of fereg-core's fused kernels.
+//! x86-64 instantiations of fereg-core's fused kernels.
 //!
-//! Each entry compiles the same core body with FMA (which implies AVX)
-//! enabled. The table exists only after runtime detection, so processors
-//! without both keep the portable path inline. The bodies use only exactly
-//! rounded operations in a fixed per-element order, so results match
-//! wherever the platform `fma` is exactly rounded too; only instruction
-//! selection and vector width change.
+//! The hardware table compiles the same core bodies with FMA and AVX enabled.
+//! With neither available together, a baseline SSE2 specialization handles
+//! rank-one updates and the other kernels keep their inlined portable bodies.
 
-/// Install the hardware table for this process when the processor supports it.
+#[cfg(target_arch = "x86_64")]
+mod portable_rank_one;
+
+/// Install the supported fused kernels for this process.
 pub(crate) fn install() {
     #[cfg(target_arch = "x86_64")]
     if let Some(kernels) = x86_64::hardware() {
         fereg_core::kernels::install(kernels);
+    } else {
+        fereg_core::kernels::install_portable_upper_rank_one(portable_rank_one::upper_rank_one);
     }
 }
 

@@ -7,6 +7,7 @@
 //! are no trait objects or callbacks in the row loops.
 
 mod axis;
+mod dense_partitions;
 mod direction;
 mod row_blocks;
 mod streamed_qr;
@@ -1792,7 +1793,7 @@ fn fill_retained_partitioned(
         } => {
             let bound = values.bind_columns()?;
             let dimension = rhs.len();
-            let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
+            let hardware = crate::kernels::installed_upper_rank_one();
             crate::parallel::stage_try_for_each(
                 gram.par_chunks_mut(dimension * layout.columns_per_partition)
                     .zip(rhs.par_chunks_mut(layout.columns_per_partition))
@@ -1872,13 +1873,12 @@ fn fill_retained_dense_partitioned(
             weights,
             divisor,
             scales,
-            layout,
             rhs,
             gram,
         );
     }
     if let Some(mut bank) = wide_private::reserve(dimension, layout) {
-        let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
+        let hardware = crate::kernels::installed_upper_rank_one();
         let pass = DenseRowsPass {
             values,
             selected_columns,
@@ -1972,7 +1972,6 @@ fn fill_retained_dense_standardized_rows(
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: Option<&[f64]>,
-    layout: FiniteWlsMomentLayout,
     rhs: &mut [f64],
     gram: &mut [f64],
 ) -> Result<()> {
@@ -2002,37 +2001,18 @@ fn fill_retained_dense_standardized_rows(
         8 => narrow!(8),
         _ => {}
     }
-    // Wider designs keep the established allocation-free column partitions:
-    // each partition's Gram rows accumulate privately over all rows in order.
-    let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
-    crate::parallel::stage_try_for_each(
-        rhs.par_chunks_mut(layout.columns_per_partition)
-            .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
-            .enumerate(),
-        moment_lane_work(response.len(), dimension),
-        |(partition, (rhs_rows, gram_rows))| -> Result<()> {
-            record_retained_moment_worker();
-            let left_start = partition * layout.columns_per_partition;
-            with_private_retained_moments(rhs_rows, gram_rows, |rhs, gram, standardized| {
-                accumulate_standardized_rows(
-                    DenseRowsPass {
-                        values,
-                        selected_columns,
-                        response,
-                        weights,
-                        divisor,
-                        scales,
-                        hardware,
-                        dimension,
-                    },
-                    left_start,
-                    rhs,
-                    gram,
-                    standardized,
-                )
-            })
-        },
-    )
+    let hardware = crate::kernels::installed_upper_rank_one();
+    let pass = DenseRowsPass {
+        values,
+        selected_columns,
+        response,
+        weights,
+        divisor,
+        scales,
+        hardware,
+        dimension,
+    };
+    dense_partitions::fill(pass, rhs, gram)
 }
 
 /// Narrow dense moments with the width fixed at compile time: reciprocal
@@ -2282,7 +2262,7 @@ fn fill_retained_scratch_row_partitions(
         return Ok(false);
     };
     let used = &mut partials[..partitions * stride];
-    let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
+    let hardware = crate::kernels::installed_upper_rank_one();
     crate::parallel::stage_try_for_each(
         used.par_chunks_mut(stride).enumerate(),
         moment_lane_work(response.len(), dimension),
@@ -2367,7 +2347,7 @@ fn fill_retained_scratch_partitioned(
     }
     let dimension = rhs.len();
     let stored_columns = values.columns();
-    let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
+    let hardware = crate::kernels::installed_upper_rank_one();
     crate::parallel::stage_try_for_each(
         partials
             .par_chunks_mut(layout.partial_stride)

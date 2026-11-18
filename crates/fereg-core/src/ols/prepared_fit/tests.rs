@@ -10481,6 +10481,112 @@ fn no_fe_derived_residual_has_independent_witness_and_projected_fallbacks() {
 }
 
 #[test]
+fn one_shot_reference_norms_match_the_ordered_cell_fold() {
+    let rows = 20_007;
+    let x = source(1, "x");
+    let g = source(2, "g");
+    let h = source(3, "h");
+    let extreme = 0.55 * f64::MAX;
+    let mut numeric = vec![0.0; rows];
+    numeric[0] = extreme;
+    numeric[1] = -extreme;
+    assert!(!(numeric[1] - numeric[0]).is_finite());
+    let groups = (0..rows)
+        .map(|row| 1.0 + (row % 2) as f64)
+        .collect::<Vec<_>>();
+    let cells = (0..rows)
+        .map(|row| 1.0 + (row % 5) as f64)
+        .collect::<Vec<_>>();
+    let masses = (0..rows)
+        .map(|row| 0.3 + (row % 7) as f64)
+        .collect::<Vec<_>>();
+    let request = OlsRequestV1 {
+        model: CompiledTermGraph {
+            sources: vec![x.clone(), g.clone(), h.clone()],
+            terms: vec![
+                continuous_term(1, x.id, false),
+                categorical_term(2, g.id, 2.0, false),
+                categorical_interaction_term(3, &[(g.id, 2.0), (h.id, 3.0)]),
+                categorical_term(4, g.id, 3.0, false),
+            ],
+        },
+        absorbed_terms: Vec::new(),
+        bindings: [OlsInputRole::Candidate, OlsInputRole::Outcome]
+            .into_iter()
+            .chain([x.id, g.id, h.id].map(OlsInputRole::NumericSource))
+            .enumerate()
+            .map(|(i, role)| OlsInputBinding {
+                stata_var_position: (i + 1) as u32,
+                role,
+            })
+            .collect(),
+        include_intercept: true,
+        keep_singletons: true,
+    };
+    let data = prepare_model(
+        &request,
+        &[],
+        &LoadedOlsInput {
+            candidate: vec![true; rows].into(),
+            outcome: loaded(&vec![1.0; rows]),
+            numeric_sources: vec![
+                (x.id, loaded(&numeric)),
+                (g.id, loaded(&groups)),
+                (h.id, loaded(&cells)),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        },
+        false,
+    )
+    .unwrap();
+    let raw = data
+        .fit_build_rhs_with_response(&data.sample().outcome)
+        .unwrap();
+    for weighted in [false, true] {
+        let weights = NormalizedWeights {
+            values: weighted.then_some(masses.as_slice()),
+            raw_scale: if weighted { 6.3 } else { 1.0 },
+            kind: weighted.then_some(WeightKind::Analytic),
+        };
+        let cache = build_raw_moment_cache(&raw, weights, &mut SystemFitReservation).unwrap();
+        let original = &cache.norms[1..];
+        let expected = original
+            .iter()
+            .enumerate()
+            .map(|(column, &norm)| {
+                super::super::centered::reference_norm(rows, norm, |row| {
+                    Ok((data.fit_column_value(column, row)?, weights.value(row)?))
+                })
+                .unwrap()
+                .to_bits()
+            })
+            .collect::<Vec<_>>();
+        for workers in [1, 4] {
+            ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    for summary in [None, Some(&cache)] {
+                        let mut actual = original.to_vec();
+                        one_shot::reference_norms::normalize_absorbed_reference_norms(
+                            &data,
+                            weights,
+                            summary,
+                            &mut actual,
+                        )
+                        .unwrap();
+                        assert!(actual
+                            .iter()
+                            .map(|norm| norm.to_bits())
+                            .eq(expected.iter().copied()));
+                    }
+                })
+                .unwrap();
+        }
+    }
+}
+
+#[test]
 fn no_fe_centered_pipeline_preserves_boundary_rank_and_repeats() {
     let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let n = 1024;
