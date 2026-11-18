@@ -1,5 +1,28 @@
 # Validation status
 
+## 0.6.3 release qualification, November 18, 2026
+
+Native source is `831cf47adddef60e9a19a6e63199be6cdff57c47`. The
+corresponding source archive is `9664eec2` and retains identical production
+inputs. The source archive builds offline. The dependency audit found zero
+advisories. The signed universal Mac, Linux x86-64, and Windows x86-64 binaries
+passed their native ABI and load checks.
+
+- Mac and Linux each passed 172 applicable licensed Stata/MP 19 fixtures.
+  Two targeted fixtures also passed with Stata/MP under Rosetta.
+- The licensed Windows Stata/MP 19 run passed the project test driver and
+  verified sequential PyStata usage. The Windows test machine stopped and
+  its transient objects were removed after collection.
+- The strict source and staged-root checks passed. An isolated local install
+  of the combined root package verified all 38 installed files and tested
+  OLS and PPML against independent solutions.
+- All 52 calls from the four privately supplied do-files ran on the staged
+  Mac install. The weighted PPML recovery matched reference estimates on the
+  same observations with robust, one-way, and two-way clustered inference at
+  one and eight workers. Dense-case separation preserved the earlier samples
+  and outputs. Native Intel Mac Stata and the reporter's exact Windows
+  environment remain outside this run.
+
 ## 0.6.2 release qualification, November 17, 2026
 
 Native source is `bf3eb1d9b9397d8a14453f7fa0ba5d94572f160e`. The source ZIP

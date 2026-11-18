@@ -1,26 +1,26 @@
 {
   "schema": 1,
-  "version": "0.6.2",
-  "source_sha": "bf3eb1d9b9397d8a14453f7fa0ba5d94572f160e",
-  "runtime_sha256": "c4aab14da00a43d7209f753d67f7348519824aced51fbcef6025980861fa4235",
+  "version": "0.6.3",
+  "source_sha": "9664eec20e8ddc1793e3b5628abf8c6b11cfcb68",
+  "runtime_sha256": "c302a41d715b6098a5389abd33bc31208c41e3e2a3e6696aa59fae8430eb8396",
   "plugins": [
     {
       "path": "fereg_linux.plugin",
-      "sha256": "8e0d03294a50481e982e65093fdc16d487e48c5c29fbebe4a363a2f2a2654232",
-      "source_sha": "bf3eb1d9b9397d8a14453f7fa0ba5d94572f160e",
-      "bytes": 24435544
+      "sha256": "2c423aa3d8ae193bec042cd1c874791d896e0176ea6a9705fb93fa616ded34e8",
+      "source_sha": "831cf47adddef60e9a19a6e63199be6cdff57c47",
+      "bytes": 24466296
     },
     {
       "path": "fereg_windows.plugin",
-      "sha256": "669bdc2182e815b7852b2abff4b525b8663cb7a215f68542455fc5f5e3192980",
-      "source_sha": "bf3eb1d9b9397d8a14453f7fa0ba5d94572f160e",
-      "bytes": 20848128
+      "sha256": "e67b514f85c947d07347a179a35dc80eba316cd176b180b55111ef9a794e3b92",
+      "source_sha": "831cf47adddef60e9a19a6e63199be6cdff57c47",
+      "bytes": 20882432
     },
     {
       "path": "fereg_macos.plugin",
-      "sha256": "e1fa3752e8bfdd78e11340e98b831f5a753f9b8da9de79c192dd844976f8ea43",
-      "source_sha": "bf3eb1d9b9397d8a14453f7fa0ba5d94572f160e",
-      "bytes": 34370480
+      "sha256": "f3dd86c1a64b22024c02502b1c4748d83434bf3a9bd1679b6fae323fff98486f",
+      "source_sha": "831cf47adddef60e9a19a6e63199be6cdff57c47",
+      "bytes": 34421952
     }
   ],
   "included_platforms": [
@@ -36,8 +36,8 @@
     "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md."
   ],
   "candidate": false,
-  "corresponding_source_sha256": "9c9328ae712bc7fdc96e547d305971b369652d25fb47ee45f6ee77b90f309c9f",
-  "corresponding_source_commit": "bf3eb1d9b9397d8a14453f7fa0ba5d94572f160e",
-  "native_source_commit": "bf3eb1d9b9397d8a14453f7fa0ba5d94572f160e",
+  "corresponding_source_sha256": "bb6cc7621074efc3f1530b6dbab4662fcbce69ce38bae1a0b2df0076eb577496",
+  "corresponding_source_commit": "9664eec20e8ddc1793e3b5628abf8c6b11cfcb68",
+  "native_source_commit": "831cf47adddef60e9a19a6e63199be6cdff57c47",
   "cmg_sha": "368eceba765db91ff818815698da35889ce42ed0"
 }
