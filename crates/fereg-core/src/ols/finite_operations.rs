@@ -129,23 +129,10 @@ pub(super) fn solve_factor<R: FitReservation>(
             }));
         }
         if request != RankRequest::OlsDiscover {
-            let inverse = failure == Some(CholeskyFailure::Inverse);
-            return Err(request.error(
-                if inverse {
-                    "retained weighted-linear Cholesky inverse is not finite"
-                } else {
-                    "retained weighted-linear Cholesky solution is not finite"
-                },
-                if inverse {
-                    "frozen weighted-linear Cholesky inverse is not finite"
-                } else {
-                    "frozen weighted-linear Cholesky solution is not finite"
-                },
-            ));
+            return Err(cholesky_failure_error(request, failure));
         }
     }
-    let compressed = matches!(source, FixedBlockMomentSource::Centered { .. });
-    if compressed {
+    if centered {
         resize(
             banks.compression,
             centered_compression_elements(source)?,
@@ -153,6 +140,14 @@ pub(super) fn solve_factor<R: FitReservation>(
             reservation,
         )?;
     }
+    let compression = if centered {
+        Some(RetainedQrCompression::Tsqr(banks.compression))
+    } else if request == RankRequest::RetainedDiscover && blocked_givens_eligible(source) {
+        // The unsuccessful Cholesky probe no longer needs this admitted square.
+        Some(RetainedQrCompression::BlockedGivens(banks.auxiliary))
+    } else {
+        None
+    };
     let report = factor_rank_revealing_retained_qr(
         source,
         identities,
@@ -162,10 +157,10 @@ pub(super) fn solve_factor<R: FitReservation>(
         banks.solve,
         banks.scores,
         banks.permutation,
-        compressed.then_some(banks.compression.as_mut_slice()),
+        compression,
     )?;
     if crate::diagnostics::solver_trace_enabled() {
-        crate::diagnostics::emit_solver_trace(if compressed {
+        crate::diagnostics::emit_solver_trace(if centered {
             "FEREG_SOLVER_TRACE|phase=finite_factor|method=tsqr"
         } else {
             "FEREG_SOLVER_TRACE|phase=finite_factor|method=canonical_qr"
@@ -174,9 +169,7 @@ pub(super) fn solve_factor<R: FitReservation>(
     // A new centered/compressed representation never owns an omission or a
     // threshold-boundary decision. Return before inverse construction, dropped
     // span certification, and the OLS ambiguity normalization below.
-    if matches!(source, FixedBlockMomentSource::Centered { .. })
-        && (report.ambiguous || report.rank != count)
-    {
+    if centered && (report.ambiguous || report.rank != count) {
         return Ok(None);
     }
     if request == RankRequest::Frozen && (report.ambiguous || report.rank != count) {
@@ -242,6 +235,23 @@ fn prepare_factor<R: FitReservation>(
 enum CholeskyFailure {
     Solution,
     Inverse,
+}
+
+#[cold]
+fn cholesky_failure_error(request: RankRequest, failure: Option<CholeskyFailure>) -> FeregError {
+    let inverse = failure == Some(CholeskyFailure::Inverse);
+    request.error(
+        if inverse {
+            "retained weighted-linear Cholesky inverse is not finite"
+        } else {
+            "retained weighted-linear Cholesky solution is not finite"
+        },
+        if inverse {
+            "frozen weighted-linear Cholesky inverse is not finite"
+        } else {
+            "frozen weighted-linear Cholesky solution is not finite"
+        },
+    )
 }
 
 fn cholesky_solution<R: FitReservation>(

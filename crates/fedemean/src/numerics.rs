@@ -8,14 +8,18 @@
 //! between platforms. [`hypot`] is built from IEEE 754 operations only, so it
 //! returns the same bits on every platform this crate supports.
 
+#[cfg(not(target_arch = "aarch64"))]
+use self::exact_square_dekker as exact_square;
+#[cfg(target_arch = "aarch64")]
+use self::exact_square_fma as exact_square;
+
 /// `√(x² + y²)` without undue overflow or underflow, with the same bits on every platform.
 ///
 /// Built only from IEEE 754 binary64 operations in round-to-nearest: exact
 /// power-of-two scaling, additions, multiplications, one division and the
-/// correctly rounded square root. It calls no math library and needs no fused
-/// multiply-add (Rust never contracts `a * b + c` into one), so the result
-/// does not depend on the platform, the processor's features or the
-/// optimization level.
+/// correctly rounded square root. AArch64 uses a fused multiply-add for each
+/// exact square's residual. Other targets use Dekker's algorithm, which
+/// produces the same product and residual bits.
 ///
 /// - **Accuracy.** A normal result is the correctly rounded `√(x² + y²)`
 ///   unless the exact value lies within a relative distance of about `2⁻¹⁰⁰`
@@ -29,8 +33,7 @@
 ///   gives the canonical NaN; `hypot(x, ±0)` is `|x|`.
 /// - **Method.** After exact scaling of the larger magnitude `a` into `[1, 2)`,
 ///   `a² + b²` is formed to about twice the working precision as a
-///   double-length sum (Dekker's exact products with Veltkamp's splitting),
-///   its rounded square root `r` is
+///   double-length sum using exact squared products. Its rounded square root `r` is
 ///   corrected once by `(a² + b² − r²) / 2r` with `r²` formed exactly too,
 ///   and the result is scaled back. When `b ≤ 2⁻²⁸ a` the correctly rounded
 ///   result is `a` and is returned directly.
@@ -81,9 +84,6 @@ const SUBNORMAL_LIFT: i32 = 54;
 
 const EXPONENT_BIAS: i32 = 1023;
 
-/// Veltkamp's splitting constant `2^27 + 1` for binary64.
-const SPLITTER: f64 = 134_217_729.0;
-
 /// `√(a² + b²)` for `1 ≤ a < 2` and `2^-80 ≤ b ≤ a`, within `≈ 2^-103 a` before the final rounding.
 fn scaled_hypot(a: f64, b: f64) -> f64 {
     let (a2, a2_error) = exact_square(a);
@@ -98,8 +98,19 @@ fn scaled_hypot(a: f64, b: f64) -> f64 {
     root + residual / (2.0 * root)
 }
 
-/// `(p, e)` with `p = fl(x²)` and `p + e = x²` exactly (Dekker), for `x` far from over- and underflow.
-fn exact_square(x: f64) -> (f64, f64) {
+/// `(p, e)` with `p = fl(x²)` and `p + e = x²` exactly, for `2^-80 ≤ x ≤ 3`.
+#[cfg(any(target_arch = "aarch64", test))]
+#[inline]
+fn exact_square_fma(x: f64) -> (f64, f64) {
+    let product = x * x;
+    // The difference fits in 53 bits, and scaling keeps it far from underflow.
+    (product, x.mul_add(x, -product))
+}
+
+/// The same exact square using Dekker's algorithm with Veltkamp's splitting.
+#[cfg(any(not(target_arch = "aarch64"), test))]
+fn exact_square_dekker(x: f64) -> (f64, f64) {
+    const SPLITTER: f64 = 134_217_729.0; // 2^27 + 1
     let product = x * x;
     let scaled = SPLITTER * x;
     let high = scaled - (scaled - x);

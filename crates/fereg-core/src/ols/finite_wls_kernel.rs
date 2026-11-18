@@ -9,11 +9,13 @@
 mod axis;
 mod direction;
 mod row_blocks;
+mod streamed_qr;
 mod tsqr;
 mod wide_private;
 mod workspace;
 pub(super) use axis::{FiniteDenseRows, FiniteResponse};
 pub(crate) use direction::{solve_finite_direction, FiniteDirectionWorkspace};
+pub(super) use streamed_qr::blocked_givens_eligible;
 pub(super) use workspace::FiniteWorkspace;
 
 use fedemean::numerics::hypot;
@@ -364,6 +366,11 @@ pub(super) fn fill_finite_wls_moments(
     fill_retained_partitioned(source, layout, partials, rhs, gram)
 }
 
+pub(super) enum RetainedQrCompression<'a> {
+    Tsqr(&'a mut [f64]),
+    BlockedGivens(&'a mut [f64]),
+}
+
 /// Stable retained-design rank revelation without a second N-by-K design.
 ///
 /// Rows are inserted, in canonical observation order, into one caller-owned
@@ -371,10 +378,8 @@ pub(super) fn fill_finite_wls_moments(
 /// Householder QR of that K-by-K factor then applies the same rank policy as
 /// the one-shot observation-space QR.  `transformed_rhs` is carried through
 /// both orthogonal transformations, so the accepted solve never falls back to
-/// normal equations.  The implementation is intentionally serial: retaining
-/// one K-by-K factor is the bounded-memory contract, whereas deterministic
-/// parallel row partitions would require one additional K-by-K factor per
-/// partition.
+/// normal equations. Wide retained dense designs can stage incoming rows in the
+/// disposable Gram workspace and update disjoint factor rows in parallel.
 ///
 /// Each step pivots on the largest trailing column norm. Candidates within
 /// [`pivot_tie_band`] of it tie, and the earliest canonical column among them
@@ -389,7 +394,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
     transformed_rhs: &mut [f64],
     trailing_norms: &mut [f64],
     permutation: &mut [usize],
-    compression: Option<&mut [f64]>,
+    compression: Option<RetainedQrCompression<'_>>,
 ) -> Result<RankRevealingQrReport> {
     source.validate()?;
     let dimension = source.dimension();
@@ -427,56 +432,25 @@ pub(super) fn factor_rank_revealing_retained_qr(
         *destination = position;
     }
 
-    if let Some(workspace) = compression {
-        tsqr::compress(source, workspace, qr, transformed_rhs)?;
-    } else {
-        // `trailing_norms` is the selected/standardized incoming row during the
-        // streaming reduction. It is overwritten by actual trailing norms below.
-        let mut scratch_reader = match source {
-            FixedBlockMomentSource::Scratch { values, .. } => Some(values.shared_reader()),
-            _ => None,
-        };
-        for observation in 0..source.rows() {
-            crate::interrupt::row_checkpoint(observation)?;
-            let mut outcome = fill_retained_qr_row(
-                source,
-                observation,
-                stored_row,
-                trailing_norms,
-                scratch_reader.as_mut(),
-            )?;
-            for step in 0..dimension {
-                let diagonal = qr[step * dimension + step];
-                let incoming = trailing_norms[step];
-                if incoming == 0.0 {
-                    continue;
+    match compression {
+        Some(RetainedQrCompression::Tsqr(workspace)) => {
+            tsqr::compress(source, workspace, qr, transformed_rhs)?;
+        }
+        Some(RetainedQrCompression::BlockedGivens(workspace)) => {
+            if let Err(error) =
+                streamed_qr::blocked(source, stored_row, workspace, qr, transformed_rhs)
+            {
+                if error.code == crate::error::ErrorCode::Interrupted {
+                    return Err(error);
                 }
-                let rotated = hypot(diagonal, incoming);
-                if !rotated.is_finite() || rotated <= 0.0 {
-                    return Err(invalid_data(
-                        "retained finite-WLS streaming QR rotation is invalid",
-                    ));
-                }
-                let cosine = diagonal / rotated;
-                let sine = incoming / rotated;
-                qr[step * dimension + step] = rotated;
-                trailing_norms[step] = 0.0;
-                let finite_tail = rotate_streamed_qr_tail(
-                    &mut qr[step * dimension + step + 1..(step + 1) * dimension],
-                    &mut trailing_norms[step + 1..],
-                    cosine,
-                    sine,
-                );
-                let upper_outcome = transformed_rhs[step];
-                transformed_rhs[step] = cosine * upper_outcome + sine * outcome;
-                outcome = -sine * upper_outcome + cosine * outcome;
-                if !finite_tail || !transformed_rhs[step].is_finite() || !outcome.is_finite() {
-                    return Err(invalid_data(
-                        "retained finite-WLS streaming QR is not finite",
-                    ));
-                }
+                // Row staging and parallel tiles can encounter a later failing
+                // observation first. Reproduce the scalar failure in source order.
+                qr.fill(0.0);
+                transformed_rhs.fill(0.0);
+                streamed_qr::scalar(source, stored_row, trailing_norms, qr, transformed_rhs)?;
             }
         }
+        None => streamed_qr::scalar(source, stored_row, trailing_norms, qr, transformed_rhs)?,
     }
 
     for (position, norm) in trailing_norms.iter_mut().enumerate() {
@@ -1433,40 +1407,82 @@ impl FiniteInverseCertificate {
     }
 }
 
+/// Reuse a dead caller bank for the transposed row sums when it has room.
 pub(super) fn certify_finite_inverse(
     gram: &[f64],
     dimension: usize,
     positions: &[usize],
     inverse: &[f64],
     rank: usize,
+    scratch: &mut [f64],
 ) -> Result<FiniteInverseCertificate> {
-    Ok(FiniteInverseCertificate {
-        left: inverse_relative_infinity_norm(gram, dimension, positions, inverse, rank, false)?,
-        right: inverse_relative_infinity_norm(gram, dimension, positions, inverse, rank, true)?,
-    })
-}
-
-pub(super) fn inverse_relative_infinity_norm(
-    gram: &[f64],
-    gram_dimension: usize,
-    gram_positions: &[usize],
-    inverse: &[f64],
-    rank: usize,
-    reverse: bool,
-) -> Result<f64> {
-    let gram_square = checked_square(gram_dimension, "finite-WLS bread Gram dimensions overflow")?;
+    let gram_square = checked_square(dimension, "finite-WLS bread Gram dimensions overflow")?;
     let rank_square = checked_square(rank, "finite-WLS bread dimensions overflow")?;
     if gram.len() != gram_square
-        || gram_positions.len() != rank
+        || positions.len() != rank
         || inverse.len() != rank_square
-        || gram_positions
-            .iter()
-            .any(|position| *position >= gram_dimension)
+        || positions.iter().any(|position| *position >= dimension)
     {
         return Err(invalid_argument(
             "finite-WLS inverse-certificate dimensions are inconsistent",
         ));
     }
+
+    if let Some(scratch) = scratch.get_mut(..2 * rank) {
+        let symmetric = positions.iter().enumerate().all(|(row, &left)| {
+            positions[..=row]
+                .iter()
+                .enumerate()
+                .all(|(column, &right)| {
+                    let gram_entry = gram[left * dimension + right];
+                    let inverse_entry = inverse[row * rank + column];
+                    gram_entry.is_finite()
+                        && inverse_entry.is_finite()
+                        && gram_entry.to_bits() == gram[right * dimension + left].to_bits()
+                        && inverse_entry.to_bits() == inverse[column * rank + row].to_bits()
+                })
+        });
+        if symmetric {
+            // Each dot in G·B also gives the transposed entry in B·G, with
+            // the same inner index order. Row-major traversal visits both
+            // the columns of G·B and the columns of B·G in order within
+            // their respective row sums.
+            let (errors, scales) = scratch.split_at_mut(rank);
+            errors.fill(0.0);
+            scales.fill(1.0);
+            let left = inverse_relative_infinity_norm(
+                gram,
+                dimension,
+                positions,
+                inverse,
+                false,
+                Some((errors, scales)),
+            )?;
+            // Finish the right-side checks after the left, as in two passes.
+            let mut right = 0.0_f64;
+            for (&error, &scale) in errors.iter().zip(scales.iter()) {
+                validate_inverse_row(error, scale)?;
+                right = right.max(error / scale);
+            }
+            return Ok(FiniteInverseCertificate { left, right });
+        }
+    }
+
+    Ok(FiniteInverseCertificate {
+        left: inverse_relative_infinity_norm(gram, dimension, positions, inverse, false, None)?,
+        right: inverse_relative_infinity_norm(gram, dimension, positions, inverse, true, None)?,
+    })
+}
+
+fn inverse_relative_infinity_norm(
+    gram: &[f64],
+    gram_dimension: usize,
+    gram_positions: &[usize],
+    inverse: &[f64],
+    reverse: bool,
+    mut transpose: Option<(&mut [f64], &mut [f64])>,
+) -> Result<f64> {
+    let rank = gram_positions.len();
     let mut maximum = 0.0_f64;
     for row in 0..rank {
         let mut row_error = 0.0_f64;
@@ -1475,16 +1491,24 @@ pub(super) fn inverse_relative_infinity_norm(
             let mut product = 0.0_f64;
             let mut correction = 0.0_f64;
             let mut absolute_products = 0.0_f64;
+            let (inverse_start, inverse_stride) = if reverse {
+                (row * rank, 1)
+            } else if transpose.is_some() {
+                (column * rank, 1)
+            } else {
+                (column, rank)
+            };
             for inner in 0..rank {
+                let inverse_entry = inverse[inverse_start + inner * inverse_stride];
                 let (left, right) = if reverse {
                     (
-                        inverse[row * rank + inner],
+                        inverse_entry,
                         gram[gram_positions[inner] * gram_dimension + gram_positions[column]],
                     )
                 } else {
                     (
                         gram[gram_positions[row] * gram_dimension + gram_positions[inner]],
-                        inverse[inner * rank + column],
+                        inverse_entry,
                     )
                 };
                 let term = left * right;
@@ -1496,12 +1520,13 @@ pub(super) fn inverse_relative_infinity_norm(
                     ));
                 }
             }
-            row_error += (product + correction - f64::from(row == column)).abs();
+            let error = (product + correction - f64::from(row == column)).abs();
+            row_error += error;
             row_scale += absolute_products;
-            if !row_error.is_finite() || !row_scale.is_finite() {
-                return Err(invalid_data(
-                    "finite-WLS inverse-certificate accumulation is not finite",
-                ));
+            validate_inverse_row(row_error, row_scale)?;
+            if let Some((errors, scales)) = &mut transpose {
+                errors[column] += error;
+                scales[column] += absolute_products;
             }
         }
         maximum = maximum.max(row_error / row_scale);
@@ -1511,6 +1536,15 @@ pub(super) fn inverse_relative_infinity_norm(
     } else {
         Err(invalid_data("finite-WLS inverse certificate is not finite"))
     }
+}
+
+fn validate_inverse_row(error: f64, scale: f64) -> Result<()> {
+    if !error.is_finite() || !scale.is_finite() {
+        return Err(invalid_data(
+            "finite-WLS inverse-certificate accumulation is not finite",
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]

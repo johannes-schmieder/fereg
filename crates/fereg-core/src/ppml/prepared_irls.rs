@@ -7,7 +7,6 @@
 #[cfg(test)]
 use crate::fe::PARALLEL_PROJECTION_MIN_ROWS;
 use rayon::prelude::*;
-#[cfg(test)]
 use std::cell::Cell;
 use std::time::{Duration, Instant};
 
@@ -25,7 +24,7 @@ use crate::ols::{
     LinearSessionPhaseAllocatorProbe, LinearSessionReuseReport, LinearSessionWorkspaceCapacities,
     LinearSolveFrame, PpmlOrdinaryLinearOutput, PreparedOlsBreadWeightScale, PreparedOlsColumnKind,
     PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
-    PreparedOlsFittedCoefficient,
+    PreparedOlsFittedCoefficient, FROZEN_RANK_BASIS_CHANGED,
 };
 
 use super::categorical_fwl_cmg::{
@@ -836,6 +835,8 @@ pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync 
             prior_weights,
             offset,
             binding: None,
+            restart_from_projected_seed: false,
+            attempted_iterations: None,
         },
         config,
         memory_plan,
@@ -861,29 +862,87 @@ struct PreparedPpmlFitFrame<'a, P: ?Sized> {
     prior_weights: &'a [f64],
     offset: &'a [f64],
     binding: Option<PpmlGenerationBinding>,
+    restart_from_projected_seed: bool,
+    attempted_iterations: Option<&'a Cell<usize>>,
 }
 
 pub(super) fn fit_generation_ppml_irls_interruptible(
     generation: &super::prepared_model::PreparedPpmlModelGeneration,
-    config: PreparedPpmlIrlsConfig,
+    mut config: PreparedPpmlIrlsConfig,
     memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
     purpose: PreparedPpmlIrlsPurpose,
     bias: Option<(super::PpmlBiasRequest, &[f64])>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsRun> {
-    let frame = PreparedPpmlFitFrame {
-        prepared: generation.fit_view(),
-        // Preserve exploratory storage admission: only publication may retain
-        // the shared implicit-column source beside its canonical checkpoint.
-        shared_prepared: matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-            .then(|| generation.prepared().clone()),
-        outcome: generation.outcome(),
-        prior_weights: generation.prior_weights(),
-        offset: generation.offset(),
-        binding: Some(PpmlGenerationBinding::capture(generation)?),
+    let attempted_iterations = Cell::new(0);
+    let frame = |restart_from_projected_seed| -> Result<_> {
+        Ok(PreparedPpmlFitFrame {
+            prepared: generation.fit_view(),
+            // Preserve exploratory storage admission: only publication may retain
+            // the shared implicit-column source beside its canonical checkpoint.
+            shared_prepared: matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+                .then(|| generation.prepared().clone()),
+            outcome: generation.outcome(),
+            prior_weights: generation.prior_weights(),
+            offset: generation.offset(),
+            binding: Some(PpmlGenerationBinding::capture(generation)?),
+            restart_from_projected_seed,
+            attempted_iterations: (!restart_from_projected_seed).then_some(&attempted_iterations),
+        })
     };
-    run_prepared_ppml_irls(frame, config, memory_plan, start, purpose, bias, interrupt)
+    let first = run_prepared_ppml_irls(
+        frame(false)?,
+        config,
+        memory_plan,
+        start,
+        purpose,
+        bias,
+        interrupt,
+    );
+    let error = match first {
+        Err(error)
+            if start.is_none()
+                && purpose == PreparedPpmlIrlsPurpose::Publication
+                && generation.offset().iter().all(|&value| value == 0.0) =>
+        {
+            error
+        }
+        result => return result,
+    };
+    let reason = match (error.code, error.message.as_str()) {
+        (ErrorCode::InvalidData, FROZEN_RANK_BASIS_CHANGED) => "frozen_rank",
+        (ErrorCode::NonConvergence, super::profiled_intercept_curve::UNREPRESENTABLE) => {
+            "profiled_line_search"
+        }
+        _ => return Err(error),
+    };
+    let spent = attempted_iterations.get();
+    let remaining = config.ppml.max_iterations.saturating_sub(spent);
+    if remaining == 0 {
+        return Err(error);
+    }
+    config.ppml.max_iterations = remaining;
+    // The failed weighted frame never changes the canonical basis. Release
+    // it, then restart once on the same already-certified sample using the
+    // independent full-design log-response seed used for nonzero offsets.
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=irls_restart|reason={reason}|start=projected|spent={spent}|remaining={remaining}",
+        ));
+    }
+    match run_prepared_ppml_irls(
+        frame(true)?,
+        config,
+        memory_plan,
+        start,
+        purpose,
+        bias,
+        interrupt,
+    ) {
+        Err(retry) if retry.message == offset_start::RESTART_SEED_REFUSED => Err(error),
+        result => result,
+    }
 }
 
 fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
@@ -902,6 +961,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         prior_weights,
         offset,
         binding,
+        restart_from_projected_seed,
+        attempted_iterations,
     } = frame;
     let model_generation = binding
         .as_ref()
@@ -967,14 +1028,25 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // and Hessian never enter the certified IRLS session below.
     let projected_start = if start.is_none() && purpose == PreparedPpmlIrlsPurpose::Publication {
         interrupt(PpmlInterruptPoint::Preparation)?;
-        offset_start::propose(
-            prepared,
-            outcome,
-            prior_weights,
-            offset,
-            config,
-            &mut memory_plan,
-        )?
+        if restart_from_projected_seed {
+            Some(offset_start::restart(
+                prepared,
+                outcome,
+                prior_weights,
+                offset,
+                config,
+                &mut memory_plan,
+            )?)
+        } else {
+            offset_start::propose(
+                prepared,
+                outcome,
+                prior_weights,
+                offset,
+                config,
+                &mut memory_plan,
+            )?
+        }
     } else {
         None
     };
@@ -1110,6 +1182,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut completed_iterations = 0_usize;
     // Pre-solve steps are outer iterations; their projections are inner work.
     let presolve_steps = presolved.map_or(0, |report| report.steps);
+    if let Some(attempted_iterations) = attempted_iterations {
+        attempted_iterations.set(presolve_steps);
+    }
     let mut total_inner_iterations = presolved.map_or(0, |report| report.projection_iterations);
     if credited.is_some() {
         strict_control.credit_converged_start();
@@ -1151,6 +1226,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         // avoids even an extra clock read.
         let audited_iteration_clock = allocation_audit.is_measuring().then(Instant::now);
         completed_iterations = iteration;
+        if let Some(attempted_iterations) = attempted_iterations {
+            attempted_iterations.set(presolve_steps + iteration);
+        }
         let inner_tolerance = scheduled_inner_tolerance(
             config.ppml,
             iteration,

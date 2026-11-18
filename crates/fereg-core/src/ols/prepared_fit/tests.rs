@@ -6472,7 +6472,7 @@ fn strict_unit_design_reuses_only_regressors_for_a_new_response() {
         Some(&mut design),
     )
     .unwrap();
-    assert!(design.is_none());
+    assert!(design.is_some());
     assert!(audited > 0);
     let fresh =
         fit_prepared_weighted_linear_projection_once(&data, next, config, None, false, None)
@@ -7584,6 +7584,109 @@ fn frozen_session_uses_standardized_qr_fallback_for_clear_weak_full_rank() {
             .into_current_products(&mut || Ok(()))
             .expect("weak-rank final products");
         assert_eq!(products.frame().finite_rank(), 2);
+    }
+}
+
+#[test]
+fn fused_frozen_rank_rejection_preserves_response_for_fresh_retry() {
+    let mut regressors = [Vec::new(), Vec::new()];
+    let mut effects = [Vec::new(), Vec::new()];
+    let mut initial_response = Vec::new();
+    let mut refreshed_response = Vec::new();
+    let mut refreshed_weights = Vec::new();
+    for left in 1..=3 {
+        for right in 1..=3 {
+            let absorbed = 0.5 * left as f64 - 0.25 * right as f64;
+            // Both contrasts are centered within every crossed cell, so
+            // the new cell-constant weights leave the within slopes unchanged.
+            for (s, t) in [(-1.0, -1.0), (-1.0, 1.0), (1.0, -1.0), (1.0, 1.0)] {
+                effects[0].push(left as f64);
+                effects[1].push(right as f64);
+                regressors[0].push(s);
+                regressors[1].push(s + 0.02 * t);
+                initial_response.push(s + absorbed);
+                refreshed_response.push(2.0 * s + 0.02 * t + absorbed);
+                refreshed_weights.push((left * right) as f64);
+            }
+        }
+    }
+    let initial = prepared_multiway_categorical(&initial_response, &regressors, &effects);
+    let refreshed = prepared_multiway_categorical_weights(
+        &refreshed_response,
+        &regressors,
+        &effects,
+        TestWeights::Analytic(&refreshed_weights),
+    );
+    let config = PreparedOlsFitConfig {
+        absorb: AbsorbConfig {
+            solver: FeSolverKind::Map,
+            ..AbsorbConfig::default()
+        },
+        execution: PreparedOlsExecutionConfig {
+            mode: PreparedOlsExecutionMode::Fast,
+            threads: ThreadConfig::from_requested(1, true).expect("serial threads"),
+            ..PreparedOlsExecutionConfig::default()
+        },
+        ..PreparedOlsFitConfig::default()
+    };
+    let mut session = CertifiedLinearSession::new(
+        &initial,
+        LinearSolveFrame::from_prepared_ols(&initial).expect("initial frame"),
+        config,
+        LinearSessionGenerations::new(0, 0, 0, 0, 0),
+    )
+    .expect("retained Fast MAP session");
+    assert!(session.uses_ppml_categorical_map_for_test());
+    let initial_fit = session.solve_fresh().expect("initial full-rank fit");
+    assert!(initial_fit.certified());
+    assert_eq!(initial_fit.frame().finite_rank(), 2);
+
+    let refreshed_frame = LinearSolveFrame::from_prepared_ols(&refreshed).expect("refreshed frame");
+    assert!(!session
+        .refresh_frame(
+            refreshed_frame.response(),
+            refreshed_frame.raw_weights(),
+            refreshed_frame.bread_weight_scale(),
+            1,
+        )
+        .expect("refresh response and weights"));
+    let mut reject_config = config;
+    // The weak contrast is about 0.02 relative to the leading direction.
+    reject_config.rank_tolerance_multiplier =
+        0.1 / (f64::EPSILON * refreshed_response.len() as f64);
+    // Restoring the MAP tolerance below forces the retry through fused
+    // projection again, where it needs the residual and matching raw anchor.
+    reject_config.absorb.map.tolerance *= 0.1;
+    session
+        .set_config(reject_config)
+        .expect("frozen rank policy");
+    let error = session
+        .solve_frozen_ppml()
+        .err()
+        .expect("finite solve must reject the frozen rank after projection");
+    assert_eq!(error.code, ErrorCode::InvalidData);
+    assert_eq!(
+        error.message,
+        "frozen weighted-linear basis lost certified full rank"
+    );
+
+    session
+        .set_config(config)
+        .expect("restore canonical policy");
+    session.discard_invalid_frozen_state();
+    let recovered = session.solve_fresh().expect("canonical retry");
+    assert!(recovered.certified());
+    assert!(recovered.reuse_report().warm_projection_certified);
+    assert_eq!(recovered.frame().finite_rank(), 2);
+    for coefficient in recovered
+        .coefficients()
+        .filter(|coefficient| coefficient.status == PreparedOlsFitStatus::Kept)
+    {
+        assert_close(coefficient.value.expect("finite slope"), 1.0, 2e-10);
+    }
+    assert!(recovered.frame().score_certificate().passed);
+    for &residual in recovered.frame().residuals() {
+        assert_close(residual, 0.0, 2e-10);
     }
 }
 

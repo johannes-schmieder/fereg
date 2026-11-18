@@ -6817,24 +6817,59 @@ fn subtract_parallel_level_means<const FROM_INPUT: bool, const COMPLEMENT: bool>
                 "borrowed MAP code exceeds the finalized level count",
             ));
         }
-        for (rhs, value) in row.iter_mut().enumerate() {
+        let mut level_means = &means[level * columns..(level + 1) * columns];
+        let project = |rhs: usize, value: f64, mean: f64| {
             let source = if FROM_INPUT {
                 auxiliary.expect("validated input projection row")[rhs]
             } else {
-                *value
+                value
             };
-            let projected = source - means[level * columns + rhs];
-            let output = if COMPLEMENT {
+            let projected = source - mean;
+            if COMPLEMENT {
                 auxiliary.expect("validated complement row")[rhs] - projected
             } else {
                 projected
-            };
-            if !output.is_finite() {
+            }
+        };
+        // Each lane is independent. Check a small block together, committing
+        // just the original finite prefix if any coordinate overflows.
+        const BLOCK: usize = 8;
+        let mut start = 0;
+        let mut blocks = row.chunks_exact_mut(BLOCK);
+        for values in blocks.by_ref() {
+            let (means, mean_tail) = level_means
+                .split_first_chunk::<BLOCK>()
+                .expect("aligned level means");
+            let values: &mut [f64; BLOCK] = values.try_into().expect("exact projection block");
+            let results: [f64; BLOCK] =
+                std::array::from_fn(|i| project(start + i, values[i], means[i]));
+            let finite = results
+                .iter()
+                .fold(true, |ok, value| ok & value.is_finite());
+            if !finite {
+                let prefix = results.iter().position(|value| !value.is_finite()).unwrap();
+                values[..prefix].copy_from_slice(&results[..prefix]);
                 return Err(invalid_data(
                     "borrowed MAP projection produced a nonfinite residual",
                 ));
             }
-            *value = output;
+            *values = results;
+            level_means = mean_tail;
+            start += BLOCK;
+        }
+        for (i, (value, &mean)) in blocks
+            .into_remainder()
+            .iter_mut()
+            .zip(level_means)
+            .enumerate()
+        {
+            let result = project(start + i, *value, mean);
+            if !result.is_finite() {
+                return Err(invalid_data(
+                    "borrowed MAP projection produced a nonfinite residual",
+                ));
+            }
+            *value = result;
         }
         Ok(())
     };
@@ -6916,19 +6951,11 @@ fn fill_parallel_group_statistics(
                     }
                     // Sixty-four-column tiles read each member row segment
                     // once; every column keeps its member-order recurrence.
-                    let data = values.as_slice();
                     for (tile, output) in level_means.chunks_mut(PARALLEL_GROUP_MAX_RHS).enumerate()
                     {
                         let start = tile * PARALLEL_GROUP_MAX_RHS;
-                        *group_weight = fused_group_means_by_value(
-                            effect,
-                            level,
-                            weights,
-                            values.nrows(),
-                            output,
-                            false,
-                            |row, rhs| Ok((data[row * columns + start + rhs], 0.0)),
-                        )?;
+                        *group_weight =
+                            dense_tile_group_means(effect, level, weights, values, start, output)?;
                     }
                 }
             }
@@ -6984,6 +7011,34 @@ fn fused_group_means_for_level(
     )
 }
 
+// Slice each member once per pass. The inner column loop walks a contiguous
+// row segment even when the original matrix is wider than the tile.
+fn dense_tile_group_means(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    level: usize,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    start: usize,
+    means: &mut [f64],
+) -> Result<f64> {
+    let width = means.len();
+    let columns = values.ncols();
+    let data = values.as_slice();
+    fused_group_means_by_row(
+        effect,
+        level,
+        weights,
+        values.nrows(),
+        means,
+        false,
+        |row| {
+            let first = row * columns + start;
+            let tile = &data[first..first + width];
+            move |rhs: usize| Ok((tile[rhs], 0.0))
+        },
+    )
+}
+
 fn fused_group_means_by_value(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     level: usize,
@@ -6993,6 +7048,30 @@ fn fused_group_means_by_value(
     binary_scaling: bool,
     value: impl Fn(usize, usize) -> Result<(f64, f64)>,
 ) -> Result<f64> {
+    let value = &value;
+    fused_group_means_by_row(
+        effect,
+        level,
+        weights,
+        nrows,
+        means,
+        binary_scaling,
+        |row| move |rhs| value(row, rhs),
+    )
+}
+
+fn fused_group_means_by_row<F>(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    level: usize,
+    weights: ValidatedWeights<'_>,
+    nrows: usize,
+    means: &mut [f64],
+    binary_scaling: bool,
+    read_row: impl Fn(usize) -> F,
+) -> Result<f64>
+where
+    F: Fn(usize) -> Result<(f64, f64)>,
+{
     let members = effect.level_index().checked_members(level)?;
     if members.is_empty() || means.len() > PARALLEL_GROUP_MAX_RHS {
         return Err(invalid_argument(
@@ -7020,8 +7099,9 @@ fn fused_group_means_by_value(
                 &mut weight_correction,
             );
         }
+        let value = read_row(observation);
         for (rhs, scale) in scales.iter_mut().enumerate() {
-            let (high, low) = value(observation, rhs)?;
+            let (high, low) = value(rhs)?;
             *scale = scale.max(high.abs());
             if binary_scaling {
                 *scale = scale.max(low.abs());
@@ -7050,14 +7130,17 @@ fn fused_group_means_by_value(
         }
     }
     if binary_scaling {
-        accumulate_cg_polish_means(members, weights, scales, sums, corrections, &value)?;
+        accumulate_cg_polish_means(members, weights, scales, sums, corrections, &|row, rhs| {
+            read_row(row)(rhs)
+        })?;
     } else if let Some(weight_values) = weights.values {
         for &observation in members {
             let weight = weight_values[observation] / weights.raw_scale;
+            let value = read_row(observation);
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
                     neumaier_add(
-                        weight * (value(observation, rhs)?.0 / scales[rhs]),
+                        weight * (value(rhs)?.0 / scales[rhs]),
                         &mut sums[rhs],
                         &mut corrections[rhs],
                     );
@@ -7066,10 +7149,11 @@ fn fused_group_means_by_value(
         }
     } else {
         for &observation in members {
+            let value = read_row(observation);
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
                     neumaier_add(
-                        value(observation, rhs)?.0 / scales[rhs],
+                        value(rhs)?.0 / scales[rhs],
                         &mut sums[rhs],
                         &mut corrections[rhs],
                     );
@@ -7409,15 +7493,7 @@ fn initial_group_rejects(
             .enumerate()
         {
             let start = tile * PARALLEL_GROUP_MAX_RHS;
-            group_weight = fused_group_means_by_value(
-                effect,
-                0,
-                weights,
-                values.nrows(),
-                means,
-                false,
-                |row, rhs| Ok((values[(row, start + rhs)], 0.0)),
-            )?;
+            group_weight = dense_tile_group_means(effect, 0, weights, values, start, means)?;
         }
     } else {
         // All RHSs must share the original whole-group fallback decision.

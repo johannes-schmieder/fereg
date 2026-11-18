@@ -28,9 +28,8 @@ use rayon::prelude::*;
 use std::time::Instant;
 
 use super::finite_wls_kernel::{
-    certify_normal_equations,
-    inverse_relative_infinity_norm as kernel_inverse_relative_infinity_norm,
-    validate_moment_source, FixedBlockMomentSource, NormalEquationScale,
+    certify_finite_inverse, certify_normal_equations, validate_moment_source,
+    FixedBlockMomentSource, NormalEquationScale,
 };
 use super::linear_session::{
     LinearSessionAllocationPhase, LinearSessionPhaseAllocationGuard,
@@ -1606,9 +1605,8 @@ fn retained_finite_predictor<P: PreparedOlsFitView + Sync + ?Sized>(
     Ok(finite_predictor)
 }
 
-/// The certified regressor part of a strict unit-weight projection. It is
-/// moved once into a second solve on the same immutable sample and model.
-/// The second solve overwrites the response lane before any finite operation.
+/// The certified regressor part of a strict unit-weight projection. Each
+/// reuse moves the panel into the solve and overwrites its response lane.
 pub(crate) struct UnitProjectionDesign<'a> {
     sample: &'a super::FinalizedNumericSample,
     model: &'a super::PreparedOlsModel,
@@ -1682,7 +1680,7 @@ struct ProjectionPanel {
     absorption_report: SolveReport,
     within_norms: Vec<f64>,
     reference_norms: Vec<f64>,
-    retain: bool,
+    original_certificate: Option<FeCertificate>,
 }
 
 fn project_panel<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
@@ -1705,7 +1703,6 @@ fn project_panel<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         ));
     }
     let mut previous = unit_design.and_then(Option::take);
-    let retain = previous.is_none();
     let (raw, reference_norms) = if let Some(design) = previous.as_mut() {
         if !std::ptr::eq(design.model, prepared.fit_model())
             || !std::ptr::eq(design.sample, prepared.fit_sample())
@@ -1751,7 +1748,7 @@ fn project_panel<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     if !has_cached_norms {
         fast_weighted_column_norms(&within, 0, weights, &mut within_norms)?;
     }
-    if let Some(mut design) = previous {
+    let original_certificate = if let Some(mut design) = previous {
         let width = design.within.ncols();
         for (row, (&value, target)) in within
             .as_slice()
@@ -1782,13 +1779,16 @@ fn project_panel<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 "FEREG_SOLVER_TRACE|phase=separation_unit_design|response_rhs=1",
             );
         }
-    }
+        Some(design.certificate)
+    } else {
+        None
+    };
     Ok(ProjectionPanel {
         within,
         absorption_report,
         within_norms,
         reference_norms,
-        retain,
+        original_certificate,
     })
 }
 
@@ -1809,7 +1809,7 @@ fn fit_projection_only_internal<'a, P: PreparedOlsFitView + ?Sized, R: FitReserv
         absorption_report,
         within_norms,
         reference_norms,
-        retain,
+        original_certificate,
     } = project_panel(
         prepared,
         frame,
@@ -1910,7 +1910,7 @@ fn fit_projection_only_internal<'a, P: PreparedOlsFitView + ?Sized, R: FitReserv
         reconstruction_certificate,
     };
     if projection.certified() {
-        if let Some(slot) = unit_design.filter(|_| retain) {
+        if let Some(slot) = unit_design {
             *slot = Some(UnitProjectionDesign {
                 sample: prepared.fit_sample(),
                 model: prepared.fit_model(),
@@ -1918,7 +1918,8 @@ fn fit_projection_only_internal<'a, P: PreparedOlsFitView + ?Sized, R: FitReserv
                 within,
                 reference_norms,
                 within_norms,
-                certificate: projection.absorption_report.certificate.clone(),
+                certificate: original_certificate
+                    .unwrap_or_else(|| projection.absorption_report.certificate.clone()),
             });
         }
         Ok(projection)
@@ -3407,6 +3408,7 @@ fn finalize_finite_bread_draft<R: FitReservation>(
     tolerance: f64,
     reservation: &mut R,
     perturb_bread: bool,
+    scratch: &mut [f64],
 ) -> Result<FiniteBreadDraft> {
     let candidate_count = canonical_candidates.len();
     let rank = generated_columns.len();
@@ -3432,22 +3434,16 @@ fn finalize_finite_bread_draft<R: FitReservation>(
     if perturb_bread && rank > 0 {
         canonical_inverse[0] += 0.25;
     }
-    let left_inverse_relative_infinity_norm = inverse_relative_infinity_norm(
+    let inverse = certify_finite_inverse(
         standardized_gram,
         candidate_count,
         &canonical_candidate_positions,
         &canonical_inverse,
         rank,
-        false,
+        scratch,
     )?;
-    let right_inverse_relative_infinity_norm = inverse_relative_infinity_norm(
-        standardized_gram,
-        candidate_count,
-        &canonical_candidate_positions,
-        &canonical_inverse,
-        rank,
-        true,
-    )?;
+    let left_inverse_relative_infinity_norm = inverse.left;
+    let right_inverse_relative_infinity_norm = inverse.right;
     if left_inverse_relative_infinity_norm > tolerance
         || right_inverse_relative_infinity_norm > tolerance
     {
@@ -3525,24 +3521,6 @@ fn finalize_finite_bread_draft<R: FitReservation>(
         left_inverse_relative_infinity_norm,
         right_inverse_relative_infinity_norm,
     })
-}
-
-fn inverse_relative_infinity_norm(
-    gram: &[f64],
-    gram_dimension: usize,
-    gram_positions: &[usize],
-    inverse: &[f64],
-    rank: usize,
-    reverse: bool,
-) -> Result<f64> {
-    kernel_inverse_relative_infinity_norm(
-        gram,
-        gram_dimension,
-        gram_positions,
-        inverse,
-        rank,
-        reverse,
-    )
 }
 
 fn prepared_bread_weight_scale<P: PreparedOlsFitView + ?Sized>(

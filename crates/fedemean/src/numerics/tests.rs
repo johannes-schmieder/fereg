@@ -1,4 +1,4 @@
-use super::hypot;
+use super::{exact_square_dekker, exact_square_fma, hypot};
 use std::cmp::Ordering;
 
 /// splitmix64: a fixed integer stream, identical on every platform.
@@ -41,6 +41,49 @@ fn scale(x: f64, k: i32) -> f64 {
     let step = |e: i32| super::pow2(e.clamp(-1022, 1023));
     let (k1, k2) = (k / 2, k - k / 2);
     x * step(k1) * step(k2)
+}
+
+#[test]
+fn exact_square_fma_matches_dekker_bit_for_bit() {
+    let bits = |(product, residual): (f64, f64)| (product.to_bits(), residual.to_bits());
+    let check = |x: f64| {
+        assert_eq!(
+            bits(exact_square_fma(x)),
+            bits(exact_square_dekker(x)),
+            "square of {x:e} (input bits {:#018x})",
+            x.to_bits()
+        );
+    };
+    for x in [0.0, -0.0, scale(1.0, -80), 1.0, 1.5, 2.0, 3.0] {
+        check(x);
+        assert_eq!(exact_square_fma(x).1.to_bits(), 0, "square of {x:e}");
+    }
+
+    // Include the scaled lower bound and the gap cutoff, with nearby mantissas.
+    for exponent in -80..=1 {
+        let boundary = scale(1.0, exponent).to_bits();
+        for pattern in boundary - 1..=boundary + 1 {
+            check(f64::from_bits(pattern));
+        }
+    }
+    // Include a square exactly halfway between consecutive products, and roots
+    // where the rounded square crosses a power of two or approaches its upper bound.
+    for boundary in [
+        1.5 + scale(1.0, -26),
+        std::f64::consts::SQRT_2,
+        2.0 * std::f64::consts::SQRT_2,
+        3.0,
+    ] {
+        let boundary = boundary.to_bits();
+        for pattern in boundary - 1..=boundary + 1 {
+            check(f64::from_bits(pattern));
+        }
+    }
+
+    let mut stream = Stream(0x99de_134d_36be_a542);
+    for _ in 0..20_000 {
+        check(scale(stream.significand(), stream.below(81) - 80));
+    }
 }
 
 /// A positive finite `x` as `m · 2^e` exactly.

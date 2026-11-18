@@ -1065,15 +1065,75 @@ fn pivoted_and_canonical_factorizations_share_the_same_primitives() {
         );
         let positions = [0_usize, 1];
         assert!(
-            inverse_relative_infinity_norm(&source_gram, 2, &positions, &inverse, 2, false,)
+            inverse_relative_infinity_norm(&source_gram, 2, &positions, &inverse, false, None)
                 .expect("left certificate")
                 < 1e-14
         );
         assert!(
-            inverse_relative_infinity_norm(&source_gram, 2, &positions, &inverse, 2, true,)
+            inverse_relative_infinity_norm(&source_gram, 2, &positions, &inverse, true, None)
                 .expect("right certificate")
                 < 1e-14
         );
+    }
+}
+
+#[test]
+fn paired_inverse_certificate_preserves_both_norms_and_fallbacks() {
+    // Only the selected Gram block is finite and symmetric. Deliberately
+    // perturb the inverse so the two sides have distinct nonzero norms.
+    #[rustfmt::skip]
+    let gram = [
+        5.25, f64::NAN, 0.125, -0.8,
+        f64::INFINITY, 4.0, -2.0, 1.0,
+        0.125, -3.0, 2.25, 0.675,
+        -0.8, -2.5, 0.675, 3.75,
+    ];
+    let positions = [3, 0, 2];
+    let inverse = [
+        0.31, 0.065, -0.113, 0.065, 0.245, 0.018, -0.113, 0.018, 0.65,
+    ];
+    let mut asymmetric_gram = gram;
+    asymmetric_gram[3] = -0.95;
+    let mut asymmetric_inverse = inverse;
+    asymmetric_inverse[1] = -0.075;
+    for (gram, inverse, scratch_len, paired) in [
+        (gram, inverse, 6, true),
+        (gram, inverse, 5, false),
+        (asymmetric_gram, inverse, 6, false),
+        (gram, asymmetric_inverse, 6, false),
+    ] {
+        let mut scratch = [f64::NAN; 6];
+        let result = certify_finite_inverse(
+            &gram,
+            4,
+            &positions,
+            &inverse,
+            3,
+            &mut scratch[..scratch_len],
+        )
+        .unwrap();
+        let left =
+            inverse_relative_infinity_norm(&gram, 4, &positions, &inverse, false, None).unwrap();
+        let right =
+            inverse_relative_infinity_norm(&gram, 4, &positions, &inverse, true, None).unwrap();
+        assert_ne!(left, right);
+        assert_eq!(result.left.to_bits(), left.to_bits());
+        assert_eq!(result.right.to_bits(), right.to_bits());
+        assert_eq!(scratch[0].is_finite(), paired);
+    }
+}
+
+#[test]
+fn paired_inverse_certificate_preserves_invalid_data_errors() {
+    let positions = [1, 0];
+    let inverse = [1.0, 0.5, 0.5, 1.0];
+    for gram in [[f64::NAN, 1.0, 1.0, 1.0], [f64::MAX; 4]] {
+        let original = inverse_relative_infinity_norm(&gram, 2, &positions, &inverse, false, None)
+            .unwrap_err();
+        let error = certify_finite_inverse(&gram, 2, &positions, &inverse, 2, &mut [0.0; 4])
+            .err()
+            .expect("invalid product should fail certification");
+        assert_eq!(error, original);
     }
 }
 
@@ -1381,4 +1441,221 @@ fn retained_qr_tie_band_follows_the_rounding_of_the_column_norms() {
             }
         }
     }
+}
+
+#[test]
+fn blocked_givens_matches_streaming_bits_across_panels_and_workers() {
+    let (rows, columns) = (157usize, 71usize);
+    let selected: Vec<_> = (0..columns).map(|j| j + j / 8).collect();
+    let stored = selected[columns - 1] + 2;
+    let ids: Vec<_> = (0..columns).collect();
+    let scales: Vec<_> = (0..columns)
+        .map(|j| [2.0f64.powi(-70), 1.0, 2.0f64.powi(63)][j % 3])
+        .collect();
+    let weights: Vec<_> = (0..rows)
+        .map(|i| [0.25, 0.5, 1.0, 2.0, 4.0][i % 5])
+        .collect();
+    let response: Vec<_> = (0..rows)
+        .map(|i| ((i * 257 + 61) % 821) as f64 - 410.25)
+        .collect();
+    let mut values = vec![f64::NAN; rows * stored];
+    for i in 0..rows {
+        for j in 0..columns {
+            // The final standardized column duplicates the first, and the
+            // leading rows contain an identity on the other 70 columns.
+            let base = if j + 1 == columns { 0 } else { j };
+            let x = if i < columns - 1 {
+                if i == base {
+                    1.0
+                } else if i == 0 && base == 1 {
+                    f64::from_bits(16)
+                } else {
+                    -0.0
+                }
+            } else if (i + base) % 5 == 0 {
+                -0.0
+            } else {
+                (((i + 71) * (base + 43) % 257) as f64 - 113.25) / 128.0
+            };
+            values[i * stored + selected[j]] = x * scales[j];
+        }
+    }
+    let source = FixedBlockMomentSource::Dense {
+        values: FiniteDenseRows::packed(&values, stored),
+        rows,
+        stored_columns: stored,
+        selected_columns: Some(&selected),
+        response: (&response).into(),
+        weights: BorrowedMapWeights::Provided(&weights),
+        solver_weight_divisor: 2.0,
+        column_scales: Some(&scales),
+    };
+    assert!(blocked_givens_eligible(source));
+    let bits = |v: &[f64]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+    let run_factor = |compression: Option<RetainedQrCompression<'_>>| {
+        let mut qr = vec![0.; columns * columns];
+        let mut rhs = vec![0.; columns];
+        let mut permutation = vec![0; columns];
+        let mut norms = vec![0.; columns];
+        let report = factor_rank_revealing_retained_qr(
+            source,
+            &ids,
+            1e-10,
+            &mut vec![0.; stored],
+            &mut qr,
+            &mut rhs,
+            &mut norms,
+            &mut permutation,
+            compression,
+        )
+        .unwrap();
+        (report, permutation, bits(&qr), bits(&rhs), bits(&norms))
+    };
+    let mut scalar_qr = vec![0.; columns * columns];
+    let mut scalar_rhs = vec![0.; columns];
+    streamed_qr::scalar(
+        source,
+        &mut vec![0.; stored],
+        &mut vec![0.; columns],
+        &mut scalar_qr,
+        &mut scalar_rhs,
+    )
+    .unwrap();
+    let expected_qr = bits(&scalar_qr);
+    let expected_rhs = bits(&scalar_rhs);
+    let expected_factor = run_factor(None);
+    assert_eq!(expected_factor.0.rank, columns - 1);
+    assert_eq!(expected_factor.1[columns - 1], columns - 1);
+    for workers in [1, 8] {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(workers)
+            .build()
+            .unwrap()
+            .install(|| {
+                let mut workspace = vec![f64::NAN; columns * columns];
+                let mut qr = vec![0.; columns * columns];
+                let mut rhs = vec![0.; columns];
+                streamed_qr::blocked(
+                    source,
+                    &mut vec![0.; stored],
+                    &mut workspace,
+                    &mut qr,
+                    &mut rhs,
+                )
+                .unwrap();
+                assert_eq!(bits(&qr), expected_qr);
+                assert_eq!(bits(&rhs), expected_rhs);
+                assert_eq!(
+                    run_factor(Some(RetainedQrCompression::BlockedGivens(&mut workspace))),
+                    expected_factor
+                );
+            });
+    }
+}
+
+#[test]
+fn blocked_givens_replays_the_first_streaming_failure_in_source_order() {
+    let (rows, columns) = (17, 65);
+    let mut values = vec![0.; rows * columns];
+    values[0] = f64::MAX;
+    values[columns] = f64::MAX;
+    values[9 * columns] = f64::NAN;
+    let response = vec![0.; rows];
+    let source = FixedBlockMomentSource::Dense {
+        values: FiniteDenseRows::packed(&values, columns),
+        rows,
+        stored_columns: columns,
+        selected_columns: None,
+        response: (&response).into(),
+        weights: BorrowedMapWeights::Unit,
+        solver_weight_divisor: 1.0,
+        column_scales: None,
+    };
+    let ids: Vec<_> = (0..columns).collect();
+    let mut workspace = vec![0.; columns * columns];
+    for compression in [
+        None,
+        Some(RetainedQrCompression::BlockedGivens(&mut workspace)),
+    ] {
+        let error = factor_rank_revealing_retained_qr(
+            source,
+            &ids,
+            1e-10,
+            &mut vec![0.; columns],
+            &mut vec![0.; columns * columns],
+            &mut vec![0.; columns],
+            &mut vec![0.; columns],
+            &mut vec![0; columns],
+            compression,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(
+            error.message,
+            "retained finite-WLS streaming QR rotation is invalid"
+        );
+    }
+}
+
+#[test]
+fn blocked_givens_wave_cancellation_isolated() {
+    const CHILD: &str = "FEREG_BLOCKED_GIVENS_CANCEL_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "ols::finite_wls_kernel::tests::blocked_givens_wave_cancellation_isolated",
+            ])
+            .env(CHILD, "1")
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    let (rows, columns) = (51, 65);
+    let values = vec![0.; rows * columns];
+    let response = vec![0.; rows];
+    let source = FixedBlockMomentSource::Dense {
+        values: FiniteDenseRows::packed(&values, columns),
+        rows,
+        stored_columns: columns,
+        selected_columns: None,
+        response: (&response).into(),
+        weights: BorrowedMapWeights::Unit,
+        solver_weight_divisor: 1.0,
+        column_scales: None,
+    };
+    let ids: Vec<_> = (0..columns).collect();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build()
+        .unwrap()
+        .install(|| {
+            let factor = || {
+                factor_rank_revealing_retained_qr(
+                    source,
+                    &ids,
+                    1e-10,
+                    &mut vec![0.; columns],
+                    &mut vec![0.; columns * columns],
+                    &mut vec![0.; columns],
+                    &mut vec![0.; columns],
+                    &mut vec![0; columns],
+                    Some(RetainedQrCompression::BlockedGivens(&mut vec![
+                        0.;
+                        columns
+                            * columns
+                    ])),
+                )
+            };
+            crate::interrupt::test_polls::cancel_at(Some(3));
+            assert_eq!(factor().unwrap_err().code, ErrorCode::Interrupted);
+            assert_eq!(
+                crate::interrupt::test_polls::polls(),
+                4,
+                "cancellation must not replay the serial stream"
+            );
+            crate::interrupt::test_polls::cancel_at(None);
+            assert_eq!(factor().unwrap().rank, 0);
+        });
 }

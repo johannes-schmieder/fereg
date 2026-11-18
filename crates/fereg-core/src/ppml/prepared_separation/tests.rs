@@ -2723,6 +2723,131 @@ fn unit_metric_rectifier_recovers_boundary_only_control_contrast_and_singleton()
 }
 
 #[test]
+fn unit_metric_recurrence_matches_exact_three_step_dual_with_and_without_reuse() {
+    let (request, clusters, mut loaded, uses) = fixture();
+    loaded.candidate = vec![true; 8].into();
+    loaded.outcome = column(&[1., 1., 1., 0., 0., 0., 0., 0.]);
+    loaded.numeric_sources[0].1 = column(&[1., 4., 1., -2., 2., 1., -4., -4.]);
+    loaded.numeric_sources[1].1 = column(&[1.; 8]);
+    loaded.numeric_sources[2].1 = column(&[1., 2., 1., 2., 1., 2., 1., 2.]);
+    let owner = PreparedPpmlModelOwner::new(
+        request,
+        clusters,
+        loaded.clone(),
+        prepare_numeric(&loaded, &uses),
+    )
+    .unwrap();
+    let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+    let generation = coordinator.view().prepared;
+    assert!(generation.model().columns.len() > 1);
+    let ppml = detector_ppml(FeSolverKind::Lsmr);
+    let config = rectifier_only();
+    let linear = PreparedOlsFitConfig {
+        absorb: ppml.absorb,
+        fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+        ..PreparedOlsFitConfig::default()
+    };
+    // For span(1,x), P(t) = mean(t) + (x-mean(x)) cov(x,t)/var(x).
+    // The first two minimum boundary margins are -7/157 and -479/24649.
+    let numerator = [
+        -4136595., 431220., -4136595., 1231335., 3478395., 2916630., 107805., 107805.,
+    ];
+    for policy in [None, Some((ppml, linear))] {
+        let admission = DetectorAdmission {
+            unit_projection: policy,
+            ..DetectorAdmission::default()
+        };
+        let stable::Resolution::Dual(dual, iterations) = stable::resolve(
+            generation,
+            ppml,
+            config,
+            linear,
+            &mut |_| Ok(()),
+            admission,
+            3,
+        )
+        .unwrap() else {
+            panic!("expected a strictly positive boundary dual");
+        };
+        assert_eq!(iterations, 3);
+        for (value, expected) in dual.iter().zip(numerator) {
+            assert!((value - expected / 3869893.).abs() < 1e-12);
+        }
+        assert!(stable::certify_dual(generation, &dual, ppml, config, linear, admission).unwrap());
+    }
+}
+
+#[test]
+fn unit_projection_keeps_the_design_for_successive_distinct_responses() {
+    let coordinator = PreparedSeparationCoordinator::new(finite_separation_owner(false)).unwrap();
+    let other = PreparedSeparationCoordinator::new(finite_separation_owner(false)).unwrap();
+    let generation = coordinator.view().prepared;
+    let mut ppml = detector_ppml(FeSolverKind::Lsmr);
+    ppml.absorb.map.tolerance = 1e-14;
+    ppml.absorb.lsmr.tolerance = 1e-14;
+    let config = rectifier_only();
+    let linear = PreparedOlsFitConfig {
+        absorb: ppml.absorb,
+        fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+        ..PreparedOlsFitConfig::default()
+    };
+    let unit = [1.; 6];
+    let mut design = None;
+    for response in [
+        [0., 1., 1., 0., 2., -1.],
+        [3., 0., 2., -2., 1., 2.],
+        [1., -1., 2., 0., -1., 1.],
+    ] {
+        let reused = prepared_project_with(
+            generation,
+            &response,
+            &unit,
+            ppml,
+            config,
+            linear,
+            None,
+            false,
+            Some(&mut design),
+        )
+        .unwrap();
+        assert!(design.is_some());
+        let raw = prepared_project(generation, &response, &unit, ppml, config, linear).unwrap();
+        assert_eq!(reused.kept_columns, raw.kept_columns);
+        for (value, expected) in reused.fitted.iter().zip(&raw.fitted) {
+            assert!((value - expected).abs() < 1e-12);
+        }
+    }
+    let error = prepared_project_with(
+        generation,
+        &unit,
+        &[1., 1., 2., 1., 1., 1.],
+        ppml,
+        config,
+        linear,
+        None,
+        false,
+        Some(&mut design),
+    )
+    .err()
+    .unwrap();
+    assert_eq!(error.code, ErrorCode::InvalidArgument);
+    let error = prepared_project_with(
+        other.view().prepared,
+        &unit,
+        &unit,
+        ppml,
+        config,
+        linear,
+        None,
+        false,
+        Some(&mut design),
+    )
+    .err()
+    .unwrap();
+    assert_eq!(error.code, ErrorCode::InvalidArgument);
+}
+
+#[test]
 fn unit_metric_dual_certificate_rejects_zero_margin_and_full_model_moments() {
     let coordinator = PreparedSeparationCoordinator::new(finite_separation_owner(false)).unwrap();
     let generation = coordinator.view().prepared;

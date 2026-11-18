@@ -1,4 +1,5 @@
 //! Bounded accuracy check before an iterative session freezes finite rank.
+use super::FROZEN_RANK_BASIS_CHANGED;
 use super::{
     LinearSessionAllocationPhase, LinearSessionPhaseAllocationObservation, RetainedSolveStage,
     SolveReport,
@@ -45,7 +46,7 @@ pub(super) fn retryable(error: &FeregError) -> bool {
             | "retained weighted-linear rank inverse is not finite"
             | "retained weighted-linear direct dropped-span certificate did not pass"
             | "retained finite-WLS QR dropped-span certificate did not pass"
-            | "weighted-linear solve changed the frozen canonical rank basis"
+            | FROZEN_RANK_BASIS_CHANGED
     )
 }
 

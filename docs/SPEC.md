@@ -1544,6 +1544,13 @@ proposal returns to existing seed policies; if none provides a representable
 state, the fit fails. The duplicate FE topology and temporary dynamic solver
 budget are admitted before construction, and Break propagates.
 
+On a zero-offset cold publication fit, a rejected frozen rank basis or an
+unrepresentable profiled line search permits one restart with this same
+projected seed. The restart uses the original compact sample, weights and
+offset, with fresh rank discovery and all ordinary fit certificates.
+Iterations spent before the restart count against the original limit. If
+the alternate seed cannot certify, the first error is retained.
+
 At an accepted state h=qmu and z=eta−offset+(y−mu)/mu, with exact zero-y
 expression eta−offset−1. Stable evaluation may use exp(log(y)−eta).
 Full Fisher steps are tried first; halve coefficient/predictor steps together
@@ -1959,16 +1966,23 @@ already admitted Auto projection with up to 128 iterations per configured
 solver. A refused attempt has the original strict LSMR policy available.
 Every accepted projection uses the strict tolerance and complete original-model
 checks. When a weighted Auto projection with more than
-two categorical effects declines on numerical grounds, try one unit-weight
-iteration before continuing with the original weighted path. The early result
+two categorical effects defers its MAP continuation, try one unit-weight
+iteration, or up to 128 for more than five effects, before continuing with the
+original weighted path. For more than two effects, an independent simplex span
+check that defers its MAP continuation may try the admitted CG or LSMR route.
+A numerical refusal on those routes restores the original full continuation.
+The early result
 must satisfy the same full primal or dual certificate and independent replay.
 An inconclusive attempt restores the original weighted route with its full
-budget. With the admitted unit policy and categorical intercepts, the dual
-check can use the residualized regressor panel from the immediately preceding
-rectifier projection on the same sample and design. It absorbs the new
-response and repeats the canonical rank and certificate checks. An unsuccessful
-check retries the complete projection. Terminal replay always computes a
-fresh projection. The IRLS routing policy is unchanged. Ineligible models or
+budget. With the admitted unit policy and categorical intercepts, successive
+iterations of one unit rectifier and its dual check can move the same certified
+residualized regressor panel between solves on the same sample and design.
+Each solve absorbs its new response and repeats the canonical rank and
+certificate checks. A numerical refusal of a reused projection retries that
+response with the full original panel. The dual check releases the panel before
+individual omitted-column projections and retries an unsuccessful span check
+from the original columns. Terminal replay always computes a fresh projection.
+The IRLS routing policy is unchanged. Ineligible models or
 insufficient optional workspace retain the existing unit projector. Numerical
 failure retains the existing bounded retry and error behavior.
 A proposed primal direction still passes the independent full-model deletion

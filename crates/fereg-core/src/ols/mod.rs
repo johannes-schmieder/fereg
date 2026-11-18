@@ -47,7 +47,7 @@ pub(crate) use linear_session::{
     CertifiedLinearSessionProducts, CertifiedLinearWithinDesign, FrozenLinearBasisSlot,
     FrozenLinearFallbackKind, LinearConstantRepresentation, LinearSessionGenerations,
     LinearSessionReuseReport, LinearSessionWorkspaceCapacities, PpmlOrdinaryLinearOutput,
-    StrictLinearCandidateTransaction,
+    StrictLinearCandidateTransaction, FROZEN_RANK_BASIS_CHANGED,
 };
 #[doc(hidden)]
 pub use linear_session::{

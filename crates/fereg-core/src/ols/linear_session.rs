@@ -50,9 +50,8 @@ use rank_projection::{RankProjectionWork, RANK_PROJECTION_TOLERANCE};
 
 use super::finite_wls_kernel::{
     certify_finite_inverse, certify_normal_equations, factor_guarded_cholesky_in_place,
-    fill_finite_wls_moments, inverse_relative_infinity_norm, invert_guarded_cholesky,
-    solve_guarded_cholesky, validate_moment_source, CholeskyPivotPolicy, FixedBlockMomentSource,
-    NormalEquationScale,
+    fill_finite_wls_moments, invert_guarded_cholesky, solve_guarded_cholesky,
+    validate_moment_source, CholeskyPivotPolicy, FixedBlockMomentSource, NormalEquationScale,
 };
 #[cfg(test)]
 use super::prepared_fit::PreparedOlsFastScoreCache;
@@ -71,6 +70,9 @@ mod linear_statistics;
 #[path = "joint_checks.rs"]
 mod joint_checks;
 use joint_checks::{check_joint_response, joint_column_checks};
+
+pub(crate) const FROZEN_RANK_BASIS_CHANGED: &str =
+    "weighted-linear solve changed the frozen canonical rank basis";
 
 /// Monotone identities for every input class that can invalidate a solve.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -4004,9 +4006,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if kind != LinearSessionSolveKind::Strict {
             if let Some(basis) = &self.frozen_basis {
                 if *basis != candidate.basis {
-                    return Err(invalid_data(
-                        "weighted-linear solve changed the frozen canonical rank basis",
-                    ));
+                    return Err(invalid_data(FROZEN_RANK_BASIS_CHANGED));
                 }
             }
         }
@@ -4040,9 +4040,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         } = stage;
         if let Some(basis) = &self.frozen_basis {
             if *basis != candidate.basis {
-                return Err(invalid_data(
-                    "weighted-linear solve changed the frozen canonical rank basis",
-                ));
+                return Err(invalid_data(FROZEN_RANK_BASIS_CHANGED));
             }
         }
         // The canonical draft owns the one original-input predictor used by
@@ -4414,11 +4412,30 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             self.bread_weight_scale,
             self.config,
             &mut self.frozen_workspace,
-        )?;
+        );
         drop(finite_phase);
         let finite_solve_seconds = finite_started.elapsed().as_secs_f64();
+        // Finite rank or refinement can request a canonical retry in this
+        // same frame. Keep the certified response and its matching raw anchor
+        // available before propagating that error.
         self.frozen_workspace.response = within_response_matrix.into_row_major();
+        if !frozen.as_ref().is_ok_and(|draft| draft.certificate.passed)
+            && self
+                .fe_projector
+                .as_ref()
+                .is_some_and(FeSession::supports_fused_projection)
+        {
+            self.previous_response.copy_from_slice(&self.response);
+        }
+        let frozen = match frozen {
+            Ok(frozen) => frozen,
+            Err(error) => {
+                self.frozen_workspace.kept = kept;
+                return Err(error);
+            }
+        };
         if !frozen.certificate.passed {
+            self.frozen_workspace.kept = kept;
             return Err(invalid_data(
                 "frozen weighted-linear score or inverse certificate did not pass",
             ));
@@ -5081,6 +5098,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             &selected_candidate_positions,
             &workspace.bread,
             rank,
+            &mut workspace.factor,
         )?;
         let left_inverse_error = inverse.left;
         let right_inverse_error = inverse.right;
@@ -5406,28 +5424,22 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                                     + prior_candidate_positions[right]];
                         }
                     }
-                    let left = inverse_relative_infinity_norm(
+                    let inverse = certify_finite_inverse(
                         &workspace.inverse_lower,
                         prior_rank,
                         &workspace.permutation,
                         &workspace.bread,
                         prior_rank,
-                        false,
+                        &mut workspace.factor,
                     )?;
-                    let right = inverse_relative_infinity_norm(
-                        &workspace.inverse_lower,
-                        prior_rank,
-                        &workspace.permutation,
-                        &workspace.bread,
-                        prior_rank,
-                        true,
-                    )?;
-                    if left > self.config.bread_tolerance || right > self.config.bread_tolerance {
+                    if inverse.left > self.config.bread_tolerance
+                        || inverse.right > self.config.bread_tolerance
+                    {
                         return Ok(None);
                     }
                     Ok(Some(LinearWithinDesignCertificate {
-                        left_inverse_relative_infinity_norm: left,
-                        right_inverse_relative_infinity_norm: right,
+                        left_inverse_relative_infinity_norm: inverse.left,
+                        right_inverse_relative_infinity_norm: inverse.right,
                         passed: true,
                     }))
                 })()?
@@ -6699,6 +6711,7 @@ fn stream_frozen_solve(
         &workspace.candidate_positions,
         &workspace.bread,
         rank,
+        &mut workspace.factor,
     )?;
     let left_inverse_error = inverse.left;
     let right_inverse_error = inverse.right;

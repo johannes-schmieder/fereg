@@ -370,6 +370,7 @@ fn build_one_shot_bread<R: FitReservation>(
         config.bread_tolerance,
         reservation,
         perturb_bread,
+        &mut workspace.factor,
     )
 }
 

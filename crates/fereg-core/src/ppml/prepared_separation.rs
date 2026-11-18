@@ -2175,8 +2175,20 @@ fn prepared_weighted_rectifier(
     );
     let weighted = match trial {
         Err(error) if is_deferred_map_fallback(&error) => {
+            let unit_budget = if generation.prepared().as_ref().effect_specs().len() > 5 {
+                128
+            } else {
+                1
+            };
             match stable::recover(
-                generation, ppml, config, linear, interrupt, error, admission, 1,
+                generation,
+                ppml,
+                config,
+                linear,
+                interrupt,
+                error,
+                admission,
+                unit_budget,
             ) {
                 Ok(certified) => return Ok(certified),
                 Err(error) if is_deferred_map_fallback(&error) => {
@@ -2727,11 +2739,12 @@ fn prepared_project_with<'a>(
         ));
     }
     fit_config.score_tolerance = config.projection_tolerance;
-    let mut lap = trace::Projection::new(
-        generation.generation(),
-        response.len(),
-        generation.model().columns.len() + 1,
-    );
+    let rhs = if unit_design.as_deref().is_some_and(Option::is_some) {
+        1
+    } else {
+        generation.model().columns.len() + 1
+    };
+    let mut lap = trace::Projection::new(generation.generation(), response.len(), rhs);
     let fit = fit_prepared_weighted_linear_projection_once(
         generation.fit_view(),
         frame,
@@ -3686,7 +3699,8 @@ fn validate_numerical_proposal(
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
 ) -> Result<ValidatedNumericalProposal> {
-    let certificate = certify_numerical_proposal(generation, &proposal, ppml, config, linear)?;
+    let certificate =
+        certify_numerical_proposal(generation, &proposal, ppml, config, linear, false)?;
     Ok(ValidatedNumericalProposal {
         reason: numerical_drop_reason(proposal.method)?,
         proposal,
@@ -3702,6 +3716,7 @@ fn certify_numerical_proposal(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
+    defer_many_fe_fallback: bool,
 ) -> Result<SeparationCertificate> {
     validate_prepared_numerical_metadata(generation, proposal, config)?;
     if proposal.dropped_original_rows.is_empty() {
@@ -3763,13 +3778,14 @@ fn certify_numerical_proposal(
         proof.verify(&design, direction)?;
         0.0
     } else {
-        let unit = fallible_filled(
-            direction.len(),
-            1.0,
-            "unable to reserve prepared separation certificate weights",
-        )?;
-        let projection = prepared_project(generation, direction, &unit, ppml, config, linear)?;
-        euclidean_norm(&projection.residual) / euclidean_norm(direction)
+        projected_direction_span_residual(
+            generation,
+            direction,
+            ppml,
+            config,
+            linear,
+            defer_many_fe_fallback,
+        )?
     };
     let interior_zero_relative = generation
         .outcome()
@@ -3839,6 +3855,33 @@ fn certify_numerical_proposal(
         ));
     }
     Ok(certificate)
+}
+
+fn projected_direction_span_residual(
+    generation: &PreparedPpmlModelGeneration,
+    direction: &[f64],
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+    defer_many_fe_fallback: bool,
+) -> Result<f64> {
+    let unit = fallible_filled(
+        direction.len(),
+        1.0,
+        "unable to reserve prepared separation certificate weights",
+    )?;
+    let projection = prepared_project_with(
+        generation,
+        direction,
+        &unit,
+        ppml,
+        config,
+        linear,
+        None,
+        defer_many_fe_fallback,
+        None,
+    )?;
+    Ok(euclidean_norm(&projection.residual) / euclidean_norm(direction))
 }
 
 fn proposal_report(

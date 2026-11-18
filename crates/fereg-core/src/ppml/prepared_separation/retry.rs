@@ -325,9 +325,34 @@ impl DetectorPolicy<'_> {
         config: SeparationConfig,
     ) -> Result<ValidatedNumericalProposal> {
         let bound = |limit| schwarz_bound(generation, limit);
-        let (certificate, _, _) = self.run(generation.generation(), &bound, |ppml, linear| {
-            certify_numerical_proposal(generation, &proposal, ppml, config, linear)
-        })?;
+        let has_alternative =
+            self.retained_cg.is_some() && generation.prepared().as_ref().effect_specs().len() > 2;
+        let mut deferred = false;
+        let attempt = self.run(generation.generation(), &bound, |ppml, linear| {
+            let result = certify_numerical_proposal(
+                generation,
+                &proposal,
+                ppml,
+                config,
+                linear,
+                has_alternative,
+            );
+            deferred |= result
+                .as_ref()
+                .is_err_and(|error| super::is_deferred_map_fallback(error));
+            result
+        });
+        let (certificate, _, _) = match attempt {
+            Err(error) if deferred && numerical(&error) => {
+                // The independent span check has two admitted solvers besides
+                // Auto. If neither can establish the span, keep the incumbent
+                // continuation and its full iteration budget.
+                self.run(generation.generation(), &bound, |ppml, linear| {
+                    certify_numerical_proposal(generation, &proposal, ppml, config, linear, false)
+                })?
+            }
+            attempt => attempt?,
+        };
         Ok(ValidatedNumericalProposal {
             reason: numerical_drop_reason(proposal.method)?,
             proposal,

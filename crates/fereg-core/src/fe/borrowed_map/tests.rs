@@ -2,6 +2,67 @@ use super::*;
 use crate::fe::auto::direct_lsmr_tolerance;
 use crate::fe::{LevelIndex, ValidatedBorrowedInterceptSource};
 
+#[test]
+fn wide_group_means_match_the_weighted_mean_across_tile_boundaries() {
+    let codes = [0_u32, 1, 0, 1, 0, 1];
+    let index = LevelIndex::from_codes(&codes, 2).unwrap();
+    let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
+    let raw = [1.0, 1.0, 2.0, 2.0, 1.0, 1.0];
+    let weights = validate_weights(BorrowedMapWeights::Provided(&raw), codes.len()).unwrap();
+    let columns = 2 * PARALLEL_GROUP_MAX_RHS + 3;
+    let coordinates: Vec<_> = (0..columns)
+        .map(|column| if column % 7 == 0 { 0.0 } else { column as f64 })
+        .collect();
+    let mut values = DenseMatrix::zeros(codes.len(), columns).unwrap();
+    for (row, factor) in [1.0, -1.0, 2.0, -2.0, 4.0, -4.0].into_iter().enumerate() {
+        for (column, &coordinate) in coordinates.iter().enumerate() {
+            values[(row, column)] = factor * coordinate;
+        }
+    }
+    let mut totals = [0.0; 2];
+    let mut means = vec![0.0; 2 * columns];
+    fill_parallel_group_statistics(
+        &source.effect(),
+        weights,
+        &values,
+        &mut totals,
+        &mut means,
+        GroupMeanRoute::Scaled,
+    )
+    .unwrap();
+    assert_eq!(totals, [4.0 / weights.raw_scale; 2]);
+    for (column, &coordinate) in coordinates.iter().enumerate() {
+        // (1 + 2 * 2 + 4) / (1 + 2 + 1) = 2.25, exactly.
+        assert_eq!(means[column], 2.25 * coordinate);
+        assert_eq!(means[columns + column], -2.25 * coordinate);
+    }
+}
+
+#[test]
+fn parallel_mean_subtraction_commits_the_finite_prefix_on_overflow() {
+    for invalid in [0, 7, 8, 13, 16, 18] {
+        let mut values = DenseMatrix::zeros(1, 19).unwrap();
+        values.as_mut_slice().fill(2.0);
+        values[(0, invalid)] = f64::MAX;
+        let mut means = [1.0; 19];
+        means[invalid] = -f64::MAX;
+        let error =
+            subtract_parallel_level_means::<false, false>(&[0], 1, &means, &mut values, None)
+                .unwrap_err();
+        assert_eq!(
+            error.message,
+            "borrowed MAP projection produced a nonfinite residual"
+        );
+        assert_eq!(values[(0, invalid)], f64::MAX);
+        assert!(values.as_slice()[..invalid]
+            .iter()
+            .all(|&value| value == 1.0));
+        assert!(values.as_slice()[invalid + 1..]
+            .iter()
+            .all(|&value| value == 2.0));
+    }
+}
+
 fn assert_initial_screen_matches_first_certificate_group(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,

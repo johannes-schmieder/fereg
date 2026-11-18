@@ -74,11 +74,10 @@ pub(super) struct ProfiledInterceptCurve {
     slope_scales: Vec<f64>,
     slope_targets: Vec<f64>,
 }
+pub(super) const UNREPRESENTABLE: &str = "profiled intercept curve is not representable";
+
 fn numerical() -> FeregError {
-    FeregError::new(
-        ErrorCode::NonConvergence,
-        "profiled intercept curve is not representable",
-    )
+    FeregError::new(ErrorCode::NonConvergence, UNREPRESENTABLE)
 }
 fn allocation() -> FeregError {
     FeregError::new(

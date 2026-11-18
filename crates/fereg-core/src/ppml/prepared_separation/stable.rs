@@ -36,6 +36,17 @@ pub(super) fn resolve(
     let unit = fallible_filled(outcome.len(), 1., "unable to reserve unit dual weights")?;
     let mut response =
         fallible_filled(outcome.len(), 0.0_f64, "unable to reserve dual recurrence")?;
+    // Only the categorical audit can retain the admitted linear panel. It
+    // has no slope workspace competing with that storage between projections.
+    let retain_within = admission.unit_projection.is_some()
+        && generation.model().columns.len() > 1
+        && generation
+            .prepared()
+            .as_ref()
+            .effect_specs()
+            .iter()
+            .all(|spec| spec.slopes.is_empty());
+    let mut design = None;
     for iteration in 1..=iteration_limit.min(config.max_ir_iterations) {
         interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
         for (value, &y) in response.iter_mut().zip(outcome) {
@@ -43,28 +54,19 @@ pub(super) fn resolve(
                 *value = (*value).max(1.);
             }
         }
-        // The categorical audit has no separate slope-matrix workspace.
-        // Move its already admitted regressor panel into the dual check only.
-        let mut design = None;
-        let retain_within = admission.unit_projection.is_some()
-            && generation.model().columns.len() > 1
-            && generation
-                .prepared()
-                .as_ref()
-                .effect_specs()
-                .iter()
-                .all(|spec| spec.slopes.is_empty());
-        let projection = prepared_project_with(
-            generation,
-            &response,
-            &unit,
-            ppml,
-            config,
-            linear,
-            None,
-            false,
-            retain_within.then_some(&mut design),
-        )?;
+        let project = |slot: Option<&mut Option<_>>| {
+            prepared_project_with(
+                generation, &response, &unit, ppml, config, linear, None, false, slot,
+            )
+        };
+        let reused = design.is_some();
+        let projection = match project(retain_within.then_some(&mut design)) {
+            Err(error) if reused && is_numerical_refusal(&error) => {
+                drop(design.take());
+                project(Some(&mut design))?
+            }
+            result => result?,
+        };
         // Release the previous recurrence before the independent projection.
         // Peak detector storage is eight N-vectors: the weighted evidence's
         // two, unit weights, this projection's two, and an omitted-column
@@ -81,7 +83,7 @@ pub(super) fn resolve(
             config,
             linear,
             admission.full_span_bytes,
-            design,
+            &mut design,
         )? {
             return Ok(Resolution::Dual(dual, iteration));
         }
@@ -186,7 +188,7 @@ pub(super) fn certify_dual(
             config,
             fast_linear,
             admission.full_span_bytes,
-            None,
+            &mut None,
         ) {
             Ok(true) => return Ok(true),
             Ok(false) => {}
@@ -203,7 +205,7 @@ pub(super) fn certify_dual(
         config,
         linear,
         admission.full_span_bytes,
-        None,
+        &mut None,
     )
 }
 
@@ -216,7 +218,7 @@ fn certify_dual_with_weights<'a>(
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
     full_span_bytes: u128,
-    mut design: Option<crate::ols::UnitProjectionDesign<'a>>,
+    design: &mut Option<crate::ols::UnitProjectionDesign<'a>>,
 ) -> Result<bool> {
     let (ppml, linear) = strict_projection_policy(ppml, linear);
     if dual.len() != generation.outcome().len() || dual.iter().any(|v| !v.is_finite()) {
@@ -265,7 +267,10 @@ fn certify_dual_with_weights<'a>(
         trace_dual_check("local", margin, 0., config.projection_tolerance);
         return Ok(false);
     }
-    if design.is_some() {
+    // A missing margin leaves the design with the recurrence. Once there is
+    // a margin, consume it in the projected check and release it before any
+    // individual omitted-column projection or full raw retry.
+    if let Some(design) = design.take() {
         let reused = certify_projected_dual(
             generation,
             dual,
@@ -274,21 +279,13 @@ fn certify_dual_with_weights<'a>(
             ppml,
             config,
             linear,
-            Some(&mut design),
+            Some(design),
         );
         match reused {
             Ok(true) => return Ok(true),
-            Err(error)
-                if !matches!(
-                    error.code,
-                    ErrorCode::NonConvergence | ErrorCode::InvalidData
-                ) =>
-            {
-                return Err(error)
-            }
+            Err(error) if !is_numerical_refusal(&error) => return Err(error),
             _ => {}
         }
-        drop(design);
     }
     // A rejected single-response projection or span audit retries the original
     // joint projection. Terminal replay always comes directly through here.
@@ -304,7 +301,7 @@ fn certify_projected_dual<'a>(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    design: Option<&mut Option<crate::ols::UnitProjectionDesign<'a>>>,
+    mut design: Option<crate::ols::UnitProjectionDesign<'a>>,
 ) -> Result<bool> {
     let mut aliases = Vec::new();
     let checked = prepared_project_with(
@@ -318,8 +315,9 @@ fn certify_projected_dual<'a>(
             certify_qr_aliases(generation, relations, norms, &mut aliases)
         }),
         false,
-        design,
+        design.is_some().then_some(&mut design),
     )?;
+    drop(design);
     if stable_norm(&checked.fitted) > config.projection_tolerance * margin {
         trace_dual_check(
             "span",

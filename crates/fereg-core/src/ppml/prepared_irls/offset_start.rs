@@ -1,4 +1,4 @@
-//! Provisional full-model starts for nonzero offsets.
+//! Provisional full-model starts for offsets and a failed frozen-rank path.
 //!
 //! Project log(y) (the weighted mean for zero outcomes) minus the original
 //! offset onto [X,D,1]. Add the original offset back, including its entire
@@ -7,8 +7,35 @@
 use super::*;
 
 type Seed = (Vec<f64>, Vec<f64>);
+pub(super) const RESTART_SEED_REFUSED: &str = "PPML alternate projected start did not certify";
 
 pub(super) fn propose<P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &P,
+    outcome: &[f64],
+    weights: &[f64],
+    offset: &[f64],
+    config: PreparedPpmlIrlsConfig,
+    plan: &mut PpmlMemoryPlan,
+) -> Result<Option<Seed>> {
+    if offset.iter().all(|value| *value == 0.0) {
+        return Ok(None);
+    }
+    admitted_projection(prepared, outcome, weights, offset, config, plan)
+}
+
+pub(super) fn restart<P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &P,
+    outcome: &[f64],
+    weights: &[f64],
+    offset: &[f64],
+    config: PreparedPpmlIrlsConfig,
+    plan: &mut PpmlMemoryPlan,
+) -> Result<Seed> {
+    admitted_projection(prepared, outcome, weights, offset, config, plan)?
+        .ok_or_else(|| invalid_data(RESTART_SEED_REFUSED))
+}
+
+fn admitted_projection<P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &P,
     outcome: &[f64],
     weights: &[f64],
@@ -16,9 +43,6 @@ pub(super) fn propose<P: PreparedOlsFitView + Sync + ?Sized>(
     mut config: PreparedPpmlIrlsConfig,
     plan: &mut PpmlMemoryPlan,
 ) -> Result<Option<Seed>> {
-    if offset.iter().all(|value| *value == 0.0) {
-        return Ok(None);
-    }
     // A complete temporary linear session uses the selected Fast/Low route
     // and its already admitted linear/vector workspace. It runs before the
     // nine-vector IRLS workspace exists. Only its second topology overlaps
