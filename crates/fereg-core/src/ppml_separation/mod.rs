@@ -195,10 +195,10 @@ pub enum SeparationCertificateProof {
     /// Positive rows span the categorical-intercept model after choosing
     /// one reference level in every non-anchor effect.
     SimplexAnchoredPositiveRank {
-        within_columns: usize,
-        anchor_levels: usize,
-        constant_finite: usize,
-        effects: usize,
+        within_columns: u32,
+        anchor_levels: u32,
+        constant_finite: u32,
+        effects: u32,
         explicit_constant: bool,
     },
     /// Phase-I proved that the nonnegative boundary cone with unit slack

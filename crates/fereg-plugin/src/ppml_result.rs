@@ -1602,10 +1602,10 @@ fn separation_trace_digest(report: &SeparationReport) -> Result<u64> {
                         explicit_constant,
                     } => {
                         digest.word(7);
-                        digest.usize(within_columns, "trace within-anchor dimension")?;
-                        digest.usize(anchor_levels, "trace anchor levels")?;
-                        digest.usize(effects, "trace categorical effects")?;
-                        digest.usize(constant_finite, "trace constant finite columns")?;
+                        digest.usize(within_columns as usize, "trace within-anchor dimension")?;
+                        digest.usize(anchor_levels as usize, "trace anchor levels")?;
+                        digest.usize(effects as usize, "trace categorical effects")?;
+                        digest.usize(constant_finite as usize, "trace constant finite columns")?;
                         digest.word(u64::from(explicit_constant));
                     }
                     SeparationCertificateProof::SimplexDualInfeasibility {

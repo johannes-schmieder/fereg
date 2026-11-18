@@ -238,11 +238,22 @@ fn anchored(
                 explicit_constant,
             }
         } else {
-            SeparationCertificateProof::SimplexAnchoredPositiveRank {
-                within_columns: width,
+            // The report bank reserves a record per possible generation. Keep
+            // proof metadata as compact as the preexisting two-size payload.
+            let [Ok(within_columns), Ok(anchor_levels), Ok(effects), Ok(constant_finite)] = [
+                width,
+                levels.n_levels(),
+                topology.effect_specs.len(),
                 constant_finite,
-                anchor_levels: levels.n_levels(),
-                effects: topology.effect_specs.len(),
+            ]
+            .map(u32::try_from) else {
+                return Ok(None);
+            };
+            SeparationCertificateProof::SimplexAnchoredPositiveRank {
+                within_columns,
+                anchor_levels,
+                effects,
+                constant_finite,
                 explicit_constant,
             }
         },

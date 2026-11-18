@@ -4708,10 +4708,10 @@ fn digest_certificate(
             explicit_constant,
         } => {
             digest.byte(7);
-            digest.usize(within_columns)?;
-            digest.usize(anchor_levels)?;
-            digest.usize(effects)?;
-            digest.usize(constant_finite)?;
+            digest.usize(within_columns as usize)?;
+            digest.usize(anchor_levels as usize)?;
+            digest.usize(effects as usize)?;
+            digest.usize(constant_finite as usize)?;
             digest.bool(explicit_constant);
         }
         crate::ppml_separation::SeparationCertificateProof::SimplexDualInfeasibility {

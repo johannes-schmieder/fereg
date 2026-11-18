@@ -1,88 +1,10 @@
 {
   "growth": [
     {
-      "after": 127863,
-      "before": 124381,
+      "after": 127872,
+      "before": 127863,
       "metric": "fereg-core/production_lines",
-      "reason": "Certify proposed Poisson deletions on the original design, test finite support and clustered cancellation, and check resolved omitted scores and translated OLS covariance."
-    },
-    {
-      "after": 1663,
-      "before": 1597,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Admit bounded exact certificates and centered covariance calculations only on supported design geometry; require independent verification before accepting their results."
-    },
-    {
-      "after": 17698,
-      "before": 17680,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Bind exact positive-support dimensions and intercept evidence to the published separation digest."
-    },
-    {
-      "after": 1600,
-      "before": 1578,
-      "metric": "file/crates/fereg-core/src/ols/prepared_clustered.rs",
-      "reason": "Use the centered estimating equations for ill-conditioned translated regressors and the full transformed intercept covariance."
-    },
-    {
-      "after": 4953,
-      "before": 4932,
-      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
-      "reason": "Verify scores along reproducible contrasts of numerically omitted regressors on the original fitted sample."
-    },
-    {
-      "after": 193,
-      "before": 185,
-      "metric": "function/crates/fereg-core/src/ols/prepared_scores.rs/build_prepared_ols_score_design#1",
-      "reason": "Detect unstable slope/intercept score coordinates and select centered influences for the sandwich."
-    },
-    {
-      "after": 1752,
-      "before": 1740,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_estimator.rs",
-      "reason": "Test estimable directions of numerically omitted coordinates against the accepted fitted means before publication."
-    },
-    {
-      "after": 557,
-      "before": 545,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_estimator.rs/fit_prepared_ppml_interruptible#1",
-      "reason": "Test estimable directions of numerically omitted coordinates against the accepted fitted means before publication."
-    },
-    {
-      "after": 4357,
-      "before": 4173,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Bind original-row recession proofs and same-sample positive-rank certificates to the immutable generation, and independently verify terminal results before publication."
-    },
-    {
-      "after": 682,
-      "before": 644,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_separation.rs/coordinate_prepared_ppml_separation#1",
-      "reason": "Bind original-row recession proofs and same-sample positive-rank certificates to the immutable generation, and independently verify terminal results before publication."
-    },
-    {
-      "after": 3599,
-      "before": 3514,
-      "metric": "file/crates/fereg-core/src/ppml/result.rs",
-      "reason": "Check the proof variants, dimensions, intercept and method metadata for original-row coverage and multi-effect positive rank."
-    },
-    {
-      "after": 248,
-      "before": 210,
-      "metric": "function/crates/fereg-core/src/ppml/result.rs/validate_separation_method#1",
-      "reason": "Check the proof variants, dimensions, intercept and method metadata for original-row coverage and multi-effect positive rank."
-    },
-    {
-      "after": 212,
-      "before": 167,
-      "metric": "function/crates/fereg-core/src/ppml_separation/simplex/mod.rs/model_simplex_interruptible#1",
-      "reason": "Check no-separation certificates in the original dense design and normalize the numerical proposal before independent verification."
-    },
-    {
-      "after": 2073,
-      "before": 2055,
-      "metric": "file/crates/fereg-plugin/src/ppml_result.rs",
-      "reason": "Include the exact positive-support witness and its dimensions in the publication digest."
+      "reason": "Check that the bounded rank-proof dimensions fit compact report fields before publishing a witness; restore the original per-observation report-bank size."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -25075,17 +24997,17 @@
           },
           {
             "condition": "rank == width",
-            "line": 303
+            "line": 314
           },
           {
             "condition": "rank == width",
-            "line": 335
+            "line": 346
           }
         ],
         "functions": {
           "anchored#1": {
             "line": 131,
-            "lines": 120
+            "lines": 131
           },
           "codes#1": {
             "line": 118,
@@ -25104,11 +25026,11 @@
             "lines": 8
           },
           "positive_contrasts_span#1": {
-            "line": 254,
+            "line": 265,
             "lines": 88
           }
         },
-        "production_lines": 321
+        "production_lines": 330
       },
       "crates/fereg-core/src/ppml/prepared_separation/positive_rank/coverage.rs": {
         "chunk_candidates": [],
@@ -31605,7 +31527,7 @@
         "dispatch_candidates": 1663,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 127863
+        "production_lines": 127872
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
