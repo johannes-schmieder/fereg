@@ -268,6 +268,14 @@ pub fn prepare_absorbed(
     data: &mut PreparedOlsData,
     ceiling: u128,
 ) -> Result<Option<AbsorbedRecovery>> {
+    prepare_with_sketches(data, ceiling, &[])
+}
+
+pub(super) fn prepare_with_sketches(
+    data: &mut PreparedOlsData,
+    ceiling: u128,
+    pair_columns: &[Column],
+) -> Result<Option<AbsorbedRecovery>> {
     let n = data.sample().n_active();
     if n < 2
         || data.effect_specs().is_empty()
@@ -305,7 +313,10 @@ pub fn prepare_absorbed(
             .regressors
             .get(column.storage)
             .ok_or_else(|| invalid_argument("missing absorbed-slope source"))?;
-        let extrema = super::screen::Sketch::new(values)?;
+        let extrema = match pair_columns.iter().find(|c| c.generated == j) {
+            Some(c) => c.sketch,
+            None => super::screen::Sketch::new(values)?,
+        };
         let boundary = (extrema.maximum - extrema.minimum) / 8192.;
         if !boundary.is_finite() || boundary == 0. || !plausible(values, effect, boundary)? {
             continue;

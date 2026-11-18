@@ -1,22 +1,16 @@
 {
   "growth": [
     {
-      "after": 131089,
-      "before": 130814,
+      "after": 131130,
+      "before": 131089,
       "metric": "fereg-core/production_lines",
-      "reason": "Recover well-resolved weak slopes, recenter absorbed contributions, and certify the original reported coefficients, covariance and restrictions."
+      "reason": "Move pair and absorbed searches to one owner so their exact extrema are computed once per finalized sample, on its admitted worker team. OLS and PPML share the owner."
     },
     {
-      "after": 1709,
-      "before": 1703,
+      "after": 1710,
+      "before": 1709,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "Screen and certify a reversible column change on the finalized sample. Retain the ordinary estimator when no independent direction is resolved."
-    },
-    {
-      "after": 1871,
-      "before": 1820,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_estimator.rs",
-      "reason": "Bind exact recoding to the final approved sample, certify prediction, Wald and covariance on the reported axis, and allow independently verified original omissions."
+      "reason": "Schedule independent column scans on the installed team only when the shared work-grain policy admits more than one lane."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -27136,60 +27130,52 @@
         "dispatch_candidates": [
           {
             "condition": "request . bias . is_some ( ) || request . clusters . len ( ) > 1",
-            "line": 36
+            "line": 26
           },
           {
             "condition": "( legacy || swapped ) && raw . mean ( ) . len ( ) == reference . len ( )",
-            "line": 275
+            "line": 251
           }
         ],
         "functions": {
           "bind#1": {
-            "line": 332,
+            "line": 308,
             "lines": 8
           },
           "exact_alternate#1": {
-            "line": 143,
+            "line": 119,
             "lines": 39
           },
           "new#1": {
-            "line": 324,
+            "line": 300,
             "lines": 8
           },
           "numerically_omitted#1": {
-            "line": 136,
+            "line": 112,
             "lines": 4
           },
           "original_coordinates#1": {
-            "line": 77,
+            "line": 53,
             "lines": 57
           },
-          "owned_bytes#1": {
-            "line": 70,
-            "lines": 6
-          },
           "preflight#1": {
-            "line": 33,
+            "line": 23,
             "lines": 28
           },
           "prepare#1": {
-            "line": 63,
-            "lines": 6
-          },
-          "prepare#2": {
-            "line": 395,
+            "line": 371,
             "lines": 39
           },
           "replay_original_omission#1": {
-            "line": 187,
+            "line": 163,
             "lines": 125
           },
           "upgrade#1": {
-            "line": 340,
+            "line": 316,
             "lines": 54
           }
         },
-        "production_lines": 394
+        "production_lines": 373
       },
       "crates/fereg-core/src/ppml/slope_recovery/exchange.rs": {
         "chunk_candidates": [],
@@ -28492,19 +28478,23 @@
           },
           {
             "condition": "n < 2 || data . effect_specs ( ) . is_empty ( ) || data . effect_specs ( ) . iter ( ) . any ( | e | ! e . intercept || ! e . slopes . is_empty ( ) )",
-            "line": 272
+            "line": 280
           },
           {
             "condition": "effect . n_levels ( ) < 2",
-            "line": 285
+            "line": 293
           },
           {
-            "condition": "data . owned_buffer_bytes ( ) + n as u128 * 16 > ceiling",
+            "condition": "pair_columns . iter ( ) . find ( | c | c . generated == j )",
             "line": 316
           },
           {
+            "condition": "data . owned_buffer_bytes ( ) + n as u128 * 16 > ceiling",
+            "line": 327
+          },
+          {
             "condition": "& data . sample ( ) . weights",
-            "line": 352
+            "line": 363
           }
         ],
         "functions": {
@@ -28538,7 +28528,11 @@
           },
           "prepare_absorbed#1": {
             "line": 267,
-            "lines": 123
+            "lines": 6
+          },
+          "prepare_with_sketches#1": {
+            "line": 274,
+            "lines": 127
           },
           "restore#1": {
             "line": 49,
@@ -28557,7 +28551,7 @@
             "lines": 38
           }
         },
-        "production_lines": 358
+        "production_lines": 368
       },
       "crates/fereg-core/src/slope_recovery/basis.rs": {
         "chunk_candidates": [],
@@ -28720,52 +28714,68 @@
         "dispatch_candidates": [
           {
             "condition": "prepared . sample ( ) . n_active ( ) != self . original . len ( ) || prepared . report_plan ( ) . public_coefficient_count ( ) != coefficients . len ( )",
-            "line": 53
+            "line": 54
           },
           {
             "condition": "! columns [ target ] . mutable",
-            "line": 153
+            "line": 154
           },
           {
             "condition": "count < 2 || rows < 2",
-            "line": 215
+            "line": 249
           },
           {
             "condition": "remaining < rows",
-            "line": 234
+            "line": 295
           }
         ],
         "functions": {
           "check_full_predictions#1": {
-            "line": 35,
+            "line": 36,
             "lines": 8
           },
           "identify#1": {
-            "line": 107,
+            "line": 108,
             "lines": 33
           },
           "original_target#1": {
-            "line": 28,
+            "line": 29,
             "lines": 3
           },
           "owned_bytes#1": {
-            "line": 24,
+            "line": 25,
             "lines": 3
           },
-          "prepare#1": {
-            "line": 199,
-            "lines": 83
+          "owned_bytes#2": {
+            "line": 216,
+            "lines": 6
           },
-          "restore_design#1": {
-            "line": 85,
+          "prepare#1": {
+            "line": 205,
+            "lines": 10
+          },
+          "prepare#2": {
+            "line": 277,
             "lines": 5
           },
+          "prepare_pair#1": {
+            "line": 283,
+            "lines": 60
+          },
+          "restore_design#1": {
+            "line": 86,
+            "lines": 5
+          },
+          "restore_design#2": {
+            "line": 223,
+            "lines": 6
+          },
           "visit_full_predictions#1": {
-            "line": 46,
+            "line": 47,
             "lines": 38
           }
         },
-        "production_lines": 248
+        "production_lines": 300
       },
       "crates/fereg-core/src/slope_recovery/screen.rs": {
         "chunk_candidates": [],
@@ -29474,52 +29484,48 @@
         "dispatch_candidates": [
           {
             "condition": "raw . finite_rank ( ) > rank || ( additional_alias && raw . finite_rank ( ) != rank ) || ( both_kept && ( mapped . is_none ( ) || kept != raw . kept_generated_columns ( ) ) )",
-            "line": 172
+            "line": 148
           }
         ],
         "functions": {
           "check_absorbed_predictions#1": {
-            "line": 335,
+            "line": 311,
             "lines": 51
           },
           "compact_covariance#1": {
-            "line": 317,
+            "line": 293,
             "lines": 14
           },
           "infer#1": {
-            "line": 86,
+            "line": 62,
             "lines": 124
           },
           "infer_and_derive#1": {
-            "line": 47,
+            "line": 23,
             "lines": 38
           },
           "map_report#1": {
-            "line": 286,
+            "line": 262,
             "lines": 30
           },
           "owned_bytes#1": {
-            "line": 42,
+            "line": 18,
             "lines": 3
           },
           "refusal#1": {
-            "line": 387,
+            "line": 363,
             "lines": 8
           },
           "restore#1": {
-            "line": 211,
+            "line": 187,
             "lines": 50
           },
-          "restore_design#1": {
-            "line": 25,
-            "lines": 6
-          },
           "scatter_working#1": {
-            "line": 262,
+            "line": 238,
             "lines": 23
           }
         },
-        "production_lines": 362
+        "production_lines": 340
       },
       "crates/fereg-plugin/src/estimate/ols_recovery/interval.rs": {
         "chunk_candidates": [],
@@ -32521,17 +32527,17 @@
       },
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1709,
+        "dispatch_candidates": 1710,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 131089
+        "production_lines": 131130
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
         "dispatch_candidates": 182,
         "files_over_1500": 3,
         "functions_over_150": 11,
-        "production_lines": 18739
+        "production_lines": 18717
       }
     },
     "schema": 1

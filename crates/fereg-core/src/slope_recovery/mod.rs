@@ -9,6 +9,7 @@ use crate::error::{invalid_argument, Result};
 use crate::interrupt::row_checkpoint;
 use crate::ols::{PreparedOlsColumnKind, PreparedOlsData};
 use mapping::{PairMap, PredictionCheck};
+use rayon::prelude::*;
 
 /// A single exactly reversible change on a finalized compact row axis.
 #[derive(Debug, PartialEq)]
@@ -193,18 +194,51 @@ fn select_orientation(
     Ok(best)
 }
 
-/// Search explicit continuous columns for a well-resolved independent
-/// direction that is weak in the raw scale. Only return a map after checking
-/// the complete data. The ceiling includes existing preparation ownership.
-pub fn prepare(prepared: &mut PreparedOlsData, ceiling: u128) -> Result<Option<Recovery>> {
-    let mut columns = [Column::default(); SEARCH_WIDTH];
+/// A certified change of coordinates on one finalized estimation sample.
+#[derive(Debug, PartialEq)]
+pub enum RecoveredSlope {
+    Pair(Recovery),
+    Absorbed(absorbed::AbsorbedRecovery),
+}
+
+impl RecoveredSlope {
+    pub fn prepare(data: &mut PreparedOlsData, ceiling: u128) -> Result<Option<Self>> {
+        let mut columns = [Column::default(); SEARCH_WIDTH];
+        let candidates = pair_columns(data, &mut columns)?;
+        if let Some(pair) = prepare_pair(data, ceiling, candidates)? {
+            return Ok(Some(Self::Pair(pair)));
+        }
+        // A declined pair search never modifies the design. Its extrema
+        // therefore still belong to the same columns and exact retained rows.
+        Ok(absorbed::prepare_with_sketches(data, ceiling, candidates)?.map(Self::Absorbed))
+    }
+
+    pub fn owned_bytes(&self) -> u128 {
+        match self {
+            Self::Pair(pair) => pair.owned_bytes(),
+            Self::Absorbed(fe) => fe.owned_bytes(),
+        }
+    }
+
+    pub fn restore_design(self, data: &mut PreparedOlsData) -> Result<()> {
+        match self {
+            Self::Pair(pair) => pair.restore_design(data),
+            Self::Absorbed(fe) => fe.restore_design(data),
+        }
+    }
+}
+
+fn pair_columns<'a>(
+    prepared: &PreparedOlsData,
+    columns: &'a mut [Column; SEARCH_WIDTH],
+) -> Result<&'a [Column]> {
     let mut count = 0;
     for (index, col) in prepared.model().columns.iter().enumerate() {
         if !matches!(col.kind, PreparedOlsColumnKind::Continuous { .. }) {
             continue;
         }
         if count == SEARCH_WIDTH {
-            return Ok(None);
+            return Ok(&[]);
         }
         if let Some(column) = Column::identify(prepared, index) {
             columns[count] = column;
@@ -213,18 +247,45 @@ pub fn prepare(prepared: &mut PreparedOlsData, ceiling: u128) -> Result<Option<R
     }
     let rows = prepared.sample().n_active();
     if count < 2 || rows < 2 {
-        return Ok(None);
+        return Ok(&[]);
     }
     let candidates = &mut columns[..count];
-    for column in candidates.iter_mut() {
-        column.sketch = screen::Sketch::new(
-            prepared
-                .sample()
-                .regressors
-                .get(column.storage)
-                .ok_or_else(|| invalid_argument("missing slope source during recovery"))?,
-        )?;
+    let scan = |column: &mut Column| -> Result<()> {
+        let values = prepared
+            .sample()
+            .regressors
+            .get(column.storage)
+            .ok_or_else(|| invalid_argument("missing slope source during recovery"))?;
+        column.sketch = screen::Sketch::new(values)?;
+        Ok(())
+    };
+    // Each worker walks its own columns in the original row order. Keep
+    // selection and budget charging ordered on the calling thread.
+    let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+    let plan = crate::parallel::StagePlan::new(rows as u128 * count as u128, count, workers);
+    if plan.lanes > 1 {
+        candidates
+            .par_chunks_mut(plan.chunk(count))
+            .try_for_each(|group| group.iter_mut().try_for_each(scan))?;
+    } else {
+        candidates.iter_mut().try_for_each(scan)?;
     }
+    Ok(candidates)
+}
+
+/// Search explicit continuous columns alone, without attempting FE centering.
+pub fn prepare(prepared: &mut PreparedOlsData, ceiling: u128) -> Result<Option<Recovery>> {
+    let mut columns = [Column::default(); SEARCH_WIDTH];
+    let candidates = pair_columns(prepared, &mut columns)?;
+    prepare_pair(prepared, ceiling, candidates)
+}
+
+fn prepare_pair(
+    prepared: &mut PreparedOlsData,
+    ceiling: u128,
+    candidates: &[Column],
+) -> Result<Option<Recovery>> {
+    let rows = prepared.sample().n_active();
     // Count candidate rows after permutation-invariant exclusions only.
     // The exact basis check uses a fixed number of passes per admitted pair.
     let mut remaining = MAX_PAIR_ROWS.max(rows);

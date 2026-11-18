@@ -4,31 +4,7 @@ mod interval;
 mod replay;
 use super::ols_pipeline::{infer_ols, OwnedInference};
 use super::*;
-use fereg_core::slope_recovery::{
-    self,
-    absorbed::{prepare_absorbed, AbsorbedRecovery},
-    Recovery,
-};
-
-enum Basis {
-    Pair(Recovery),
-    Absorbed(AbsorbedRecovery),
-}
-
-impl Basis {
-    fn columns_and_bytes(&self) -> ([usize; 2], u128) {
-        match self {
-            Self::Pair(r) => ([r.source_column, r.target_column], r.owned_bytes()),
-            Self::Absorbed(r) => ([r.target_column, r.target_column], r.owned_bytes()),
-        }
-    }
-    fn restore_design(self, prepared: &mut PreparedOlsData) -> Result<()> {
-        match self {
-            Self::Pair(r) => r.restore_design(prepared),
-            Self::Absorbed(r) => r.restore_design(prepared),
-        }
-    }
-}
+use fereg_core::slope_recovery::{absorbed::AbsorbedRecovery, RecoveredSlope as Basis};
 
 pub(crate) struct Reported {
     pub(crate) b: Vec<f64>,
@@ -93,18 +69,18 @@ fn infer(
         .usable_bytes
         .unwrap_or(u128::MAX)
         .saturating_sub(action.metadata_owner_bytes + action.loaded_fit_workspace_bytes);
-    let recovery = match slope_recovery::prepare(prepared, ceiling)? {
-        Some(r) => Some(Basis::Pair(r)),
-        None => prepare_absorbed(prepared, ceiling)?.map(Basis::Absorbed),
-    };
-    let Some(recovery) = recovery else {
+    let Some(recovery) = Basis::prepare(prepared, ceiling)? else {
         return Ok((infer_ols(prepared, action, rows)?, None));
     };
     // The speculative cache contains the original columns, including any
     // precomputed moment summaries. It cannot cross a basis change.
     drop(rows);
     let k = prepared.model().coefficients.len() as u128;
-    let (paired, recover_bytes) = recovery.columns_and_bytes();
+    let paired = match &recovery {
+        Basis::Pair(r) => [r.source_column, r.target_column],
+        Basis::Absorbed(r) => [r.target_column, r.target_column],
+    };
+    let recover_bytes = recovery.owned_bytes();
     let extra = (96 << 10) + recover_bytes + 8 * (5 * k * k + 16 * k);
     action.admit_prepared_parent(
         prepared.execution_admission_bytes() + extra,

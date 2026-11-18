@@ -6,18 +6,8 @@ use super::prepared_model::PreparedPpmlModelGeneration;
 use super::{PpmlCoefficientOutput, PpmlCoefficientStatus, PreparedPpmlRequestV1};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::ols::PreparedOlsData;
-use crate::slope_recovery::{
-    self,
-    absorbed::{AbsorbedMap, AbsorbedRecovery},
-    mapping::PairMap,
-    Recovery,
-};
-
-#[derive(Debug, PartialEq)]
-pub(super) enum GenerationRecovery {
-    Pair(Recovery),
-    Absorbed(AbsorbedRecovery),
-}
+pub(super) use crate::slope_recovery::RecoveredSlope as GenerationRecovery;
+use crate::slope_recovery::{absorbed::AbsorbedMap, mapping::PairMap};
 
 #[derive(Clone, Copy)]
 pub(super) enum ReportMap {
@@ -60,20 +50,6 @@ pub(super) fn preflight(request: &PreparedPpmlRequestV1) -> usize {
 }
 
 impl GenerationRecovery {
-    pub(super) fn prepare(data: &mut PreparedOlsData, ceiling: u128) -> Result<Option<Self>> {
-        if let Some(pair) = slope_recovery::prepare(data, ceiling)? {
-            return Ok(Some(Self::Pair(pair)));
-        }
-        Ok(slope_recovery::absorbed::prepare_absorbed(data, ceiling)?.map(Self::Absorbed))
-    }
-
-    pub(super) fn owned_bytes(&self) -> u128 {
-        match self {
-            Self::Pair(pair) => pair.owned_bytes(),
-            Self::Absorbed(fe) => fe.owned_bytes(),
-        }
-    }
-
     pub(super) fn original_coordinates(
         &self,
         generation: &PreparedPpmlModelGeneration,
