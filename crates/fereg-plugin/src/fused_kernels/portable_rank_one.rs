@@ -100,6 +100,35 @@ fn update_uncertified_pair(
     }
 }
 
+pub(super) fn upper_rank_one(
+    weight: f64,
+    row: &[f64],
+    response: f64,
+    left_start: usize,
+    rhs: &mut [f64],
+    gram: &mut [f64],
+) {
+    if rhs.is_empty() {
+        return;
+    }
+    let dimension = row.len();
+    if dimension.saturating_sub(left_start) < 2 || !standard_mxcsr() {
+        weighted_upper_rank_one(weight, row, response, left_start, rhs, gram);
+        return;
+    }
+    let gram = &mut gram[..rhs.len() * dimension];
+    for (local_left, (destination, gram_row)) in rhs
+        .iter_mut()
+        .zip(gram.chunks_exact_mut(dimension))
+        .enumerate()
+    {
+        let left = left_start + local_left;
+        let weighted_left = weight * row[left];
+        *destination = weighted_left.mul_add(response, *destination);
+        update_pairs(weighted_left, &mut gram_row[left..], &row[left..]);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -421,34 +450,5 @@ mod tests {
                 }
             }
         }
-    }
-}
-
-pub(super) fn upper_rank_one(
-    weight: f64,
-    row: &[f64],
-    response: f64,
-    left_start: usize,
-    rhs: &mut [f64],
-    gram: &mut [f64],
-) {
-    if rhs.is_empty() {
-        return;
-    }
-    let dimension = row.len();
-    if dimension.saturating_sub(left_start) < 2 || !standard_mxcsr() {
-        weighted_upper_rank_one(weight, row, response, left_start, rhs, gram);
-        return;
-    }
-    let gram = &mut gram[..rhs.len() * dimension];
-    for (local_left, (destination, gram_row)) in rhs
-        .iter_mut()
-        .zip(gram.chunks_exact_mut(dimension))
-        .enumerate()
-    {
-        let left = left_start + local_left;
-        let weighted_left = weight * row[left];
-        *destination = weighted_left.mul_add(response, *destination);
-        update_pairs(weighted_left, &mut gram_row[left..], &row[left..]);
     }
 }

@@ -1,24 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 123892,
-      "before": 123741,
-      "metric": "fereg-core/production_lines",
-      "reason": "Balance dense Gram partitions by triangular work, validate and standardize contiguous rows, and reuse validated raw scales for ordered, concurrent reference-norm checks."
-    },
-    {
-      "after": 1587,
-      "before": 1586,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Bind a finalized numeric column once when computing its absorbed-intercept reference norm; generated recipes retain the general evaluator."
-    },
-    {
-      "after": 17680,
-      "before": 17570,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Certify binary64 Gram updates in pairs on baseline x86-64 using adjacent product bounds; check the active worker floating-point mode and replay ambiguous lanes with scalar fused multiply-add."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -28609,7 +28590,7 @@
             "lines": 18
           },
           "upper_rank_one#1": {
-            "line": 427,
+            "line": 103,
             "lines": 28
           }
         },
