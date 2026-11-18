@@ -337,9 +337,7 @@ impl DetectorPolicy<'_> {
                 linear,
                 has_alternative,
             );
-            deferred |= result
-                .as_ref()
-                .is_err_and(|error| super::is_deferred_map_fallback(error));
+            deferred |= result.as_ref().is_err_and(super::is_deferred_map_fallback);
             result
         });
         let (certificate, _, _) = match attempt {

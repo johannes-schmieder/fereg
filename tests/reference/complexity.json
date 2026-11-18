@@ -1,72 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 15530,
-      "before": 15519,
-      "metric": "fedemean/production_lines",
-      "reason": "Select hardware FMA only when an exact-square residual is representable, with the portable arithmetic fallback."
-    },
-    {
-      "after": 123743,
-      "before": 123328,
-      "metric": "fereg-core/production_lines",
-      "reason": "Restore frozen response buffers on refusal and cap the alternate PPML start; reuse certified unit projections and optimize admitted finite QR, inverse checks and wide MAP passes."
-    },
-    {
-      "after": 1586,
-      "before": 1581,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Gate wide MAP and Givens work and preserve the original separation continuation when the admitted alternatives refuse."
-    },
-    {
-      "after": 8057,
-      "before": 7987,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Traverse adjacent RHS values per row while retaining each compensated sum order and scalar fallback."
-    },
-    {
-      "after": 2364,
-      "before": 2338,
-      "metric": "file/crates/fereg-core/src/ols/finite_wls_kernel.rs",
-      "reason": "Reuse a factor bank for the streamed QR and evaluate both sides of the full inverse certificate together."
-    },
-    {
-      "after": 6000,
-      "before": 5991,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "Preserve reusable response and raw anchor state when the certified weighted solve refuses."
-    },
-    {
-      "after": 340,
-      "before": 321,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/solve_frozen_internal#1",
-      "reason": "Restore projected response ownership before returning the solve error, then refresh its raw anchor."
-    },
-    {
-      "after": 288,
-      "before": 287,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/stream_frozen_solve#1",
-      "reason": "Share the same frozen-rank refusal classification across recovery paths."
-    },
-    {
-      "after": 4085,
-      "before": 4010,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_irls.rs",
-      "reason": "Allow one projected seed restart only after a scoped publication-fit refusal, with an iteration budget shared with the first attempt."
-    },
-    {
-      "after": 1164,
-      "before": 1145,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_irls.rs/run_prepared_ppml_irls#1",
-      "reason": "Select the independent seed on retry and account for presolve and attempted iterations."
-    },
-    {
-      "after": 4145,
-      "before": 4103,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Try admitted alternatives after a stalled MAP continuation and preserve the same independent span certificate."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -24812,11 +24745,11 @@
         "dispatch_candidates": [
           {
             "condition": "proposal . dropped_original_rows . is_empty ( )",
-            "line": 392
+            "line": 390
           },
           {
             "condition": "proposal . dropped_original_rows . is_empty ( )",
-            "line": 429
+            "line": 427
           }
         ],
         "functions": {
@@ -24833,7 +24766,7 @@
             "lines": 6
           },
           "ir_step#1": {
-            "line": 373,
+            "line": 371,
             "lines": 26
           },
           "lsmr_admission#1": {
@@ -24841,7 +24774,7 @@
             "lines": 33
           },
           "mu_step#1": {
-            "line": 402,
+            "line": 400,
             "lines": 34
           },
           "new#1": {
@@ -24849,7 +24782,7 @@
             "lines": 13
           },
           "numerical#1": {
-            "line": 439,
+            "line": 437,
             "lines": 6
           },
           "recertified#1": {
@@ -24866,14 +24799,14 @@
           },
           "validate#1": {
             "line": 321,
-            "lines": 41
+            "lines": 39
           },
           "with_schwarz#1": {
             "line": 76,
             "lines": 6
           }
         },
-        "production_lines": 324
+        "production_lines": 322
       },
       "crates/fereg-core/src/ppml/prepared_separation/routing.rs": {
         "chunk_candidates": [],
@@ -30679,7 +30612,7 @@
         "dispatch_candidates": 1586,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 123743
+        "production_lines": 123741
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
