@@ -2298,7 +2298,7 @@ postestimation path makes an extra substantive estimation call.
 
 Retain independently versioned exact estimation handshakes. Current
 versions are action 1.7, model 2.1, OLS result 1.7, PPML request 1.10, PPML
-result 1.5, ado identity 0.6.2 and SPI 3.0. Diagnostics accept same-major,
+result 1.5, ado identity 0.6.3 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
 no-absorbed-metadata shape;
 unknown/newer identities and malformed framing fail before observation access.

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.3 — 2026-11-18
+
+- Restore the projected response after a rejected weighted PPML solve. A cold
+  fit can retry from a certified projected log-response start after a scoped
+  numerical refusal, within the original iteration limit.
+- Speed up PPML separation by reusing certified regressor projections on the
+  same unit-weight model and trying admitted alternatives when MAP stalls.
+  Check the final separation result with an independent projection.
+- Reduce repeated memory passes in wide fixed-effect projections and retained
+  QR and inverse checks. Use exact-square hardware FMA where supported.
+
 ## 0.6.2 — 2026-11-17
 
 - Speed up PPML separation by testing a certified unit-weight no-separation
