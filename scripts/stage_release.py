@@ -16,8 +16,8 @@ from typing import Optional
 VERSION = "0.6.3"
 RELEASE_TAG = "v0.6.3"
 PACKAGE_NAME = f"fereg-{VERSION}"
-FIXED_TIME = (2026, 11, 17, 0, 0, 0)
-FIXED_UTC = "2026-11-17T00:00:00Z"
+FIXED_TIME = (2026, 11, 18, 0, 0, 0)
+FIXED_UTC = "2026-11-18T00:00:00Z"
 PLATFORM_PLUGINS = {
     "linux": "fereg_linux.plugin",
     "windows": "fereg_windows.plugin",
