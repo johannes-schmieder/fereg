@@ -1,4 +1,4 @@
-# Historical beta release notes
+# Historical release notes
 
 The files below preserve the original GitHub release descriptions verbatim.
 
@@ -13,3 +13,4 @@ The files below preserve the original GitHub release descriptions verbatim.
 - [v0.5.0-beta.13](v0.5.0-beta.13.md)
 - [v0.5.0-beta.14](v0.5.0-beta.14.md)
 - [v0.5.0-beta.15](v0.5.0-beta.15.md)
+- [v0.5.0](v0.5.0.md)
