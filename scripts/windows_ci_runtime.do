@@ -221,6 +221,13 @@ capture noisily do "tests/stata/development/feppml_separation_recovery.do"
 if _rc exit 9149
 capture noisily do "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do"
 if _rc exit 9150
+* Check the new OLS score-design and replay fixtures on Windows.
+capture noisily do "tests/stata/development/ols_score_design_units.do"
+if _rc exit 9151
+capture noisily do "tests/stata/development/ols_score_design_rare_base.do"
+if _rc exit 9152
+capture noisily do "tests/stata/installation/ols_vce_case.do"
+if _rc exit 9153
 * Fresh Python processes test changing host threads and native error recovery.
 shell python scripts/check_pystata_threads.py ///
     --utilities "C:/Program Files/Stata19/utilities" ///

@@ -1,4 +1,4 @@
-*! fereg public OLS dispatcher 0.6.5 19nov2026
+*! fereg public OLS dispatcher 0.6.6 19nov2026
 program define _fereg_estimate_public, eclass
     version 15.0
     local public_cmdline `"fereg `0'"'

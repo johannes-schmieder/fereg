@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.6 — 2026-11-19
+
+- Validate robust and clustered OLS score designs in scale-normalized
+  coordinates. Recover from numerical rejection with tighter fixed-effect
+  projection and more accurately accumulated cross-products.
+- Report when the multiway clustered OLS covariance required an eigenvalue
+  adjustment. Display the note on replay when the saved estimates record
+  the adjustment.
+- Add independent regression cases for rare factor levels, disparate
+  regressor units, and low-memory OLS inference.
+
 ## 0.6.5 — 2026-11-19
 
 - Verify Poisson separation on the entire retained design, including omitted

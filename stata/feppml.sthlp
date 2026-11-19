@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.6.5 19nov2026}{...}
+{* *! version 0.6.6 19nov2026}{...}
 {.-}
 help for {cmd:feppml} {right:(Johannes F. Schmieder)}
 {.-}
