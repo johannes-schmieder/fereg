@@ -44,8 +44,13 @@ program define _fereg_display
     }
     DisplayHeader
     if `"`e(vce)'"' == "cluster" {
-        // The certificate also identifies repairs in saved estimates from 0.6.5.
-        if e(fereg_certificate)[26,2] == 1 {
+        local repaired = e(fereg_psd_adjusted)
+        if missing(`repaired') {
+            // Saved estimates can have the certificate without the scalar.
+            capture local previous_repair = e(fereg_certificate)[26,2]
+            if !_rc local repaired = `previous_repair'
+        }
+        if `repaired' == 1 {
             di as txt "note: Cameron-Gelbach-Miller adjustment set negative eigenvalues to zero" _n ///
                       "      in the full multiway clustered covariance matrix."
         }

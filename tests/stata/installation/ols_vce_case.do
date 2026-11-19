@@ -135,4 +135,21 @@ foreach case in clipped positive oneway robust {
     else assert e(fereg_psd_adjusted) == ("`case'" == "clipped")
 }
 
+* Estimates from before the diagnostic existed can still be displayed.
+quietly regress y_cross x, vce(cluster a)
+noisily _fereg_display
+assert "`e(cmd)'" == "regress"
+
+* The earlier certificate is sufficient when the new scalar is absent.
+program define fit_with_legacy_psd_metadata, eclass
+    quietly fereg y_cross x, vce(cluster a b)
+    ereturn scalar fereg_psd_adjusted = .
+end
+fit_with_legacy_psd_metadata
+tempfile legacy_transcript
+log using "`legacy_transcript'", text replace name(psd)
+noisily fereg
+log close psd
+assert strpos(fileread("`legacy_transcript'"), "Cameron-Gelbach-Miller adjustment") > 0
+
 display as result "END_FIXTURE|ols_vce_case|rc=0"
