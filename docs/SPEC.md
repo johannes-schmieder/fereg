@@ -2010,9 +2010,11 @@ operations.
 If a detector cannot establish positive support on a small generation, a
 bounded fallback searches the transposed raw design for an integer dual.
 Positive-outcome rows take pivot priority and have unrestricted weights.
-Rotating the boundary-row order can expose another pivot basis. Strict
-positivity on every active zero, the unit-dual relative margin, and an exact
-zero moment on every finite
+If the complete echelon exceeds the workspace, a modular minor selects
+positive representatives and the remaining positive observations receive zero
+weight. The search tries boundary pivot subsets in deterministic order with
+unit weights on free boundary coordinates. Strict positivity on every active
+zero, the unit-dual relative margin, and an exact zero moment on every finite
 column, structural intercept, and absorbed intercept or slope certify the
 current sample. Terminal replay reconstructs the proof on that generation.
 The echelon must fit the existing proof workspace. Coordinate work is capped

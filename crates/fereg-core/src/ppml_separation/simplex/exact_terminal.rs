@@ -138,7 +138,7 @@ pub(super) fn no_recession(
             .enumerate()
             .filter_map(|(row, &outcome)| (outcome == 0.).then_some(row)),
     );
-    raw_positive_dual(
+    Ok(raw_positive_dual(
         k,
         rows,
         positive,
@@ -151,13 +151,16 @@ pub(super) fn no_recession(
             }
             Ok(())
         },
-    )
+    )?
+    .0)
 }
 
 /// Look for strictly positive weights on *all* boundary rows with zero moment
 /// in every original coordinate. Rows preceding the boundary have unrestricted
 /// weights. A bad modular pivot or an inconclusive rational reconstruction can
 /// only cause a refusal, since each moment is replayed with exact dyadic sums.
+/// The second result counts modular pivots on the boundary. Callers may use
+/// it to propose another basis, never as evidence of a sign or identity.
 /// Callers admit rows² + 7·rows words in addition to their own column readers.
 pub(crate) fn raw_positive_dual(
     columns: usize,
@@ -167,21 +170,22 @@ pub(crate) fn raw_positive_dual(
     margin_tolerance: f64,
     limit: usize,
     mut read_column: impl FnMut(usize, &mut [f64]) -> Result<()>,
-) -> Result<bool> {
+) -> Result<(bool, usize)> {
     if positive >= rows || boundary_dual.is_some_and(|hint| hint.len() != rows - positive) {
-        return Ok(false);
+        return Ok((false, 0));
     }
     let mut work = Work(limit);
     let mut space = ExactNullspace::new(rows)?;
     let mut column = fallible_filled(rows, 0., "unable to reserve exact dual column")?;
     for j in 0..columns {
         if !work.take(space.rank() + 1, rows) {
-            return Ok(false);
+            return Ok((false, 0));
         }
         crate::interrupt::checkpoint()?;
         read_column(j, &mut column)?;
         space.insert(&column)?;
     }
+    let boundary_pivots = (positive..rows).filter(|&row| space.pivot(row)).count();
     let hint = boundary_dual.unwrap_or_default();
     let maximum = hint.iter().map(|v| v.abs()).fold(0., f64::max);
     let mut free = fallible_filled(rows, 0i64, "unable to reserve raw dual proposal")?;
@@ -191,7 +195,7 @@ pub(crate) fn raw_positive_dual(
             || !work.take(rows, rows)
             || !work.take(columns, rows)
         {
-            return Ok(false);
+            return Ok((false, boundary_pivots));
         }
         // Rounding only proposes free-coordinate ratios. Every sign and
         // identity below is checked after exact reconstruction.
@@ -222,10 +226,10 @@ pub(crate) fn raw_positive_dual(
             }
         }
         if valid {
-            return Ok(true);
+            return Ok((true, boundary_pivots));
         }
     }
-    Ok(false)
+    Ok((false, boundary_pivots))
 }
 
 /// Reconstruct dependencies sparsely. Most redundant categorical levels and

@@ -370,6 +370,18 @@ fn transposed_dual_replays_every_coordinate_and_detects_one_bit_departures() {
         certify(&unbalanced, Terms::OrdinaryAlias, 256),
         Some(Proof::ExactPositiveDual { boundary_rows: 3 })
     );
+    // Six positive observations share the origin. Two boundary coordinates
+    // have unequal multiplicities on both sides. A strictly positive dual
+    // exists, but its feasible basis requires a non-leading pivot on both
+    // axes. The full 14×14 echelon exceeds this memory budget.
+    let mut split = vec![[1., 0., 1., 0.]; 6];
+    for (x, z, copies) in [(1., 0., 2), (-1., 0., 1), (0., 1., 3), (0., -1., 2)] {
+        split.extend(std::iter::repeat_n([0., x, 1., z], copies));
+    }
+    assert_eq!(
+        certify(&split, Terms::OrdinaryAlias, 200),
+        Some(Proof::ExactPositiveDual { boundary_rows: 8 })
+    );
     // The alternating 2×2 cycle balances both FE axes and the finite slope.
     let mut crossed = [
         [1., 1., 1., 1.],
