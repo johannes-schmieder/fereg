@@ -117,6 +117,13 @@ input. Test the helper at the BE limit with `set maxvar 2048` and verify
 retains both response formats and that installation check; its remaining
 compact-response headroom is only 796 bytes, so the next release needs the
 same guard before promotion.
+For 0.6.6, GitHub hosts the binary and source ZIPs as release assets.
+The release description points to the tag's checksums, Mac build instructions
+and full notes. Older releases link to their archived notes under
+`docs/release-notes/`. Existing asset URLs stay valid. The compact release
+response and an actual `github install` at the Stata/BE limit are checked
+after publication.
+
 Versioned installation uses the release tag,
 `https://raw.githubusercontent.com/johannes-schmieder/fereg/<tag>/`: tag the
 commit whose `dist/` holds that release's plugins, so the tagged root package
