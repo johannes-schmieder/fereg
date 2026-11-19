@@ -1590,6 +1590,10 @@ fn separation_trace_digest(report: &SeparationReport) -> Result<u64> {
                         digest.usize(levels, "trace positive fixed-effect levels")?;
                         digest.word(u64::from(explicit_constant));
                     }
+                    SeparationCertificateProof::ExactPositiveDual { boundary_rows } => {
+                        digest.word(8);
+                        digest.usize(boundary_rows, "trace exact dual boundary rows")?;
+                    }
                     SeparationCertificateProof::SimplexPositiveRowCoverage { boundary_rows } => {
                         digest.word(6);
                         digest.usize(boundary_rows, "trace matched boundary rows")?;

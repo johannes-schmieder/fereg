@@ -3249,7 +3249,8 @@ fn validate_separation_method(
                 | SeparationMethod::IteratedRectifier
                 | SeparationMethod::Mu,
                 MethodStatus::NoSeparation,
-                SeparationCertificateProof::SimplexPositiveRowCoverage { boundary_rows },
+                SeparationCertificateProof::SimplexPositiveRowCoverage { boundary_rows }
+                | SeparationCertificateProof::ExactPositiveDual { boundary_rows },
             ) => boundary_rows > 0 && boundary_rows < candidate_observations,
             (
                 SeparationMethod::Simplex
@@ -3578,6 +3579,7 @@ fn validate_separation_certificate(
                 certificate.direction_scale == 0.0 && nonnegative.iter().all(|value| *value == 0.0)
             }
             SeparationCertificateProof::SimplexWithinLevelPositiveRank { .. }
+            | SeparationCertificateProof::ExactPositiveDual { .. }
             | SeparationCertificateProof::SimplexPositiveRowCoverage { .. }
             | SeparationCertificateProof::SimplexAnchoredPositiveRank { .. } => {
                 certificate.direction_scale == 0.0 && nonnegative.iter().all(|v| *v == 0.0)

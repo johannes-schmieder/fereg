@@ -315,3 +315,72 @@ fn packed_rank_proves_an_alias_and_replays_a_one_ulp_boundary_departure() {
         }
     }
 }
+
+#[test]
+fn transposed_dual_replays_every_coordinate_and_detects_one_bit_departures() {
+    let certify = |rows: &[[f64; 4]], terms, limit| {
+        let owner = PreparedSeparationCoordinator::new(panel(rows, terms)).unwrap();
+        let generation = owner.view().prepared;
+        let topology = DetectorTopology::new(generation.prepared()).unwrap();
+        positive_rank::exact_dual(
+            SeparationMethod::IteratedRectifier,
+            generation,
+            &topology,
+            rows.iter().filter(|r| r[0] > 0.).count(),
+            limit,
+            SeparationConfig::default(),
+        )
+        .unwrap()
+        .map(|proposal| proposal.certificate.unwrap().proof)
+    };
+    for terms in [Terms::OrdinaryAlias, Terms::AbsorbedSlope] {
+        for scale in [1., 2.0_f64.powi(-21), 2.0_f64.powi(33)] {
+            // Two copies of the negative point plus one positive point sum to
+            // three copies of the origin. Splitting the slope coordinates on
+            // either zero by one ULP gives a strict recession direction.
+            let mut rows = [
+                [0., -1., 1., -scale],
+                [0., 2., 1., 2. * scale],
+                [1., 0., 1., 0.],
+            ];
+            for _ in 0..2 {
+                assert_eq!(
+                    certify(&rows, terms, 256),
+                    Some(Proof::ExactPositiveDual { boundary_rows: 2 })
+                );
+                assert!(certify(&rows, terms, 1).is_none());
+                let mut shifted = rows;
+                let row = shifted.iter_mut().find(|r| r[1] == 2.).unwrap();
+                row[3] = f64::from_bits(row[3].to_bits() + 1);
+                assert!(certify(&shifted, terms, 256).is_none());
+                rows.reverse();
+            }
+        }
+    }
+    // Choosing the first zero as pivot and fixing the others at one would
+    // require its multiplier to be negative. Pivoting on -1 instead gives
+    // positive weights 1, 4, 1 for the three boundary rows.
+    let unbalanced = [
+        [0., 1., 1., 1.],
+        [0., -1., 1., -1.],
+        [0., 3., 1., 3.],
+        [1., 0., 1., 0.],
+    ];
+    assert_eq!(
+        certify(&unbalanced, Terms::OrdinaryAlias, 256),
+        Some(Proof::ExactPositiveDual { boundary_rows: 3 })
+    );
+    // The alternating 2×2 cycle balances both FE axes and the finite slope.
+    let mut crossed = [
+        [1., 1., 1., 1.],
+        [0., 3., 1., 2.],
+        [0., 5., 2., 1.],
+        [2., 7., 2., 2.],
+    ];
+    assert_eq!(
+        certify(&crossed, Terms::TwoFe, 256),
+        Some(Proof::ExactPositiveDual { boundary_rows: 2 })
+    );
+    crossed[1][1] = f64::from_bits(3f64.to_bits() + 1);
+    assert!(certify(&crossed, Terms::TwoFe, 256).is_none());
+}

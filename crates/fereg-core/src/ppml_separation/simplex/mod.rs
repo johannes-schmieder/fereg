@@ -8,6 +8,7 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 
 mod exact_terminal;
+pub(crate) use exact_terminal::raw_positive_dual;
 mod nullspace;
 mod tableau;
 

@@ -5,6 +5,8 @@ use crate::ppml::modular_rank::{insert, residue, PRIME};
 use crate::ppml_separation::SeparationCertificateProof;
 
 mod coverage;
+mod dual;
+pub(super) use dual::exact_dual;
 mod packed;
 pub(super) use coverage::positive_twins;
 

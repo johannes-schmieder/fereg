@@ -52,11 +52,11 @@ struct Block<'a> {
 pub(super) struct RawRows<'a> {
     model: &'a PreparedPpmlModelGeneration,
     blocks: Vec<Block<'a>>,
-    width: usize,
+    pub(super) width: usize,
 }
 
 impl<'a> RawRows<'a> {
-    fn new(model: &'a PreparedPpmlModelGeneration, absorbed: bool) -> Result<Self> {
+    pub(super) fn new(model: &'a PreparedPpmlModelGeneration, absorbed: bool) -> Result<Self> {
         let data = model.fit_view();
         let mut width = model.model().columns.len();
         let specs = if absorbed { data.effect_specs() } else { &[] };
@@ -106,7 +106,7 @@ impl<'a> RawRows<'a> {
         self.model.outcome().len()
     }
 
-    fn value(&self, row: usize, column: usize) -> Result<f64> {
+    pub(super) fn value(&self, row: usize, column: usize) -> Result<f64> {
         let finite = self.model.model().columns.len();
         if column < finite {
             return self.model.fit_view().column_value(column, row);

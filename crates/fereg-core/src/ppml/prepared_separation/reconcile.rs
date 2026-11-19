@@ -20,18 +20,30 @@ pub(super) fn support(
         primal::ProofBudget::new(model, method, config).words
     };
     let limit = limit.saturating_sub(meta);
-    let existing =
-        positive_rank::detect_for(method, model, &topology, count, limit, config, &mut |_| {
-            interrupt(marker)
-        })?;
-    let result = match existing {
-        Some(proof) => Some(proof),
-        None => {
-            positive_rank::aliased(method, model, &topology, count, limit, config, &mut |_| {
-                interrupt(marker)
-            })?
-        }
-    };
+    let mut report_break = |_| interrupt(marker);
+    let mut result = positive_rank::detect_for(
+        method,
+        model,
+        &topology,
+        count,
+        limit,
+        config,
+        &mut report_break,
+    )?;
+    if result.is_none() {
+        result = positive_rank::aliased(
+            method,
+            model,
+            &topology,
+            count,
+            limit,
+            config,
+            &mut report_break,
+        )?;
+    }
+    if result.is_none() {
+        result = positive_rank::exact_dual(method, model, &topology, count, limit, config)?;
+    }
     result
         .map(|raw| bind_numerical_proposal(model, raw))
         .transpose()

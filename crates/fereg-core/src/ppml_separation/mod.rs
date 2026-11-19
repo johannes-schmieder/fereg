@@ -9,7 +9,8 @@
 mod prepared_coordinator;
 mod simplex;
 pub(crate) use simplex::{
-    model_simplex_interruptible, no_separation_certificate, simplex_workspace_peak_cells,
+    model_simplex_interruptible, no_separation_certificate, raw_positive_dual,
+    simplex_workspace_peak_cells,
 };
 
 pub(crate) use prepared_coordinator::{
@@ -189,6 +190,11 @@ pub enum SeparationCertificateProof {
         levels: usize,
         explicit_constant: bool,
     },
+    /// An integer dual is strictly positive on every boundary row and
+    /// exactly orthogonal to every original model coordinate.
+    ExactPositiveDual {
+        boundary_rows: usize,
+    },
     /// Every boundary design row is exactly replicated on positive support.
     SimplexPositiveRowCoverage {
         boundary_rows: usize,
@@ -232,6 +238,8 @@ impl SeparationCertificateProof {
                 Some("exact positive-outcome rank spans the finite regressors and absorbed intercept levels"),
             Self::SimplexAnchoredPositiveRank { .. } =>
                 Some("exact positive-outcome contrasts span the finite regressors and categorical effects"),
+            Self::ExactPositiveDual { .. } =>
+                Some("strictly positive boundary dual exactly balances every model coordinate"),
             Self::SimplexPositiveRowCoverage { .. } =>
                 Some("exact positive-outcome rows cover all boundary design rows"),
             _ => None,

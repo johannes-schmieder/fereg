@@ -138,45 +138,84 @@ pub(super) fn no_recession(
             .enumerate()
             .filter_map(|(row, &outcome)| (outcome == 0.).then_some(row)),
     );
+    raw_positive_dual(
+        k,
+        rows,
+        positive,
+        Some(boundary_dual),
+        0.,
+        work.0,
+        |j, column| {
+            for (&r, value) in ids.iter().zip(column) {
+                *value = design[(r, j)];
+            }
+            Ok(())
+        },
+    )
+}
+
+/// Look for strictly positive weights on *all* boundary rows with zero moment
+/// in every original coordinate. Rows preceding the boundary have unrestricted
+/// weights. A bad modular pivot or an inconclusive rational reconstruction can
+/// only cause a refusal, since each moment is replayed with exact dyadic sums.
+/// Callers admit rows² + 7·rows words in addition to their own column readers.
+pub(crate) fn raw_positive_dual(
+    columns: usize,
+    rows: usize,
+    positive: usize,
+    boundary_dual: Option<&[f64]>,
+    margin_tolerance: f64,
+    limit: usize,
+    mut read_column: impl FnMut(usize, &mut [f64]) -> Result<()>,
+) -> Result<bool> {
+    if positive >= rows || boundary_dual.is_some_and(|hint| hint.len() != rows - positive) {
+        return Ok(false);
+    }
+    let mut work = Work(limit);
     let mut space = ExactNullspace::new(rows)?;
     let mut column = fallible_filled(rows, 0., "unable to reserve exact dual column")?;
-    for j in 0..k {
+    for j in 0..columns {
         if !work.take(space.rank() + 1, rows) {
             return Ok(false);
         }
         crate::interrupt::checkpoint()?;
-        for (&r, value) in ids.iter().zip(&mut column) {
-            *value = design[(r, j)];
-        }
+        read_column(j, &mut column)?;
         space.insert(&column)?;
     }
-    let maximum = boundary_dual.iter().map(|v| v.abs()).fold(0., f64::max);
+    let hint = boundary_dual.unwrap_or_default();
+    let maximum = hint.iter().map(|v| v.abs()).fold(0., f64::max);
     let mut free = fallible_filled(rows, 0i64, "unable to reserve raw dual proposal")?;
+    free[positive..].fill(1);
     for resolution in [0., 1024., 1_048_576., 4_294_967_296.] {
-        if !work.take(rows, rows) || !work.take(k, rows) {
+        if (resolution != 0. && hint.is_empty())
+            || !work.take(rows, rows)
+            || !work.take(columns, rows)
+        {
             return Ok(false);
         }
         // Rounding only proposes free-coordinate ratios. Every sign and
         // identity below is checked after exact reconstruction.
-        for (value, &multiplier) in free[positive..].iter_mut().zip(boundary_dual) {
-            *value = if resolution == 0. {
-                1
-            } else {
-                (-multiplier / maximum * resolution).round().max(1.) as i64
-            };
+        if resolution != 0. {
+            for (value, &multiplier) in free[positive..].iter_mut().zip(hint) {
+                *value = (-multiplier / maximum * resolution).round().max(1.) as i64;
+            }
         }
         let Some(dual) = space.reconstruct(&free)? else {
             continue;
         };
-        if dual[positive..].iter().any(|&value| value <= 0) {
+        let minimum = dual[positive..].iter().copied().min().unwrap_or(0);
+        if minimum <= 0
+            || (margin_tolerance > 0.
+                && (minimum as f64)
+                    <= margin_tolerance
+                        * dual.iter().map(|&w| (w as f64).powi(2)).sum::<f64>().sqrt())
+        {
             continue;
         }
         let mut valid = true;
-        for j in 0..k {
+        for j in 0..columns {
             crate::interrupt::checkpoint()?;
-            for (&r, value) in ids.iter().zip(&mut column) {
-                *value = design[(r, j)];
-            }
+            read_column(j, &mut column)?;
             if exact_dot(&column, &dual) != Some(Ordering::Equal) {
                 valid = false;
                 break;

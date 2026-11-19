@@ -1999,6 +1999,18 @@ or the cost of the dense positive-row elimination already performed, whichever
 is larger. Credit for that previous elimination is capped at 32 Mi coordinate
 operations.
 
+If a detector cannot establish positive support on a small generation, a
+bounded fallback searches the transposed raw design for an integer dual.
+Positive-outcome rows take pivot priority and have unrestricted weights.
+Rotating the boundary-row order can expose another pivot basis. Strict
+positivity on every active zero, the unit-dual relative margin, and an exact
+zero moment on every finite
+column, structural intercept, and absorbed intercept or slope certify the
+current sample. Terminal replay reconstructs the proof on that generation.
+The echelon must fit the existing proof workspace. Coordinate work is capped
+at eight times the admitted proof work allowance and at 32 Mi operations.
+Failure to reconstruct a witness within these limits is inconclusive.
+
 When a requested simplex exceeds its cap, a later comprehensive IR check can
 close the same generation. An unresolved cap returns r(909). Numerical
 simplex nonconvergence can also be resolved by an exact support proof or a

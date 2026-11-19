@@ -4776,6 +4776,10 @@ fn digest_certificate(
             digest.usize(levels)?;
             digest.bool(explicit_constant);
         }
+        crate::ppml_separation::SeparationCertificateProof::ExactPositiveDual { boundary_rows } => {
+            digest.byte(8);
+            digest.usize(boundary_rows)?;
+        }
         crate::ppml_separation::SeparationCertificateProof::SimplexPositiveRowCoverage {
             boundary_rows,
         } => {
