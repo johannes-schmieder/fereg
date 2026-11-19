@@ -217,6 +217,13 @@ pub enum SeparationCertificateProof {
 }
 
 impl SeparationCertificateProof {
+    pub(crate) fn exact_dense_simplex(self) -> bool {
+        matches!(
+            self,
+            Self::SimplexFullPositiveRank { .. } | Self::SimplexDualInfeasibility { .. }
+        )
+    }
+
     /// These raw-design witnesses are independent of the numerical method
     /// that requested them. Keep the published note bound to the witness.
     pub(crate) fn positive_support_note(self) -> Option<&'static str> {
@@ -231,6 +238,9 @@ impl SeparationCertificateProof {
         }
     }
 }
+
+pub(crate) const DENSE_SIMPLEX_REUSED_BY_IR: &str =
+    "iterated rectifier reused an independently replayed exact simplex proof";
 
 /// Collision-free identity of one accepted zero-only absorbed-intercept
 /// level.  The term id is invariant across prepared generations and the

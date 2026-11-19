@@ -2002,10 +2002,14 @@ operations.
 When a requested simplex exceeds its cap, a later comprehensive IR check can
 close the same generation. An unresolved cap returns r(909). Numerical
 simplex nonconvergence can also be resolved by an exact support proof or a
-later requested IR check. Once an exact positive-support result has been
-independently replayed, IR can use it on that generation and records zero
-projection iterations. Any deletion invalidates that evidence and restarts
-the chain. Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
+later requested IR check. Once an exact positive-support or raw-design simplex
+no-separation result has been independently replayed, IR can use it on that
+generation and records zero projection iterations. Reuse of a dense simplex
+proof must match the preceding simplex result on that generation. Any deletion
+invalidates that evidence and restarts the chain. A repeated normalized weighted
+iterate or exhausted weighted search can enter the same independently certified
+unit-metric recovery used for weighted numerical errors. Requested/default IR
+nonconvergence or uncertified output after recovery is fatal. Mu needs
 a fitted start and the same independent cone certificate; accepted Mu drops
 discard that entire fitted session.
 

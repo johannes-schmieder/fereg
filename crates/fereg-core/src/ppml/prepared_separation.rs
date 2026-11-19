@@ -1000,10 +1000,13 @@ where
                     None,
                 )?;
                 exact_support = replayed_certificate.as_ref().and_then(|certificate| {
-                    certificate
-                        .proof
-                        .positive_support_note()
-                        .map(|note| (certificate.clone(), note))
+                    let proof = certificate.proof;
+                    let note = proof.positive_support_note().or_else(|| {
+                        proof
+                            .exact_dense_simplex()
+                            .then_some(crate::ppml_separation::DENSE_SIMPLEX_REUSED_BY_IR)
+                    });
+                    note.map(|note| (certificate.clone(), note))
                 });
                 final_generation_replay_mask |= replay_bit(SeparationMethod::Simplex);
                 bounded_push(
@@ -2373,6 +2376,18 @@ fn prepared_weighted_rectifier(
         }
         result => result,
     };
+    let weighted = weighted.and_then(|(proposal, fixed_point)| {
+        if proposal.status == MethodStatus::MaximumIterations {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                format!(
+                    "{} after {} iterations",
+                    proposal.note.code, proposal.iterations
+                ),
+            ));
+        }
+        Ok((proposal, fixed_point))
+    });
     let (proposal, fixed_point) = match weighted {
         Ok(result) => result,
         Err(error)
@@ -2381,6 +2396,13 @@ fn prepared_weighted_rectifier(
                 ErrorCode::NonConvergence | ErrorCode::InvalidData
             ) =>
         {
+            if crate::diagnostics::solver_trace_enabled() {
+                crate::diagnostics::emit_solver_trace(&format!(
+                    "FEREG_SOLVER_TRACE|phase=weighted_ir_recovery|generation={}|reason={}",
+                    generation.generation(),
+                    error.message,
+                ));
+            }
             return stable::recover(
                 generation,
                 ppml,
@@ -2539,6 +2561,24 @@ fn prepared_iterated_rectifier(
                 ));
             }
         }
+        // Identical normalized inputs give an identical next projection.
+        // Check occasionally so a stalled weighted search can use the
+        // independent unit metric without slowing ordinary projections.
+        if iteration >= 8
+            && iteration.is_power_of_two()
+            && unchanged_ir_recurrence(
+                &u,
+                outcome,
+                &positive_direction,
+                threshold,
+                maximum_boundary,
+            )
+        {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                format!("prepared iterated rectifier repeated its normalized iterate at iteration {iteration}"),
+            ));
+        }
         update_ir_recurrence(&mut u, outcome, &positive_direction, threshold);
         lap.decided(trace::IrStep::Continued(trace::support(&u)));
     }
@@ -2558,6 +2598,31 @@ fn prepared_iterated_rectifier(
         },
         None,
     ))
+}
+
+fn unchanged_ir_recurrence(
+    u: &[f64],
+    outcome: &[f64],
+    fitted: &[f64],
+    threshold: f64,
+    maximum_boundary: f64,
+) -> bool {
+    let scale = if maximum_boundary > threshold {
+        maximum_boundary
+    } else {
+        1.0
+    };
+    u.iter()
+        .zip(outcome)
+        .zip(fitted)
+        .all(|((&before, &y), &value)| {
+            let next = if y == 0.0 && value > threshold {
+                value / scale
+            } else {
+                0.0
+            };
+            before.to_bits() == next.to_bits()
+        })
 }
 
 fn update_ir_recurrence(

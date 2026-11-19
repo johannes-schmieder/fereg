@@ -1475,6 +1475,26 @@ fn unresolved_simplex_requires_a_certified_comprehensive_ir_closure() {
     };
     validate_separation_report(&unresolved, simplex_ir, &candidate_original_rows, 1, &[], 0)
         .expect("same-generation comprehensive IR closes simplex uncertainty");
+
+    let certificate = crate::ppml_separation::no_separation_certificate(
+        SeparationCertificateProof::SimplexFullPositiveRank { columns: 1 },
+    );
+    let ir = &mut unresolved.methods[1];
+    ir.certificate = Some(certificate.clone());
+    ir.iterations = 0;
+    ir.note = DENSE_SIMPLEX_REUSED_BY_IR.into();
+    validate_separation_report(&unresolved, simplex_ir, &candidate_original_rows, 1, &[], 0)
+        .expect_err("IR cannot borrow a proof from an uncertified simplex run");
+    let simplex = &mut unresolved.methods[0];
+    simplex.status = MethodStatus::NoSeparation;
+    simplex.certificate = Some(certificate);
+    simplex.iterations = 0;
+    simplex.note = "finite regressors have full column rank on the positive-outcome sample".into();
+    validate_separation_report(&unresolved, simplex_ir, &candidate_original_rows, 1, &[], 0)
+        .expect("IR may reuse the exact proof on the same generation");
+    unresolved.methods[1].iterations = 1;
+    validate_separation_report(&unresolved, simplex_ir, &candidate_original_rows, 1, &[], 0)
+        .expect_err("a proof-reuse receipt cannot claim an IR projection");
 }
 
 #[test]

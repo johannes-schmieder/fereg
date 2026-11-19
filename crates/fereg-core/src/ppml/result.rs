@@ -32,6 +32,7 @@ use crate::ppml_separation::{
     separation_method_count, separation_workspace_requirements, MethodStatus,
     SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
     SeparationMethodReport, SeparationMethods, SeparationNote, SeparationReport,
+    DENSE_SIMPLEX_REUSED_BY_IR,
 };
 use std::sync::Arc;
 
@@ -2872,6 +2873,7 @@ fn validate_requested_separation_chain(
     let mut position = 0_usize;
     for inspected_generation in 0..=report.generations {
         let mut simplex_unresolved = false;
+        let mut simplex_certificate = None;
 
         if config.drop_singletons {
             let execution = take_primary_execution(
@@ -2956,6 +2958,7 @@ fn validate_requested_separation_chain(
                     "requested simplex detector has a nonterminal no-drop status",
                 ));
             }
+            simplex_certificate = execution.certificate.as_ref();
         }
 
         if config.methods.iterated_rectifier {
@@ -2988,6 +2991,14 @@ fn validate_requested_separation_chain(
             if simplex_unresolved && execution.status != MethodStatus::NoSeparation {
                 return Err(chain_error(
                     "unresolved simplex requires an IR no-separation certificate from the same stable generation",
+                ));
+            }
+            if execution.note.code == DENSE_SIMPLEX_REUSED_BY_IR
+                && (execution.certificate.as_ref() != simplex_certificate
+                    || !simplex_certificate.is_some_and(|c| c.proof.exact_dense_simplex()))
+            {
+                return Err(chain_error(
+                    "iterated rectifier reused a simplex proof without matching same-generation evidence",
                 ));
             }
         } else if simplex_unresolved {
@@ -3204,12 +3215,16 @@ fn validate_separation_method(
     }
     if let Some(certificate) = method.certificate.as_ref() {
         use crate::ppml_separation::SeparationCertificateProof;
+        let simplex_or_reused = method.method == SeparationMethod::Simplex
+            || (method.method == SeparationMethod::IteratedRectifier
+                && method.iterations == 0
+                && method.note.code == DENSE_SIMPLEX_REUSED_BY_IR);
         let proof_matches_method = match (method.method, method.status, certificate.proof) {
             (
-                SeparationMethod::Simplex,
+                SeparationMethod::Simplex | SeparationMethod::IteratedRectifier,
                 MethodStatus::NoSeparation,
                 SeparationCertificateProof::SimplexFullPositiveRank { columns },
-            ) => columns == full_model_columns && columns > 0,
+            ) => simplex_or_reused && columns == full_model_columns && columns > 0,
             (
                 SeparationMethod::Simplex
                 | SeparationMethod::IteratedRectifier
@@ -3258,13 +3273,18 @@ fn validate_separation_method(
                 fixed_effects,
             ),
             (
-                SeparationMethod::Simplex,
+                SeparationMethod::Simplex | SeparationMethod::IteratedRectifier,
                 MethodStatus::NoSeparation,
                 SeparationCertificateProof::SimplexDualInfeasibility {
                     boundary_rows,
                     nullity,
                 },
-            ) => boundary_rows > 0 && nullity > 0 && nullity <= full_model_columns,
+            ) => {
+                simplex_or_reused
+                    && boundary_rows > 0
+                    && nullity > 0
+                    && nullity <= full_model_columns
+            }
             (
                 SeparationMethod::IteratedRectifier,
                 MethodStatus::NoSeparation,
@@ -3504,7 +3524,7 @@ fn separation_note_compatible(
         | (
             SeparationMethod::IteratedRectifier,
             MethodStatus::NoSeparation,
-            "prepared iterated rectifier converged to zero",
+            "prepared iterated rectifier converged to zero" | DENSE_SIMPLEX_REUSED_BY_IR,
         )
         | (
             SeparationMethod::IteratedRectifier,
