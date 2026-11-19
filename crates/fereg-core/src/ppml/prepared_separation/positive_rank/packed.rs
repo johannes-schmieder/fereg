@@ -101,257 +101,333 @@ fn spend(work: &mut usize, cost: usize) -> bool {
     true
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn spans(
-    model: &PreparedPpmlModelGeneration,
-    levels: &LevelIndex,
-    finite: impl Iterator<Item = usize>,
-    others: &[(usize, &[u32])],
-    anchor_effect: usize,
-    mut ray: Option<&mut Vec<i64>>,
-    width: usize,
-    limit: usize,
-    mut work: usize,
-    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-) -> Result<bool> {
-    let Some(square) = width.checked_mul(width.saturating_add(1)) else {
-        return Ok(false);
-    };
-    let bytes = square / 2;
-    // Axis descriptors, two modular bytes, sparse indices and 2w raw values
-    // and integer coefficients. All allocations below reserve exact capacities.
-    let per_axis = std::mem::size_of::<Axis>() + 2 + std::mem::size_of::<usize>() + 4 * 8;
-    let raw_width = width
-        .saturating_add(levels.n_levels())
-        .saturating_add(others.len())
-        .saturating_add(1);
-    let extra = if ray.is_some() {
-        raw_width
+pub(super) struct AnchoredDesign<'model, 'codes> {
+    pub(super) model: &'model PreparedPpmlModelGeneration,
+    pub(super) levels: &'codes LevelIndex,
+    pub(super) others: &'model [(usize, &'codes [u32])],
+    pub(super) anchor_effect: usize,
+    pub(super) width: usize,
+}
+
+impl AnchoredDesign<'_, '_> {
+    pub(super) fn spans(
+        &self,
+        finite: impl Iterator<Item = usize>,
+        ray: Option<&mut Vec<i64>>,
+        (limit, mut work): (usize, usize),
+        interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    ) -> Result<bool> {
+        let Self {
+            levels,
+            others,
+            width,
+            ..
+        } = *self;
+        let Some(square) = width.checked_mul(width.saturating_add(1)) else {
+            return Ok(false);
+        };
+        let bytes = square / 2;
+        // Axis descriptors, two modular bytes, sparse indices and 2w raw values
+        // and integer coefficients. All allocations below reserve exact capacities.
+        let per_axis = std::mem::size_of::<Axis>() + 2 + std::mem::size_of::<usize>() + 4 * 8;
+        let raw_width = width
             .saturating_add(levels.n_levels())
-            .saturating_mul(8)
-    } else {
-        0
-    };
-    if width == 0
-        || bytes
-            .saturating_add(extra)
-            .saturating_add(width.saturating_mul(per_axis))
-            .div_ceil(8)
-            > limit
-    {
-        return Ok(false);
-    }
-    let mut axes = Vec::new();
-    axes.try_reserve_exact(width)
-        .map_err(|_| allocation("unable to reserve anchored rank coordinates"))?;
-    axes.extend(finite.map(Axis::Finite));
-    for (block, &(start, codes)) in others.iter().enumerate() {
-        let end = others.get(block + 1).map_or(width, |&(s, _)| s);
-        axes.extend((1..=end - start).map(|level| Axis::Level(codes, level as u32)));
-    }
-    let mut tri = Triangle {
-        width,
-        bank: fallible_filled(bytes, 0, "unable to reserve packed rank pivots")?,
-    };
-    let mut anchor = fallible_filled(width, 0u8, "unable to reserve packed rank anchor")?;
-    let mut row = fallible_filled(width, 0u8, "unable to reserve packed rank row")?;
-    let write = |r, dest: &mut [u8]| -> Result<()> {
-        for (dst, axis) in dest.iter_mut().zip(&axes) {
-            let v = axis.at(model, r)?;
-            if !v.is_finite() {
-                return Err(invalid_argument("nonfinite anchored rank coordinate"));
-            }
-            *dst = byte_residue(v);
-        }
-        Ok(())
-    };
-    for g in 0..levels.n_levels() {
-        interrupt(PpmlInterruptPoint::SeparationSimplex)?;
-        let members = levels.checked_members(g)?;
-        let mut anchored = false;
-        for (pos, &r) in members.iter().enumerate() {
-            crate::interrupt::row_checkpoint(pos)?;
-            if model.outcome()[r] <= 0. {
-                continue;
-            }
-            if !spend(&mut work, width) {
-                return Ok(false);
-            }
-            if !anchored {
-                write(r, &mut anchor)?;
-                anchored = true;
-                continue;
-            }
-            write(r, &mut row)?;
-            for (v, &a) in row.iter_mut().zip(&anchor) {
-                *v = ((u16::from(*v) + PRIME - u16::from(a)) % PRIME) as u8;
-            }
-            if !tri.insert(&mut row, &mut work) {
-                return Ok(false);
-            }
-        }
-        if !anchored {
+            .saturating_add(others.len())
+            .saturating_add(1);
+        let extra = if ray.is_some() {
+            raw_width
+                .saturating_add(levels.n_levels())
+                .saturating_mul(8)
+        } else {
+            0
+        };
+        if width == 0
+            || bytes
+                .saturating_add(extra)
+                .saturating_add(width.saturating_mul(per_axis))
+                .div_ceil(8)
+                > limit
+        {
             return Ok(false);
         }
+        let mut axes = Vec::new();
+        axes.try_reserve_exact(width)
+            .map_err(|_| allocation("unable to reserve anchored rank coordinates"))?;
+        axes.extend(finite.map(Axis::Finite));
+        for (block, &(start, codes)) in others.iter().enumerate() {
+            let end = others.get(block + 1).map_or(width, |&(s, _)| s);
+            axes.extend((1..=end - start).map(|level| Axis::Level(codes, level as u32)));
+        }
+        let mut tri = Triangle {
+            width,
+            bank: fallible_filled(bytes, 0, "unable to reserve packed rank pivots")?,
+        };
+        let mut row = fallible_filled(width, 0u8, "unable to reserve packed rank row")?;
+        if !self.build_basis(&axes, &mut tri, &mut row, &mut work, interrupt)? {
+            return Ok(false);
+        }
+        self.replay_aliases(&axes, &tri, &mut row, ray, work, interrupt)
     }
 
-    let mut indices = Vec::new();
-    indices
-        .try_reserve_exact(width)
-        .map_err(|_| allocation("unable to reserve anchored alias indices"))?;
-    let mut coefficients =
-        fallible_filled(2 * width, 0i64, "unable to reserve anchored alias weights")?;
-    let mut values = fallible_filled(
-        2 * width,
-        0.0,
-        "unable to reserve anchored alias coordinates",
-    )?;
-    let mut all_aliased = true;
-    let mut offsets = fallible_filled(
-        if ray.is_some() { levels.n_levels() } else { 0 },
-        0i64,
-        "unable to reserve candidate anchor offsets",
-    )?;
-    'relation: for free in 0..width {
-        if tri.pivot(free) {
-            continue;
-        }
-        interrupt(PpmlInterruptPoint::SeparationSimplex)?;
-        if !spend(&mut work, (free + 1).saturating_pow(2)) {
-            return Ok(false);
-        }
-        tri.relation(free, &mut row);
-        indices.clear();
-        indices.extend((0..width).filter(|&c| row[c] != 0));
-        let s = indices.len();
-        for (i, &c) in indices.iter().enumerate() {
-            let v = i64::from(row[c]);
-            coefficients[i] = if v > i64::from(PRIME / 2) {
-                v - i64::from(PRIME)
-            } else {
-                v
-            };
-            coefficients[s + i] = -coefficients[i];
-        }
-        // Concatenate the original raw coordinates and negated anchor
-        // coefficients. Subtracting floating coordinates first can round away
-        // a nonzero contrast, especially on extreme scales.
-        let mut orientation = None;
-        let mut integral = true;
-        for g in 0..levels.n_levels() {
-            let members = levels.checked_members(g)?;
-            if !spend(
-                &mut work,
-                members.len().saturating_add(1).saturating_add(2 * s),
-            ) {
-                return Ok(false);
-            }
-            let mut first = None;
-            for (position, &r) in members.iter().enumerate() {
-                crate::interrupt::row_checkpoint(position)?;
-                if model.outcome()[r] > 0. {
-                    first = Some(r);
-                    break;
+    fn build_basis(
+        &self,
+        axes: &[Axis<'_>],
+        tri: &mut Triangle,
+        row: &mut [u8],
+        work: &mut usize,
+        interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    ) -> Result<bool> {
+        let Self {
+            model,
+            levels,
+            width,
+            ..
+        } = *self;
+        let mut anchor = fallible_filled(width, 0u8, "unable to reserve packed rank anchor")?;
+        let write = |r, dest: &mut [u8]| -> Result<()> {
+            for (dst, axis) in dest.iter_mut().zip(axes) {
+                let v = axis.at(model, r)?;
+                if !v.is_finite() {
+                    return Err(invalid_argument("nonfinite anchored rank coordinate"));
                 }
+                *dst = byte_residue(v);
             }
-            let Some(first) = first else { return Ok(false) };
-            for (i, &c) in indices.iter().enumerate() {
-                values[s + i] = axes[c].at(model, first)?;
-            }
-            if ray.is_some() {
-                let Some((_, offset)) = exact_score(&values[s..2 * s], &coefficients[s..2 * s])
-                else {
-                    return Ok(false);
-                };
-                integral &= offset.fract() == 0. && offset.abs() <= (1u64 << 53) as f64;
-                offsets[g] = offset as i64;
-            }
+            Ok(())
+        };
+        for g in 0..levels.n_levels() {
+            interrupt(PpmlInterruptPoint::SeparationSimplex)?;
+            let members = levels.checked_members(g)?;
+            let mut anchored = false;
             for (pos, &r) in members.iter().enumerate() {
                 crate::interrupt::row_checkpoint(pos)?;
-                if r == first {
+                if model.outcome()[r] <= 0. {
                     continue;
                 }
-                if !spend(&mut work, 2 * s) {
+                if !spend(work, width) {
                     return Ok(false);
                 }
-                for (i, &c) in indices.iter().enumerate() {
-                    values[i] = axes[c].at(model, r)?;
-                }
-                let Some((sign, _)) = exact_score(&values[..2 * s], &coefficients[..2 * s]) else {
-                    return Ok(false);
-                };
-                if sign == Ordering::Equal {
+                if !anchored {
+                    write(r, &mut anchor)?;
+                    anchored = true;
                     continue;
                 }
-                all_aliased = false;
-                if ray.is_none() {
+                write(r, row)?;
+                for (v, &a) in row.iter_mut().zip(&anchor) {
+                    *v = ((u16::from(*v) + PRIME - u16::from(a)) % PRIME) as u8;
+                }
+                if !tri.insert(row, work) {
                     return Ok(false);
                 }
-                if model.outcome()[r] > 0. || orientation.is_some_and(|seen| seen != sign) {
-                    continue 'relation;
-                }
-                orientation = Some(sign);
             }
-        }
-        if let (Some(sign), Some(output)) = (orientation, ray.as_deref_mut()) {
-            if !integral {
-                continue;
-            }
-            // Materialize a raw integer proposal; the independent primal replay
-            // checks the anchor coefficients and every observation again.
-            let finite_count = model.model().columns.len();
-            let raw_actual = finite_count
-                + levels.n_levels()
-                + others
-                    .iter()
-                    .enumerate()
-                    .map(|(b, &(start, _))| 1 + others.get(b + 1).map_or(width, |o| o.0) - start)
-                    .sum::<usize>();
-            // The generic witness is replayed on the full design, not
-            // its compressed axes. Reserve work for each row-wide check.
-            let replay_work = model
-                .outcome()
-                .len()
-                .saturating_mul(raw_actual)
-                .saturating_mul(5);
-            if !spend(&mut work, replay_work) {
+            if !anchored {
                 return Ok(false);
             }
-            *output = fallible_filled(
-                raw_actual,
-                0i64,
-                "unable to reserve anchored primal coefficients",
-            )?;
-            let orientation = if sign == Ordering::Greater { -1 } else { 1 };
-            for (i, &c) in indices.iter().enumerate() {
-                if let Axis::Finite(index) = axes[c] {
-                    output[index] = orientation * coefficients[i];
-                }
-            }
-            let mut start = finite_count;
-            let mut block = 0;
-            for e in 0..=others.len() {
-                if e == anchor_effect {
-                    for (v, &a) in output[start..].iter_mut().zip(&offsets) {
-                        *v = orientation * a;
-                    }
-                    start += offsets.len();
-                } else {
-                    let lo = others[block].0;
-                    let hi = others.get(block + 1).map_or(width, |o| o.0);
-                    for (i, &c) in indices.iter().enumerate() {
-                        if (lo..hi).contains(&c) {
-                            output[start + 1 + c - lo] = orientation * coefficients[i];
-                        }
-                    }
-                    start += 1 + hi - lo;
-                    block += 1;
-                }
-            }
-            return Ok(false);
         }
+
+        Ok(true)
     }
-    Ok(all_aliased)
+
+    fn replay_aliases(
+        &self,
+        axes: &[Axis<'_>],
+        tri: &Triangle,
+        row: &mut [u8],
+        mut ray: Option<&mut Vec<i64>>,
+        mut work: usize,
+        interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    ) -> Result<bool> {
+        let Self {
+            model,
+            levels,
+            width,
+            ..
+        } = *self;
+        let mut indices = Vec::new();
+        indices
+            .try_reserve_exact(width)
+            .map_err(|_| allocation("unable to reserve anchored alias indices"))?;
+        let mut coefficients =
+            fallible_filled(2 * width, 0i64, "unable to reserve anchored alias weights")?;
+        let mut values = fallible_filled(
+            2 * width,
+            0.0,
+            "unable to reserve anchored alias coordinates",
+        )?;
+        let mut all_aliased = true;
+        let mut offsets = fallible_filled(
+            if ray.is_some() { levels.n_levels() } else { 0 },
+            0i64,
+            "unable to reserve candidate anchor offsets",
+        )?;
+        'relation: for free in 0..width {
+            if tri.pivot(free) {
+                continue;
+            }
+            interrupt(PpmlInterruptPoint::SeparationSimplex)?;
+            if !spend(&mut work, (free + 1).saturating_pow(2)) {
+                return Ok(false);
+            }
+            tri.relation(free, row);
+            indices.clear();
+            indices.extend((0..width).filter(|&c| row[c] != 0));
+            let s = indices.len();
+            for (i, &c) in indices.iter().enumerate() {
+                let v = i64::from(row[c]);
+                coefficients[i] = if v > i64::from(PRIME / 2) {
+                    v - i64::from(PRIME)
+                } else {
+                    v
+                };
+                coefficients[s + i] = -coefficients[i];
+            }
+            // Concatenate the original raw coordinates and negated anchor
+            // coefficients. Subtracting floating coordinates first can round away
+            // a nonzero contrast, especially on extreme scales.
+            let mut orientation = None;
+            let mut integral = true;
+            for g in 0..levels.n_levels() {
+                let members = levels.checked_members(g)?;
+                if !spend(
+                    &mut work,
+                    members.len().saturating_add(1).saturating_add(2 * s),
+                ) {
+                    return Ok(false);
+                }
+                let mut first = None;
+                for (position, &r) in members.iter().enumerate() {
+                    crate::interrupt::row_checkpoint(position)?;
+                    if model.outcome()[r] > 0. {
+                        first = Some(r);
+                        break;
+                    }
+                }
+                let Some(first) = first else { return Ok(false) };
+                for (i, &c) in indices.iter().enumerate() {
+                    values[s + i] = axes[c].at(model, first)?;
+                }
+                if let Some(anchor_offset) = offsets.get_mut(g) {
+                    let Some((_, offset)) = exact_score(&values[s..2 * s], &coefficients[s..2 * s])
+                    else {
+                        return Ok(false);
+                    };
+                    integral &= offset.fract() == 0. && offset.abs() <= (1u64 << 53) as f64;
+                    *anchor_offset = offset as i64;
+                }
+                for (pos, &r) in members.iter().enumerate() {
+                    crate::interrupt::row_checkpoint(pos)?;
+                    if r == first {
+                        continue;
+                    }
+                    if !spend(&mut work, 2 * s) {
+                        return Ok(false);
+                    }
+                    for (i, &c) in indices.iter().enumerate() {
+                        values[i] = axes[c].at(model, r)?;
+                    }
+                    let Some((sign, _)) = exact_score(&values[..2 * s], &coefficients[..2 * s])
+                    else {
+                        return Ok(false);
+                    };
+                    if sign == Ordering::Equal {
+                        continue;
+                    }
+                    all_aliased = false;
+                    if ray.is_none() {
+                        return Ok(false);
+                    }
+                    if model.outcome()[r] > 0. || orientation.is_some_and(|seen| seen != sign) {
+                        continue 'relation;
+                    }
+                    orientation = Some(sign);
+                }
+            }
+            if let (Some(sign), Some(output)) = (orientation, ray.as_deref_mut()) {
+                if !integral {
+                    continue;
+                }
+                self.materialize_ray(
+                    axes,
+                    &indices,
+                    &coefficients,
+                    &offsets,
+                    sign,
+                    (output, &mut work),
+                )?;
+                return Ok(false);
+            }
+        }
+        Ok(all_aliased)
+    }
+
+    fn materialize_ray(
+        &self,
+        axes: &[Axis<'_>],
+        indices: &[usize],
+        coefficients: &[i64],
+        offsets: &[i64],
+        sign: Ordering,
+        (output, work): (&mut Vec<i64>, &mut usize),
+    ) -> Result<()> {
+        let Self {
+            model,
+            levels,
+            others,
+            anchor_effect,
+            width,
+        } = *self;
+        // Materialize a raw integer proposal; the independent primal replay
+        // checks the anchor coefficients and every observation again.
+        let finite_count = model.model().columns.len();
+        let raw_actual = finite_count
+            + levels.n_levels()
+            + others
+                .iter()
+                .enumerate()
+                .map(|(b, &(start, _))| 1 + others.get(b + 1).map_or(width, |o| o.0) - start)
+                .sum::<usize>();
+        // The generic witness is replayed on the full design, not
+        // its compressed axes. Reserve work for each row-wide check.
+        let replay_work = model
+            .outcome()
+            .len()
+            .saturating_mul(raw_actual)
+            .saturating_mul(5);
+        if !spend(work, replay_work) {
+            return Ok(());
+        }
+        *output = fallible_filled(
+            raw_actual,
+            0i64,
+            "unable to reserve anchored primal coefficients",
+        )?;
+        let orientation = if sign == Ordering::Greater { -1 } else { 1 };
+        for (i, &c) in indices.iter().enumerate() {
+            if let Axis::Finite(index) = axes[c] {
+                output[index] = orientation * coefficients[i];
+            }
+        }
+        let mut start = finite_count;
+        let mut block = 0;
+        for e in 0..=others.len() {
+            if e == anchor_effect {
+                for (v, &a) in output[start..].iter_mut().zip(offsets) {
+                    *v = orientation * a;
+                }
+                start += offsets.len();
+            } else {
+                let lo = others[block].0;
+                let hi = others.get(block + 1).map_or(width, |o| o.0);
+                for (i, &c) in indices.iter().enumerate() {
+                    if (lo..hi).contains(&c) {
+                        output[start + 1 + c - lo] = orientation * coefficients[i];
+                    }
+                }
+                start += 1 + hi - lo;
+                block += 1;
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

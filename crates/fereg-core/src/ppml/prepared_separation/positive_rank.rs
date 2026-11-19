@@ -41,16 +41,16 @@ pub(super) fn detect_for(
     let work = primal::ProofBudget::new(generation, method, config)
         .work_cells
         .saturating_mul(8);
-    let bounds = (config.simplex_max_iterations, work);
+    let independent = |constant| RankMode::Independent {
+        constant,
+        iterations: config.simplex_max_iterations,
+    };
     if let Some(proof) = anchored(
         generation,
         topology,
         positive,
-        bounds,
-        limit,
-        &[],
-        false,
-        None,
+        (limit, work),
+        independent(&[]),
         interrupt,
     )? {
         return Ok(Some(no_separation(method, proof)));
@@ -102,11 +102,8 @@ pub(super) fn detect_for(
             generation,
             topology,
             positive,
-            bounds,
-            limit - constant.len(),
-            &constant,
-            false,
-            None,
+            (limit - constant.len(), work),
+            independent(&constant),
             interrupt,
         )?;
         return Ok(proof.map(|proof| no_separation(method, proof)));
@@ -132,11 +129,8 @@ pub(super) fn aliased(
         generation,
         topology,
         positive,
-        (0, work),
-        limit,
-        &[],
-        true,
-        None,
+        (limit, work),
+        RankMode::Packed { ray: None },
         interrupt,
     )?
     .map(|proof| no_separation(method, proof)))
@@ -155,11 +149,10 @@ pub(super) fn packed_candidate(
         generation,
         &topology,
         generation.outcome().iter().filter(|&&y| y > 0.).count(),
-        (0, work),
-        budget.words.saturating_sub(metadata),
-        &[],
-        true,
-        Some(&mut values),
+        (budget.words.saturating_sub(metadata), work),
+        RankMode::Packed {
+            ray: Some(&mut values),
+        },
         &mut |_| crate::interrupt::checkpoint(),
     )?;
     if values.is_empty() {
@@ -191,6 +184,16 @@ fn codes(generation: &PreparedPpmlModelGeneration, source: usize) -> Result<&[u3
     .ok_or_else(|| invalid_argument("invalid finalized topology source for positive-support proof"))
 }
 
+enum RankMode<'a> {
+    Independent {
+        constant: &'a [bool],
+        iterations: usize,
+    },
+    Packed {
+        ray: Option<&'a mut Vec<i64>>,
+    },
+}
+
 /// Absorb the largest categorical intercept by subtracting a positive row in
 /// each of its levels. Other effects require only L-1 dummies, as their common
 /// constants belong to the anchor intercepts. A nonzero modular minor is an
@@ -199,11 +202,8 @@ fn anchored(
     generation: &PreparedPpmlModelGeneration,
     topology: &DetectorTopology<'_>,
     positive: usize,
-    (iterations, work): (usize, usize),
-    limit: usize,
-    constant: &[bool],
-    aliases: bool,
-    ray: Option<&mut Vec<i64>>,
+    (limit, work): (usize, usize),
+    mode: RankMode<'_>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<SeparationCertificateProof>> {
     if topology
@@ -220,6 +220,11 @@ fn anchored(
         return Ok(None);
     };
     let levels = topology.sources[topology.effect_to_source[anchor_effect]];
+    let constant = match mode {
+        RankMode::Independent { constant, .. } => constant,
+        RankMode::Packed { .. } => &[],
+    };
+    let independent = matches!(mode, RankMode::Independent { .. });
     let view = generation.fit_view();
     let columns = &view.model().columns;
     let slopes = || {
@@ -238,7 +243,7 @@ fn anchored(
     };
     let constant_finite = constant.iter().filter(|&&flag| flag).count();
     if (width == 0 && constant_finite == 0 && topology.effect_specs.len() == 1)
-        || (!aliases && positive < levels.n_levels().saturating_add(width))
+        || (independent && positive < levels.n_levels().saturating_add(width))
     {
         return Ok(None);
     }
@@ -254,7 +259,7 @@ fn anchored(
     let required = basis_cells
         .saturating_add(width.saturating_mul(2))
         .saturating_add(other_cells);
-    if other_cells > limit || (!aliases && required > limit) {
+    if other_cells > limit || (independent && required > limit) {
         return Ok(None);
     }
     interrupt(PpmlInterruptPoint::SeparationSimplex)?;
@@ -287,21 +292,16 @@ fn anchored(
         }
         Ok(())
     };
-    let spanned = if aliases {
-        packed::spans(
-            generation,
+    let spanned = match mode {
+        RankMode::Packed { ray } => packed::AnchoredDesign {
+            model: generation,
             levels,
-            slopes(),
-            &others,
+            others: &others,
             anchor_effect,
-            ray,
             width,
-            limit - other_cells,
-            work,
-            interrupt,
-        )?
-    } else {
-        positive_contrasts_span(
+        }
+        .spans(slopes(), ray, (limit - other_cells, work), interrupt)?,
+        RankMode::Independent { iterations, .. } => positive_contrasts_span(
             generation.outcome(),
             levels,
             width,
@@ -309,7 +309,7 @@ fn anchored(
             (iterations, work),
             write_row,
             interrupt,
-        )?
+        )?,
     };
     if !spanned {
         return Ok(None);
