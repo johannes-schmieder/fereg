@@ -1,5 +1,26 @@
 # Validation status
 
+## 0.6.5 release qualification, November 19, 2026
+
+The source archive at `03606d77` contains the locked dependency closure and
+built the signed universal macOS plugin offline. The dependency audit found
+zero advisories. The macOS, Linux x86-64, and Windows x86-64 plugins passed
+their respective native loading checks.
+
+- Apple Silicon and Linux each passed all 181 applicable licensed Stata/MP
+  19 fixtures. Eight targeted tests passed under Rosetta and three under
+  Stata/MP 18 on Apple Silicon.
+- The Windows Stata/MP 19 suite passed on the verified installed plugin,
+  including new separation and weighted Poisson fixtures and sequential
+  PyStata calls. The test host stopped after collecting its receipt.
+- The Mac release binary passed 119 runs of the 17 public ppmlhdfe
+  separation examples at `b85665d8` across alternative encodings, methods,
+  and singleton policies. An independent oracle checked every retained
+  row and the finite fitted means. The 0.6.5 binary also reproduced
+  the expected outcomes in ten separately reported do-files locally.
+- The staged package passed its installation checks. Native Intel Mac
+  hardware is outside this qualification.
+
 ## Numerical regression tests following the November 18 examples
 
 The public Stata fixtures include an OLS and Poisson change-of-units oracle,
