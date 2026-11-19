@@ -1152,6 +1152,18 @@ fn estimate_route(
         separation_peaks,
     )?;
 
+    // A bounded exact structural-rank check runs before sandwich inference.
+    // Give it only unused space inside the already admitted fit-lifetime peak.
+    // A later generation may be smaller, so a wide input can use the capped bank.
+    let extra_rank_workspace = if axes.fe >= 3 {
+        super::structural_rank::workspace_bound(axes.fe_directions + axes.k, axes.fe)
+            .min(super::structural_rank::MAX_BYTES)
+            .saturating_sub(results.inference_workspace_bytes)
+            .min(final_peaks.peak_bytes - final_peaks.inference_peak_bytes)
+    } else {
+        0
+    };
+
     Ok(PpmlMemoryInventory {
         preparation_metadata_transient_bytes: dimensions.metadata.preparation_transient_bytes,
         result_metadata_bytes: iteration_peaks.result_metadata_bytes,
@@ -1203,7 +1215,7 @@ fn estimate_route(
         separation_workspace_bytes: detection.separation_workspace_bytes,
         simplex_combined_bytes: detection.simplex_combined_bytes,
         mu_exploration_retained_bytes: detection.mu_exploration_retained_bytes,
-        inference_workspace_bytes: results.inference_workspace_bytes,
+        inference_workspace_bytes: results.inference_workspace_bytes + extra_rank_workspace,
         inference_result_bytes: results.inference_result_bytes,
         fe_recovery_workspace_bytes: publication.fe_recovery_workspace_bytes,
         saved_output_bytes: publication.saved_output_bytes,
@@ -1225,7 +1237,7 @@ fn estimate_route(
         strict_final_transient_bytes: final_peaks.strict_final_transient_bytes,
         strict_final_metadata_transient_bytes: final_peaks.strict_final_metadata_transient_bytes,
         strict_final_peak_bytes: final_peaks.strict_final_peak_bytes,
-        inference_peak_bytes: final_peaks.inference_peak_bytes,
+        inference_peak_bytes: final_peaks.inference_peak_bytes + extra_rank_workspace,
         fe_recovery_peak_bytes: final_peaks.fe_recovery_peak_bytes,
         publication_peak_bytes: final_peaks.publication_peak_bytes,
         peak_bytes: final_peaks.peak_bytes,

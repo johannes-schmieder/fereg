@@ -401,5 +401,45 @@ egen double additive_v = total(tag*((yab-ya*yb/yt)/ya)^2)
 `feppml_test_command' y i.a i.b, vce(cluster ab)
 assert _se[1.a] > 0 & abs(_se[1.a]^2/(4/3*additive_v)-1) < 1e-8
 
+* On the three observed cells c=a+b exactly, although each pair of
+* partitions is connected. The three FE blocks span three cell means.
+clear
+input byte(y a b x)
+1 0 0 0
+3 0 0 0
+4 0 0 1
+2 1 0 0
+5 0 1 0
+end
+generate byte c = a+b
+generate byte tag = _n==1
+generate byte fw = 2
+`feppml_test_command' y if _n!=3, absorb(a b c) keepsingletons
+assert e(N)==4 & e(feppml_model_rank)==3 & e(df_structural)==1
+assert e(df_a)==2 & e(feppml_rank_is_approximate)==0
+mata: assert(all(st_matrix("e(dof_table)") :== (2,1,1,0,0 \ 2,1,1,0,0 \ 2,2,0,0,0)))
+
+* x identifies the extra log contrast between means 4 and 2. Compare its
+* sandwich variance with the same model parameterized by two finite dummies.
+`feppml_test_command' y x i.a i.b, vce(robust)
+tempname v_x
+scalar `v_x' = _se[x]^2
+`feppml_test_command' y x, absorb(a b c) keepsingletons vce(robust) mu(rank_mu)
+assert e(N)==5 & e(feppml_model_rank)==4 & e(df_structural)==1
+assert e(df_a)==2 & e(feppml_rank_is_approximate)==0
+assert abs(_b[x]-ln(2)) < 1e-8
+assert reldif(_se[x]^2, scalar(`v_x')) < 1e-8
+assert abs(rank_mu-cond(_n<=2,2,y)) < 1e-8
+
+* tag identifies the last independent direction: the model is saturated.
+capture noisily `feppml_test_command' y tag if _n!=3, absorb(a b c) keepsingletons
+assert _rc==2001
+
+* With replicates the ordinary pairwise calculation already accepts; retain
+* its conservative df and per-channel reporting convention.
+`feppml_test_command' y x [fw=fw], absorb(a b c) keepsingletons
+assert e(N_effective)==10 & e(feppml_model_rank)==5 & e(df_structural)==5
+assert e(feppml_rank_is_approximate)==1
+
 if !`feppml_hidden_wrapper' ///
     display as result "END_FIXTURE|feppml_weights_inference|rc=0"

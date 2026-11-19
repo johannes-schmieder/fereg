@@ -1,7 +1,7 @@
 mod slope_recovery;
 
 use super::family::replay_final_objectives_with_threads;
-use super::prepared_model::PreparedPpmlModel;
+use super::prepared_model::{PreparedPpmlModel, PreparedPpmlModelGeneration};
 use super::prepared_separation::candidate_ledger_hash_candidate_axis;
 use super::prepared_separation::CertifiedSeparationSeal;
 #[cfg(test)]
@@ -528,9 +528,12 @@ pub(crate) struct PreparedPpmlRecoveredFixedEffects {
 /// the shared topology algorithms. `requested_saved_channels` is in the same
 /// intercept-then-slopes order as the prepared DoF rows.
 pub(crate) fn prepare_ppml_fixed_effect_report(
-    model: &PreparedPpmlModel,
+    generation: &PreparedPpmlModelGeneration,
     requested_saved_channels: &[bool],
+    finite_within_rank: usize,
+    rank_workspace_bytes: u128,
 ) -> Result<PreparedPpmlFixedEffectReport> {
+    let model = generation.prepared();
     let prepared = model.as_ref();
     if prepared.effect_specs().is_empty() {
         if !requested_saved_channels.is_empty() {
@@ -566,6 +569,12 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
     // the subsequent structural-normalization and inference corrections.
     let mut report =
         prepared.absorbed_dof(CategoricalTopologyDofPolicy::Pairwise, &cluster_dimensions)?;
+    super::structural_rank::refine(
+        generation,
+        &mut report,
+        finite_within_rank,
+        rank_workspace_bytes,
+    )?;
     // In PPML the structural normalization is a reported finite coordinate,
     // even though the shared linear solve obtains it from the absorbed span.
     // Transfer exactly one estimable intercept direction from df_a into that

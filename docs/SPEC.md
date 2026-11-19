@@ -1322,7 +1322,15 @@ negative IID variance is never a successful result.
 PPML has its own policy: structural DoF is N_eff minus finite within rank
 minus absorbed rank; clustered reported DoF additionally caps at G_min−1.
 Positive reported DoF and at least two groups per declared cluster dimension
-are required. PPML does not borrow OLS finite-sample corrections or t/F laws.
+are required. If the pairwise approximation would reject a model with
+nonnested categorical intercepts, PPML can certify the exact rank on the final
+rows within the admitted inference memory and a bounded work allowance. It
+checks a modular independent minor and exact dependencies for every remaining
+column of the combined indicator and generated finite design. The FE prefix
+ranks give exact declared-channel counts; the finite increment must agree
+with the frozen within rank. Only a certificate establishing positive
+structural DoF replaces the approximate report. PPML does not borrow OLS
+finite-sample corrections or t/F laws.
 
 Tests: `src/ols/{topology_dof,prepared_dof}.rs`,
 `tests/categorical_clustered_oracle.rs`, positive-DoF slope Stata fixtures,

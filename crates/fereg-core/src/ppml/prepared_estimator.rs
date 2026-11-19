@@ -488,6 +488,14 @@ pub fn fit_prepared_ppml_interruptible(
         threads: resolved_linear.execution.threads,
         scales: separation_outcome.covariance_scales.as_deref(),
     };
+    let effect_report = |generation: &PreparedPpmlModelGeneration, fit: &PreparedPpmlIrlsFit| {
+        prepare_ppml_fixed_effect_report(
+            generation,
+            &requested_saved_channels,
+            fit.linear().basis().kept_generated_columns().len(),
+            terminal_plan.selected_inventory().inference_workspace_bytes,
+        )
+    };
     let (mut fit, checked_alternate) = super::slope_recovery::replay_original_omission(
         &mut separation_outcome.prepared,
         fit,
@@ -496,8 +504,7 @@ pub fn fit_prepared_ppml_interruptible(
         |g, raw, poll| {
             check_omitted_score(g, raw, ppml.score_tolerance)?;
             let coefficients = map_coefficients(g.prepared(), raw, &omission_statuses)?;
-            let effects =
-                prepare_ppml_fixed_effect_report(g.prepared(), &requested_saved_channels)?;
+            let effects = effect_report(g, raw)?;
             let clusters = cluster_code_views(g)?;
             let inference =
                 inference_config.compute(g, raw, &coefficients, &effects, &clusters, poll)?;
@@ -513,8 +520,7 @@ pub fn fit_prepared_ppml_interruptible(
     }
     let final_drop_reasons = separation_outcome.final_drop_reasons()?;
     let prepared = &separation_outcome.prepared;
-    let fixed_effect_report =
-        prepare_ppml_fixed_effect_report(prepared.prepared(), &requested_saved_channels)?;
+    let fixed_effect_report = effect_report(prepared, &fit)?;
     let cluster_codes = cluster_code_views(prepared)?;
 
     check_omitted_score(prepared, &fit, ppml.score_tolerance)?;

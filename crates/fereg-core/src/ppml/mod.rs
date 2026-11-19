@@ -21,6 +21,7 @@ mod prepared_estimator;
 mod prepared_irls;
 mod prepared_model;
 mod prepared_separation;
+mod structural_rank;
 pub(crate) use prepared_separation::exact_arithmetic::{exact_dot, ExactNullspace};
 mod absorbed_information;
 mod profiled_intercept_curve;
