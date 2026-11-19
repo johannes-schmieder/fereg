@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.5 — 2026-11-19
+
+- Verify Poisson separation on the entire retained design, including omitted
+  factor levels and exact aliases involving fixed effects. Preserve valid zero
+  outcomes and apply singleton pruning after certified separation.
+- Reuse a verified simplex proof on the same sample to avoid redundant IR
+  work. Recover from a repeated or exhausted weighted IR recurrence through
+  an independent unit-metric check.
+- Resolve spurious numerical failures in finite Poisson fits with extremely
+  small positive means, a categorical rank edge case, and a badly translated
+  continuous regressor. Preserve original-unit prediction, coefficient,
+  covariance and Wald checks and the requested iteration allowance.
+
 ## 0.6.4 — 2026-11-18
 
 - Preserve explicitly selected factor-variable reference levels through sample

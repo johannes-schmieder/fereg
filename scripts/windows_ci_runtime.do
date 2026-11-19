@@ -216,6 +216,11 @@ capture noisily do "tests/stata/development/feppml_saved_intercept_recovery.do"
 if _rc exit 9147
 capture noisily do "tests/stata/development/feppml_weak_pair_unrelated_omission.do"
 if _rc exit 9148
+* Check the release's separation and low-positive-mean repairs on Windows.
+capture noisily do "tests/stata/development/feppml_separation_recovery.do"
+if _rc exit 9149
+capture noisily do "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do"
+if _rc exit 9150
 * Fresh Python processes test changing host threads and native error recovery.
 shell python scripts/check_pystata_threads.py ///
     --utilities "C:/Program Files/Stata19/utilities" ///
