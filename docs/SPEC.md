@@ -1673,6 +1673,13 @@ form the predictor directly from the certified finite coefficients, original
 design and offset with compensated products. Use it in the ordinary trial
 and strict checkpoint under the same convergence and reconstruction checks.
 
+For an admitted one-effect categorical-intercept profile, a cancellation-sensitive
+strict checkpoint can form a Fisher response in the model span from the
+current accepted means and Hessian. Before using it, check the weighted moment
+of the removed response against every raw finite column and each absorbed
+level. Run the existing canonical solve and strict profile, score, objective,
+and exact-Hessian checks on the resulting candidate.
+
 **Elimination pre-solve (accepted by Johannes, 2026-11-08).** A fresh MAP-family
 publication fit in Fast mode with categorical intercept effects and continuous
 regressors first takes plain IRLS steps whose weighted projections of
