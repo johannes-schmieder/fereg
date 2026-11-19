@@ -205,6 +205,17 @@ if _rc exit 9142
 * Weakly connected categorical effects and Fast/Low dummy-model parity.
 capture noisily do "tests/stata/development/feppml_low_categorical.do"
 if _rc exit 9143
+* Release recovery checks on the installed Windows binary.
+capture noisily do "tests/stata/development/slope_pair_recovery.do"
+if _rc exit 9144
+capture noisily do "tests/stata/development/slope_recovery_ols_inference.do"
+if _rc exit 9145
+capture noisily do "tests/stata/development/omitted_direction_score.do"
+if _rc exit 9146
+capture noisily do "tests/stata/development/feppml_saved_intercept_recovery.do"
+if _rc exit 9147
+capture noisily do "tests/stata/development/feppml_weak_pair_unrelated_omission.do"
+if _rc exit 9148
 * Fresh Python processes test changing host threads and native error recovery.
 shell python scripts/check_pystata_threads.py ///
     --utilities "C:/Program Files/Stata19/utilities" ///
