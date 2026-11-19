@@ -9,10 +9,19 @@ generate double y = sin(_n * .31) + mod(_n, 5) / 7 + category / 3
 forvalues j = 1/12 {
     generate byte d`j' = category == `j'
 }
+* Give areg an abundant reference category. The original rare base makes its
+* normalized equations ill-conditioned. Convert the reference coefficients
+* and covariance back to the original basis before comparing.
+generate byte rare = category == 0
+matrix C = I(13)
+forvalues j = 1/12 {
+    matrix C[`j',12] = -1
+}
+matrix C[13,12] = 1
 foreach variance in robust "cluster clusterid" {
-    quietly areg y d1-d12, absorb(group) vce(`variance')
-    matrix b_ref = e(b)
-    matrix V_ref = e(V)
+    quietly areg y d1-d11 rare, absorb(group) vce(`variance')
+    matrix b_ref = e(b) * C'
+    matrix V_ref = C * e(V) * C'
     foreach mode in fast low {
         quietly fereg y d1-d12, absorb(group) vce(`variance') memory(`mode') threads(1)
         assert e(N) == 50000
