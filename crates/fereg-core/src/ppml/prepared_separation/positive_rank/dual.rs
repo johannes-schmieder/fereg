@@ -119,6 +119,9 @@ pub(in super::super) fn exact_dual(
 
 fn next_basis(indices: &mut [usize], size: usize) -> bool {
     let count = indices.len();
+    if count > size {
+        return false;
+    }
     let Some(i) = (0..count).rfind(|&i| indices[i] < size - count + i) else {
         return false;
     };

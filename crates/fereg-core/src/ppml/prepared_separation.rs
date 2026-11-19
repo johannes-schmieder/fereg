@@ -2552,22 +2552,19 @@ fn prepared_iterated_rectifier(
         // Identical normalized inputs give an identical next projection.
         // Check occasionally so a stalled weighted search can use the
         // independent unit metric without slowing ordinary projections.
-        if iteration >= 8
-            && iteration.is_power_of_two()
-            && unchanged_ir_recurrence(
-                &u,
-                outcome,
-                &positive_direction,
-                threshold,
-                maximum_boundary,
-            )
-        {
+        if update_ir_recurrence(
+            &mut u,
+            outcome,
+            &positive_direction,
+            threshold,
+            maximum_boundary,
+            iteration >= 8 && iteration.is_power_of_two(),
+        ) {
             return Err(FeregError::new(
                 ErrorCode::NonConvergence,
                 format!("prepared iterated rectifier repeated its normalized iterate at iteration {iteration}"),
             ));
         }
-        update_ir_recurrence(&mut u, outcome, &positive_direction, threshold);
         lap.decided(trace::IrStep::Continued(trace::support(&u)));
     }
     Err(FeregError::new(
@@ -2579,49 +2576,39 @@ fn prepared_iterated_rectifier(
     ))
 }
 
-fn unchanged_ir_recurrence(
-    u: &[f64],
+fn update_ir_recurrence(
+    u: &mut [f64],
     outcome: &[f64],
     fitted: &[f64],
     threshold: f64,
     maximum_boundary: f64,
+    check_repeat: bool,
 ) -> bool {
     let scale = if maximum_boundary > threshold {
         maximum_boundary
     } else {
         1.0
     };
-    u.iter()
-        .zip(outcome)
-        .zip(fitted)
-        .all(|((&before, &y), &value)| {
-            let next = if y == 0.0 && value > threshold {
-                value / scale
-            } else {
-                0.0
-            };
-            before.to_bits() == next.to_bits()
-        })
-}
-
-fn update_ir_recurrence(
-    u: &mut [f64],
-    outcome: &[f64],
-    positive_direction: &[f64],
-    threshold: f64,
-) {
-    let mut maximum = 0.0_f64;
-    for row in 0..u.len() {
-        u[row] = if outcome[row] > 0.0 || positive_direction[row].abs() <= threshold {
-            0.0
+    let next = |y: f64, value: f64| {
+        if y == 0.0 && value > threshold {
+            value / scale
         } else {
-            positive_direction[row].max(0.0)
-        };
-        maximum = maximum.max(u[row]);
+            0.0
+        }
+    };
+    let mut unchanged = check_repeat;
+    if check_repeat {
+        for ((before, &y), &value) in u.iter_mut().zip(outcome).zip(fitted) {
+            let updated = next(y, value);
+            unchanged &= before.to_bits() == updated.to_bits();
+            *before = updated;
+        }
+    } else {
+        for ((before, &y), &value) in u.iter_mut().zip(outcome).zip(fitted) {
+            *before = next(y, value);
+        }
     }
-    if maximum > 0.0 {
-        u.iter_mut().for_each(|value| *value /= maximum);
-    }
+    unchanged
 }
 
 /// Projection weights and initial recurrence of the rectifier: unit weight

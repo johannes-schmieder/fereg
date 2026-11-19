@@ -37,6 +37,17 @@ pub(super) fn refine(
     }
     let data = generation.fit_view();
     let rows = generation.outcome().len();
+    let effects = data.fe_topology().effect_to_topology();
+    let reported_levels = report.effects.iter().try_fold(0usize, |sum, effect| {
+        sum.checked_add(effect.categories)
+            .filter(|_| effect.categories > 0)
+    });
+    if effects.is_empty()
+        || effects.len() != report.effects.len()
+        || reported_levels != Some(report.initial_categories)
+    {
+        return Ok(());
+    }
     // The first partition spans the constant. In every later partition its
     // final indicator is one minus all the others, so removing it preserves
     // the span of every declared prefix before any numerical work.
@@ -61,12 +72,15 @@ pub(super) fn refine(
         report.effects.len(),
         "unable to reserve structural rank FE views",
     )?;
-    for &source in data.fe_topology().effect_to_topology() {
+    for (&source, reported) in effects.iter().zip(&report.effects) {
         let effect = crate::fe::ValidatedBorrowedInterceptSource::from_finalized_source(
             &data.fe_topology,
             source,
         )
         .ok_or_else(|| invalid_argument("missing final FE codes for structural rank"))?;
+        if effect.effect().n_levels() != reported.categories {
+            return Ok(());
+        }
         codes.push(effect.effect().codes());
     }
 
