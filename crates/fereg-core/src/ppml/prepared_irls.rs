@@ -1724,6 +1724,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 unreachable!("frozen attempt is exhaustively classified")
             }
         };
+        if session.fe_design().effects().is_empty() {
+            reconstruct_sensitive_finite_rows(prepared, &mut workspace, offset, config.ppml)?;
+        }
         record_linear_phase_timings(&mut memory, reuse)?;
         begin_phase_allocation(
             config.phase_allocation_probe,
@@ -3768,6 +3771,53 @@ fn ppml_bread_weight_scale(weights: &[f64]) -> Result<PreparedOlsBreadWeightScal
         reference_weight_multiplier: maximum,
         reference_weight_sum,
     })
+}
+
+/// The certified WLS coefficients solve the finite Fisher equations. A large
+/// working response on a positive, low-mean row can lose even the entire fit
+/// in z - residual. Recover those rows from the coefficients before the first
+/// line search can accept a predictor outside the model span.
+fn reconstruct_sensitive_finite_rows<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    workspace: &mut PpmlIterationWorkspace,
+    offset: &[f64],
+    config: PpmlConfig,
+) -> Result<()> {
+    let response_limit = strict_profile_envelope(config) / (8.0 * f64::EPSILON);
+    let mut repaired = 0;
+    for (row, row_offset) in offset.iter().enumerate() {
+        let response = workspace.working_response()[row].abs();
+        // The common case needs only a streaming read of the working response.
+        if response <= response_limit
+            || response <= response_limit * workspace.candidate_eta()[row].abs()
+        {
+            continue;
+        }
+        crate::interrupt::row_checkpoint(repaired)?;
+        let mut predictor = CompensatedSum::default();
+        predictor.add(*row_offset);
+        for (slot, &beta) in prepared
+            .fit_model()
+            .coefficients
+            .iter()
+            .zip(workspace.candidate_coefficients())
+        {
+            if let Some(column) = slot.generated_column_index {
+                let x = prepared.fit_column_value(column, row)?;
+                let product = beta * x;
+                predictor.add(product);
+                predictor.add(beta.mul_add(x, -product));
+            }
+        }
+        workspace.candidate_eta_mut()[row] = predictor.total();
+        repaired += 1;
+    }
+    if repaired > 0 && crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=finite_newton_predictor|rows={repaired}"
+        ));
+    }
+    Ok(())
 }
 
 fn fill_candidate_eta_from_linear_output(

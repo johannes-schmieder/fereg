@@ -714,6 +714,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictCycle<'_, '_, P> {
             return Ok(StrictCycleOutcome::JointAccepted);
         }
         let (attempt_tolerance, engine) = self.prepare_attempt()?;
+        let finite_only = self.session.fe_design().effects().is_empty();
         let transaction = self.session.strict_checkpoint_candidate()?;
         let facts = self.candidate.inspect(
             &transaction,
@@ -721,6 +722,14 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictCycle<'_, '_, P> {
             self.control.pending == PendingCheckpointWork::Refinement,
             self.solver,
         )?;
+        if finite_only {
+            reconstruct_sensitive_finite_rows(
+                self.candidate.prepared,
+                self.candidate.workspace,
+                self.candidate.offset,
+                self.candidate.config.ppml,
+            )?;
+        }
         let mut assessment = self.candidate.assess(
             &transaction,
             &facts,

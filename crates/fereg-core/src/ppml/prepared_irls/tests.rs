@@ -5673,6 +5673,28 @@ fn affine_regressor_with_absorbed_intercepts_matches_exact_poisson_optimum() {
 mod offset_start_tests;
 
 #[test]
+fn finite_poisson_keeps_a_positive_row_with_tiny_fitted_mean() {
+    // At (intercept, slope) = (ln(64), 1) the weighted residual vector is
+    // (1, -33, 32). Both score equations vanish and the Hessian is positive definite.
+    let x = [-32.0_f64, 0.0, 1.0];
+    for (weights, offsets) in [([1.; 3], [0.; 3]), ([2., 1., 4.], [1., -0.5, 0.25])] {
+        let mu: [f64; 3] = std::array::from_fn(|i| 64. * (x[i] + offsets[i]).exp());
+        let y: [f64; 3] = std::array::from_fn(|i| mu[i] + [1., -33., 32.][i] / weights[i]);
+        let prepared = prepared_no_fe_categorical(&y, &[x.to_vec()]);
+        let config = PreparedPpmlIrlsConfig::default();
+        let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+        let fit = fit_prepared_ppml_irls(&prepared, &y, &weights, &offsets, config, plan, None)
+            .expect("strict finite optimum");
+        assert!(fit.diagnostics().final_score.passed);
+        assert!((fit.coefficients()[0].value.unwrap() - 1.0).abs() < 1e-11);
+        assert!((fit.coefficients()[1].value.unwrap() - 64.0_f64.ln()).abs() < 1e-11);
+        for (&actual, expected) in fit.mean().iter().zip(mu) {
+            assert!((actual / expected - 1.0).abs() < 1e-10);
+        }
+    }
+}
+
+#[test]
 fn affine_no_fe_poisson_matches_two_cell_optimum() {
     let n = 48;
     let y: Vec<_> = (0..n)
