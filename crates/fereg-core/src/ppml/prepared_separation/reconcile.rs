@@ -19,17 +19,22 @@ pub(super) fn support(
     } else {
         primal::ProofBudget::new(model, method, config).words
     };
-    positive_rank::detect_for(
-        method,
-        model,
-        &topology,
-        count,
-        limit.saturating_sub(meta),
-        config,
-        &mut |_| interrupt(marker),
-    )?
-    .map(|raw| bind_numerical_proposal(model, raw))
-    .transpose()
+    let limit = limit.saturating_sub(meta);
+    let existing =
+        positive_rank::detect_for(method, model, &topology, count, limit, config, &mut |_| {
+            interrupt(marker)
+        })?;
+    let result = match existing {
+        Some(proof) => Some(proof),
+        None => {
+            positive_rank::aliased(method, model, &topology, count, limit, config, &mut |_| {
+                interrupt(marker)
+            })?
+        }
+    };
+    result
+        .map(|raw| bind_numerical_proposal(model, raw))
+        .transpose()
 }
 
 pub(super) fn unresolved() -> FeregError {
@@ -119,6 +124,24 @@ fn checked_candidate(
     }
     proposal.exact_primal = Some(proof);
     Ok(proposal)
+}
+
+pub(super) fn omitted_factor(
+    model: &PreparedPpmlModelGeneration,
+    method: SeparationMethod,
+    config: SeparationConfig,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let budget = primal::ProofBudget::new(model, method, config);
+    let Some(witness) = primal::omitted_factor(model, budget)? else {
+        return Ok(None);
+    };
+    let Some(mut raw) = materialize(model, &witness, method, config)? else {
+        return Ok(None);
+    };
+    raw.iterations = 0;
+    let mut bound = bind_numerical_proposal(model, raw)?;
+    bound.exact_primal = Some(witness);
+    Ok(Some(bound))
 }
 
 fn materialize(

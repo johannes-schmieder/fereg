@@ -1924,11 +1924,24 @@ Before deleting any original row, verify that the detector supplied an ordered,
 unique strict-negative set, aligned generation metadata and matching sign
 certificate. For simplex, IR and Mu, also establish a recession direction in
 the stored raw binary64 model. A raw finite or FE contrast may serve directly.
+If an intercept belongs to the model, all unrepresented categories of a
+main-effect factor form a single residual cell on that factor axis. The
+intercept minus the sum of the distinct emitted indicators represents this
+cell exactly. When the residual cell contains only zero outcomes, simplex
+and IR may propose its deletion before their numerical detector. Replay the
+categorical membership and score signs before committing the deletion.
 Two finite columns can also supply an exact dyadic coefficient ratio. For two
 intercept effects, binding rows determine proposed level offsets along a
 spanning forest. Check each resulting finite-plus-two-effect contrast on all
 raw rows. A bounded coefficient search may propose additional rational slopes
-and absorbed effects.
+and absorbed effects. For aliased categorical-intercept designs, compress the
+positive-row differences within an absorbed effect into a modular echelon
+form. A lifted integer relation can propose a direction only after it has
+one sign on the zero outcomes and vanishes exactly on every positive outcome.
+If every lifted free-coordinate relation vanishes on the entire raw design,
+the resulting exact upper bound and the modular lower bound establish that
+the positive rows span the full design. A modular equality by itself cannot
+establish either result.
 Verify the score of every positive observation equals zero, the score of every
 zero observation is nonpositive, and each published observation has strictly
 negative score. Coordinate rescaling must round-trip each stored value exactly.

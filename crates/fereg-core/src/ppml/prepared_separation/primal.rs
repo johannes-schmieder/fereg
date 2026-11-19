@@ -4,6 +4,7 @@ use super::exact_arithmetic::{exact_score, ExactNullspace};
 use super::*;
 use std::cmp::Ordering;
 
+mod factor;
 mod fe_pair;
 mod pair;
 
@@ -15,6 +16,7 @@ pub(super) enum Column {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Witness {
+    Factor(factor::Factor),
     PairOffsets {
         column: usize,
         effects: [usize; 2],
@@ -200,6 +202,7 @@ fn visit(
     mut inspect: impl FnMut(usize, Ordering, f64) -> bool,
 ) -> Result<bool> {
     match witness {
+        Witness::Factor(f) => f.visit(model, inspect),
         Witness::PairOffsets {
             column,
             effects,
@@ -433,6 +436,15 @@ impl Search<'_> {
     }
 }
 
+/// Catch an omitted, zero-only factor cell before building a numerical
+/// detector. This only proposes a deletion for the exact replay to validate.
+pub(super) fn omitted_factor(
+    model: &PreparedPpmlModelGeneration,
+    budget: ProofBudget,
+) -> Result<Option<Witness>> {
+    Ok(factor::find(model, budget)?.map(Witness::Factor))
+}
+
 pub(super) fn find(
     model: &PreparedPpmlModelGeneration,
     expected: &[usize],
@@ -472,6 +484,24 @@ pub(super) fn find(
             && dense_columns(&mut search, &design, absorbed, hint)?
         {
             return Ok(search.best.map(|p| (p, true)));
+        }
+    }
+    // Apply an existing partial proof first. The next generation can search
+    // again without holding that proof alongside the packed workspace.
+    if let Some(proof) = search.best.take() {
+        return Ok(Some((proof, false)));
+    }
+    if let Some(proof) = omitted_factor(model, budget)? {
+        if search.consider(proof)? {
+            return Ok(search.best.map(|w| (w, true)));
+        }
+    }
+    if let Some(proof) = search.best.take() {
+        return Ok(Some((proof, false)));
+    }
+    if let Some(proof) = super::positive_rank::packed_candidate(model, budget)? {
+        if search.consider(proof)? {
+            return Ok(search.best.map(|w| (w, true)));
         }
     }
     Ok(search.best.map(|p| (p, false)))

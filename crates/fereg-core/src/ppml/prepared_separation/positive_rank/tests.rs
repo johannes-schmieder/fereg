@@ -269,3 +269,49 @@ fn exact_global_constants_can_be_removed_from_positive_rank_only_after_verificat
         ErrorCode::Allocation
     );
 }
+
+#[test]
+fn packed_rank_proves_an_alias_and_replays_a_one_ulp_boundary_departure() {
+    // The positive rows have one slope after anchoring and no twin for the zero.
+    // A rounding-scale change on that zero creates a genuine recession direction.
+    for shifted in [false, true] {
+        let mut rows = Vec::new();
+        for g in [1., 2., 3.] {
+            for (y, x) in [(1., 0.), (2., 2.), (0., 1.)] {
+                let mut z: f64 = 2. * x + g;
+                if shifted && y == 0. && g == 2. {
+                    z = f64::from_bits(z.to_bits() + 1);
+                }
+                rows.push([y, x, g, z]);
+            }
+        }
+        let coordinator =
+            PreparedSeparationCoordinator::new(panel(&rows, Terms::OrdinaryAlias)).unwrap();
+        let generation = coordinator.view().prepared;
+        let topology = DetectorTopology::new(generation.prepared()).unwrap();
+        let config = SeparationConfig::default();
+        let method = SeparationMethod::IteratedRectifier;
+        let run = |cells| {
+            positive_rank::aliased(method, generation, &topology, 6, cells, config, &mut |_| {
+                Ok(())
+            })
+            .unwrap()
+        };
+        assert!(run(1).is_none());
+        assert_eq!(run(128).is_some(), !shifted);
+        let budget = primal::ProofBudget::new(generation, method, config);
+        let ray = positive_rank::packed_candidate(generation, budget).unwrap();
+        assert_eq!(ray.is_some(), shifted);
+        if let Some(ray) = ray {
+            let target = primal::direction(generation, &ray).unwrap().unwrap();
+            let strict: Vec<_> = target
+                .iter()
+                .enumerate()
+                .filter(|(_, x)| **x < 0.)
+                .map(|(i, _)| generation.original_rows()[i])
+                .collect();
+            assert_eq!(strict, vec![5]);
+            assert!(primal::verify(generation, &ray, &strict, budget, &target).unwrap());
+        }
+    }
+}

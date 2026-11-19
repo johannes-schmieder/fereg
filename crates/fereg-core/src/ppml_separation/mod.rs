@@ -184,6 +184,7 @@ pub enum SeparationCertificateProof {
     /// absorbed level has a positive outcome. An optional explicit constant
     /// belongs to the span of those levels.
     SimplexWithinLevelPositiveRank {
+        /// Number of within-level model columns, including exact aliases.
         slopes: usize,
         levels: usize,
         explicit_constant: bool,
@@ -193,7 +194,8 @@ pub enum SeparationCertificateProof {
         boundary_rows: usize,
     },
     /// Positive rows span the categorical-intercept model after choosing
-    /// one reference level in every non-anchor effect.
+    /// one reference level in every non-anchor effect. `within_columns` counts
+    /// the model coordinates, including any exactly verified global aliases.
     SimplexAnchoredPositiveRank {
         within_columns: u32,
         anchor_levels: u32,

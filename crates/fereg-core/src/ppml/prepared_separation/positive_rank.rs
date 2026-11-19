@@ -5,6 +5,7 @@ use crate::ppml::modular_rank::{insert, residue, PRIME};
 use crate::ppml_separation::SeparationCertificateProof;
 
 mod coverage;
+mod packed;
 pub(super) use coverage::positive_twins;
 
 pub(super) fn detect(
@@ -48,6 +49,8 @@ pub(super) fn detect_for(
         bounds,
         limit,
         &[],
+        false,
+        None,
         interrupt,
     )? {
         return Ok(Some(no_separation(method, proof)));
@@ -102,11 +105,72 @@ pub(super) fn detect_for(
             bounds,
             limit - constant.len(),
             &constant,
+            false,
+            None,
             interrupt,
         )?;
         return Ok(proof.map(|proof| no_separation(method, proof)));
     }
     Ok(None)
+}
+
+/// Retry an unresolved numerical proposal on an aliased positive design.
+pub(super) fn aliased(
+    method: SeparationMethod,
+    generation: &PreparedPpmlModelGeneration,
+    topology: &DetectorTopology<'_>,
+    positive: usize,
+    limit: usize,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<DetectionProposal>> {
+    let work = primal::ProofBudget::new(generation, method, config)
+        .work_cells
+        .saturating_mul(64)
+        .min(128_000_000);
+    Ok(anchored(
+        generation,
+        topology,
+        positive,
+        (0, work),
+        limit,
+        &[],
+        true,
+        None,
+        interrupt,
+    )?
+    .map(|proof| no_separation(method, proof)))
+}
+
+pub(super) fn packed_candidate(
+    generation: &PreparedPpmlModelGeneration,
+    budget: primal::ProofBudget,
+) -> Result<Option<primal::Witness>> {
+    let topology = DetectorTopology::new(generation.prepared())?;
+    let metadata =
+        topology.sources.len() + topology.effect_specs.len() + topology.effect_to_source.len();
+    let mut values = Vec::new();
+    let work = budget.work_cells.saturating_mul(64).min(128_000_000);
+    anchored(
+        generation,
+        &topology,
+        generation.outcome().iter().filter(|&&y| y > 0.).count(),
+        (0, work),
+        budget.words.saturating_sub(metadata),
+        &[],
+        true,
+        Some(&mut values),
+        &mut |_| crate::interrupt::checkpoint(),
+    )?;
+    if values.is_empty() {
+        return Ok(None);
+    }
+    let units = fallible_filled(values.len(), 1.0, "unable to reserve anchored primal units")?;
+    Ok(Some(primal::Witness::Coefficients {
+        values,
+        units,
+        absorbed: true,
+    }))
 }
 
 fn no_separation(method: SeparationMethod, proof: SeparationCertificateProof) -> DetectionProposal {
@@ -138,6 +202,8 @@ fn anchored(
     (iterations, work): (usize, usize),
     limit: usize,
     constant: &[bool],
+    aliases: bool,
+    ray: Option<&mut Vec<i64>>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<SeparationCertificateProof>> {
     if topology
@@ -172,7 +238,7 @@ fn anchored(
     };
     let constant_finite = constant.iter().filter(|&&flag| flag).count();
     if (width == 0 && constant_finite == 0 && topology.effect_specs.len() == 1)
-        || positive < levels.n_levels().saturating_add(width)
+        || (!aliases && positive < levels.n_levels().saturating_add(width))
     {
         return Ok(None);
     }
@@ -188,7 +254,7 @@ fn anchored(
     let required = basis_cells
         .saturating_add(width.saturating_mul(2))
         .saturating_add(other_cells);
-    if required > limit {
+    if other_cells > limit || (!aliases && required > limit) {
         return Ok(None);
     }
     interrupt(PpmlInterruptPoint::SeparationSimplex)?;
@@ -221,15 +287,31 @@ fn anchored(
         }
         Ok(())
     };
-    if !positive_contrasts_span(
-        generation.outcome(),
-        levels,
-        width,
-        width <= limit - required,
-        (iterations, work),
-        write_row,
-        interrupt,
-    )? {
+    let spanned = if aliases {
+        packed::spans(
+            generation,
+            levels,
+            slopes(),
+            &others,
+            anchor_effect,
+            ray,
+            width,
+            limit - other_cells,
+            work,
+            interrupt,
+        )?
+    } else {
+        positive_contrasts_span(
+            generation.outcome(),
+            levels,
+            width,
+            width <= limit - required,
+            (iterations, work),
+            write_row,
+            interrupt,
+        )?
+    };
+    if !spanned {
         return Ok(None);
     }
     let explicit_constant = columns.len() != slope_count + constant_finite;

@@ -1586,7 +1586,7 @@ fn separation_trace_digest(report: &SeparationReport) -> Result<u64> {
                         explicit_constant,
                     } => {
                         digest.word(5);
-                        digest.usize(slopes, "trace within-level slope rank")?;
+                        digest.usize(slopes, "trace within-level column count")?;
                         digest.usize(levels, "trace positive fixed-effect levels")?;
                         digest.word(u64::from(explicit_constant));
                     }

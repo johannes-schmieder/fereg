@@ -952,13 +952,19 @@ where
                 let started = Instant::now();
                 let proposal = {
                     let view = coordinator.view();
-                    let raw = prepared_simplex_proposal(view.prepared, config, interrupt)?;
-                    reconcile::candidate(
-                        view.prepared,
-                        bind_numerical_proposal(view.prepared, raw)?,
-                        config,
-                        interrupt,
-                    )?
+                    if let Some(factor) =
+                        reconcile::omitted_factor(view.prepared, SeparationMethod::Simplex, config)?
+                    {
+                        factor
+                    } else {
+                        let raw = prepared_simplex_proposal(view.prepared, config, interrupt)?;
+                        reconcile::candidate(
+                            view.prepared,
+                            bind_numerical_proposal(view.prepared, raw)?,
+                            config,
+                            interrupt,
+                        )?
+                    }
                 };
                 let simplex_unresolved = matches!(
                     proposal.status,
@@ -2205,6 +2211,11 @@ fn prepared_bound_iterated_rectifier(
     graph_admitted: impl Into<DetectorAdmission>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedNumericalProposal> {
+    if let Some(factor) =
+        reconcile::omitted_factor(generation, SeparationMethod::IteratedRectifier, config)?
+    {
+        return Ok(factor);
+    }
     let admission = graph_admitted.into();
     let candidate =
         prepared_rectifier_candidate(generation, ppml, config, linear, admission, interrupt);
