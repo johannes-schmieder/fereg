@@ -27,6 +27,7 @@ use crate::fe::{BorrowedMapWeights, FeCoefficientBatch, MapConfig};
 use crate::memory::{fallible_copy, fallible_filled};
 use crate::ols::topology_dof::{
     CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
+    CategoricalTopologyDofReport,
 };
 use crate::ppml_separation::{
     separation_method_count, separation_workspace_requirements, MethodStatus,
@@ -564,9 +565,8 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
             cluster_dimensions.push(model.cluster_codes(dimension)?);
         }
     }
-    // PPML is frozen to the shared pairwise topology calculation (SPEC §9). The
-    // OLS policy adapter is deliberately absent from this boundary: PPML owns
-    // the subsequent structural-normalization and inference corrections.
+    // Start with the shared pairwise topology calculation (SPEC §9). PPML
+    // owns its rank fallback, structural normalization and inference corrections.
     let mut report =
         prepared.absorbed_dof(CategoricalTopologyDofPolicy::Pairwise, &cluster_dimensions)?;
     super::structural_rank::refine(
@@ -575,36 +575,8 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
         finite_within_rank,
         rank_workspace_bytes,
     )?;
-    // In PPML the structural normalization is a reported finite coordinate,
-    // even though the shared linear solve obtains it from the absorbed span.
-    // Transfer exactly one estimable intercept direction from df_a into that
-    // coordinate. This leaves total model rank unchanged and does not affect
-    // the compact sandwich dimension.
     if prepared.structural_intercept() {
-        if let Some(intercept) = report.effects.iter_mut().find(|effect| {
-            effect.slope_source.is_none() && !effect.nested && effect.coefficients > 0
-        }) {
-            intercept.redundant = intercept.redundant.checked_add(1).ok_or_else(|| {
-                FeregError::new(
-                    ErrorCode::Allocation,
-                    "PPML structural-normalization redundancy overflows",
-                )
-            })?;
-            intercept.coefficients -= 1;
-            report.redundant_categories =
-                report.redundant_categories.checked_add(1).ok_or_else(|| {
-                    FeregError::new(
-                        ErrorCode::Allocation,
-                        "PPML structural-normalization redundancy total overflows",
-                    )
-                })?;
-            report.absorbed_rank = report.absorbed_rank.checked_sub(1).ok_or_else(|| {
-                FeregError::new(
-                    ErrorCode::Internal,
-                    "PPML structural normalization exceeds absorbed rank",
-                )
-            })?;
-        }
+        transfer_structural_constant(&mut report)?;
     }
     if report.effects.len() != requested_saved_channels.len() {
         return Err(FeregError::new(
@@ -683,6 +655,41 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
         is_approximate: report.is_approximate,
         rows,
     })
+}
+
+fn transfer_structural_constant(report: &mut CategoricalTopologyDofReport) -> Result<()> {
+    // In PPML the structural normalization is a reported finite coordinate,
+    // even though the shared linear solve obtains it from the absorbed span.
+    // Transfer exactly one estimable intercept direction from df_a into that
+    // coordinate. This leaves total model rank unchanged and does not affect
+    // the compact sandwich dimension.
+    if let Some(intercept) = report
+        .effects
+        .iter_mut()
+        .find(|effect| effect.slope_source.is_none() && !effect.nested && effect.coefficients > 0)
+    {
+        intercept.redundant = intercept.redundant.checked_add(1).ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "PPML structural-normalization redundancy overflows",
+            )
+        })?;
+        intercept.coefficients -= 1;
+        report.redundant_categories =
+            report.redundant_categories.checked_add(1).ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    "PPML structural-normalization redundancy total overflows",
+                )
+            })?;
+        report.absorbed_rank = report.absorbed_rank.checked_sub(1).ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Internal,
+                "PPML structural normalization exceeds absorbed rank",
+            )
+        })?;
+    }
+    Ok(())
 }
 
 pub(super) type OriginalAbsorbedCoordinates<'a> = (

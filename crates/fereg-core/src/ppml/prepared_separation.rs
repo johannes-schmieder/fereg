@@ -2376,18 +2376,6 @@ fn prepared_weighted_rectifier(
         }
         result => result,
     };
-    let weighted = weighted.and_then(|(proposal, fixed_point)| {
-        if proposal.status == MethodStatus::MaximumIterations {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                format!(
-                    "{} after {} iterations",
-                    proposal.note.code, proposal.iterations
-                ),
-            ));
-        }
-        Ok((proposal, fixed_point))
-    });
     let (proposal, fixed_point) = match weighted {
         Ok(result) => result,
         Err(error)
@@ -2582,21 +2570,12 @@ fn prepared_iterated_rectifier(
         update_ir_recurrence(&mut u, outcome, &positive_direction, threshold);
         lap.decided(trace::IrStep::Continued(trace::support(&u)));
     }
-    Ok((
-        DetectionProposal {
-            method: SeparationMethod::IteratedRectifier,
-            dropped: Vec::new(),
-            iterations: config.max_ir_iterations,
-            status: MethodStatus::MaximumIterations,
-            certificate: None,
-            exact_fe_certificate: None,
-            direction: None,
-            note: SeparationNote::with_detail(
-                "prepared iterated rectifier exhausted its iteration budget",
-                config.max_ir_iterations,
-            ),
-        },
-        None,
+    Err(FeregError::new(
+        ErrorCode::NonConvergence,
+        format!(
+            "prepared weighted iterated rectifier exhausted its budget of {} iterations",
+            config.max_ir_iterations
+        ),
     ))
 }
 

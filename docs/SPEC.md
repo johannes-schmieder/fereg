@@ -1666,6 +1666,13 @@ Require two consecutive accepted passes satisfying this and independently
 recomputed normalized finite and FE scores. A small objective change alone
 is insufficient, particularly near small coefficients.
 
+With no absorbed effects, subtracting the weighted least-squares residual
+from a very large working response can lose the candidate predictor. Where
+the subtraction's roundoff allowance exceeds the strict profile envelope,
+form the predictor directly from the certified finite coefficients, original
+design and offset with compensated products. Use it in the ordinary trial
+and strict checkpoint under the same convergence and reconstruction checks.
+
 **Elimination pre-solve (accepted by Johannes, 2026-11-08).** A fresh MAP-family
 publication fit in Fast mode with categorical intercept effects and continuous
 regressors first takes plain IRLS steps whose weighted projections of
