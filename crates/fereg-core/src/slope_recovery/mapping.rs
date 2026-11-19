@@ -143,6 +143,27 @@ impl PairMap {
         coefficients: &mut [f64],
         covariance: &mut [f64],
     ) -> Result<PredictionCheck> {
+        self.restore_with_rank_policy(coefficients, covariance, true)
+    }
+
+    /// Translation along an unrestricted explicit intercept leaves the model
+    /// slope restrictions unchanged. Check mathematical rank and every contrast
+    /// of the posted doubles here; the PPML caller separately certifies Stata's
+    /// model Wald test on the original slopes.
+    pub(crate) fn restore_intercept(
+        self,
+        coefficients: &mut [f64],
+        covariance: &mut [f64],
+    ) -> Result<PredictionCheck> {
+        self.restore_with_rank_policy(coefficients, covariance, false)
+    }
+
+    fn restore_with_rank_policy(
+        self,
+        coefficients: &mut [f64],
+        covariance: &mut [f64],
+        native_joint_rank: bool,
+    ) -> Result<PredictionCheck> {
         let n = coefficients.len();
         if n.checked_mul(n) != Some(covariance.len()) {
             return Err(invalid_argument(
@@ -151,7 +172,7 @@ impl PairMap {
         }
         let prediction = self.prediction_check(coefficients)?;
         let pair = CovarianceMap::new(self, covariance, n);
-        pair.certify()?;
+        pair.certify(native_joint_rank)?;
 
         // No fallible operation after this point. Complete every cross with
         // an unaffected regressor (including _cons) before replacing the block.
@@ -252,7 +273,7 @@ impl<'a> CovarianceMap<'a> {
         value
     }
 
-    fn certify(&self) -> Result<()> {
+    fn certify(&self, native_joint_rank: bool) -> Result<()> {
         let [xx, xz, zz] = self.posted;
         let a = self.map.multiple;
         // Stata consumers can evaluate the quadratic either by two matrix
@@ -312,13 +333,19 @@ impl<'a> CovarianceMap<'a> {
         let stable = |i, j| self.stable(i, j);
         let posted = |i, j| self.posted(i, j);
         let stable_rank = covariance_rank(n, &mut factor, &mut scales, stable, false)?;
-        let raw_rank = covariance_rank(n, &mut factor, &mut scales, posted, true)?;
+        let raw_rank = covariance_rank(n, &mut factor, &mut scales, posted, native_joint_rank)?;
         let slots = [self.map.source, self.map.target];
         let pair_rank = |i: usize, j: usize| self.stable(slots[i], slots[j]);
         let original_pair = |i: usize, j: usize| self.posted(slots[i], slots[j]);
         if raw_rank != stable_rank
             || covariance_rank(2, &mut factor, &mut scales, pair_rank, false)?
-                != covariance_rank(2, &mut factor, &mut scales, original_pair, true)?
+                != covariance_rank(
+                    2,
+                    &mut factor,
+                    &mut scales,
+                    original_pair,
+                    native_joint_rank,
+                )?
         {
             return Err(unavailable(
                 "original-unit covariance loses joint-test rank",

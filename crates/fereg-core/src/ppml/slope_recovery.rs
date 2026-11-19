@@ -12,6 +12,7 @@ use crate::slope_recovery::{absorbed::AbsorbedMap, mapping::PairMap};
 #[derive(Clone, Copy)]
 pub(super) enum ReportMap {
     Pair(PairMap),
+    Intercept(PairMap),
     Absorbed(AbsorbedMap),
 }
 
@@ -85,7 +86,14 @@ impl GenerationRecovery {
                     Ok(())
                 })?;
                 Ok(OriginalCoordinates {
-                    map: ReportMap::Pair(pair.map),
+                    map: if matches!(
+                        generation.model().columns[pair.source_column].kind,
+                        crate::ols::PreparedOlsColumnKind::Intercept
+                    ) {
+                        ReportMap::Intercept(pair.map)
+                    } else {
+                        ReportMap::Pair(pair.map)
+                    },
                     predictors: None,
                 })
             }
@@ -177,6 +185,11 @@ pub(super) fn replay_original_omission(
     let Some(recovery) = &generation.slope_recovery else {
         return Ok((stable, None));
     };
+    if matches!(recovery, GenerationRecovery::Pair(pair) if matches!(generation.model().columns[pair.source_column].kind, crate::ols::PreparedOlsColumnKind::Intercept))
+    {
+        // This fallback was reached only after that exact original fit failed.
+        return Ok((stable, None));
+    }
     let target = match recovery {
         GenerationRecovery::Pair(pair) => pair.target_column,
         GenerationRecovery::Absorbed(fe) => fe.target_column,
@@ -366,6 +379,33 @@ impl RecoveryAdmission {
             ));
         }
         Ok(candidate)
+    }
+
+    pub(super) fn translate(
+        mut plan: super::PpmlMemoryPlan,
+        memory: super::PpmlMemoryConfig,
+        generation: &mut PreparedPpmlModelGeneration,
+    ) -> Result<Option<super::PpmlMemoryPlan>> {
+        use crate::slope_recovery::intercept_translation;
+        if generation.slope_recovery.is_some()
+            || generation
+                .cluster_design()
+                .is_some_and(|c| c.dimensions().len() > 1)
+        {
+            return Ok(None);
+        }
+        let overhead = generation.owned_buffer_bytes() - generation.fit_view().owned_buffer_bytes();
+        let recovery = intercept_translation(generation.unique_data()?, |required| {
+            plan = Self::new(1, memory).upgrade(plan)?;
+            if required + overhead > plan.selected_inventory().prepared_generation_bytes {
+                return Err(crate::error::allocation(
+                    "unable to admit translated PPML slope",
+                ));
+            }
+            Ok(())
+        })?;
+        generation.slope_recovery = recovery.map(GenerationRecovery::Pair);
+        Ok(generation.slope_recovery.as_ref().map(|_| plan))
     }
 
     pub(super) fn prepare(

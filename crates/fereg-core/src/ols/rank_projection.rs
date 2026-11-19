@@ -36,7 +36,7 @@ pub(super) fn retryable(error: &FeregError) -> bool {
         ErrorCode::InvalidData | ErrorCode::NonConvergence
     ) && matches!(
         error.message.as_str(),
-        "retained coefficient refinement exhausted its accuracy budget"
+        crate::ols::RETAINED_REFINEMENT_EXHAUSTED
             | "retained coefficient refinement is nonfinite"
             | "retained weighted-linear inverse certificate did not pass"
             | "retained weighted-linear rank decision is numerically ambiguous"

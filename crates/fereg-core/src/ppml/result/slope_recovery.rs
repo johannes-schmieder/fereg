@@ -9,6 +9,17 @@ impl CertifiedPpmlResult {
         let slots = match map {
             ReportMap::Pair(pair) => [Some(pair.source), Some(pair.target)],
             ReportMap::Absorbed(fe) => [Some(fe.slot), None],
+            ReportMap::Intercept(pair) => {
+                // An unrestricted explicit intercept can change by any linear
+                // combination of slopes without changing their joint zero null.
+                if wald.tested_columns.contains(&pair.source) || wald.reference.is_some() {
+                    return Err(FeregError::new(
+                        ErrorCode::NonConvergence,
+                        "translated PPML slope requires an unrestricted explicit intercept",
+                    ));
+                }
+                [Some(pair.target), None]
+            }
         };
         for slot in slots.into_iter().flatten() {
             // The jointly tested slopes must span the same zero restriction
@@ -37,6 +48,9 @@ impl CertifiedPpmlResult {
         match map {
             ReportMap::Pair(pair) => {
                 pair.restore(&mut self.coefficients.values, &mut vce.covariance)?;
+            }
+            ReportMap::Intercept(pair) => {
+                pair.restore_intercept(&mut self.coefficients.values, &mut vce.covariance)?;
             }
             ReportMap::Absorbed(fe) => {
                 fe.restore(&mut self.coefficients.values, &mut vce.covariance)?

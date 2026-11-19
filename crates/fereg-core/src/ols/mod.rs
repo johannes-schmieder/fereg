@@ -7,6 +7,8 @@ mod finite_wls_kernel;
 pub(crate) mod omitted_score;
 pub(crate) use canonical_products::canonical_three_workspace_bytes;
 mod implicit_centered;
+pub(crate) const RETAINED_REFINEMENT_EXHAUSTED: &str =
+    "retained coefficient refinement exhausted its accuracy budget";
 mod linear_session;
 pub(crate) use linear_session::coefficient_accuracy_scale;
 pub(crate) use linear_session::{ppml_coefficient_lifetime_bytes, ppml_component_checkpoint_bytes};

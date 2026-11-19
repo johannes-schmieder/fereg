@@ -159,7 +159,7 @@ pub(super) fn refine_retained_coefficients(
         if pass == 3 {
             return Err(FeregError::new(
                 ErrorCode::NonConvergence,
-                "retained coefficient refinement exhausted its accuracy budget",
+                crate::ols::RETAINED_REFINEMENT_EXHAUSTED,
             ));
         }
         for (coefficient, &delta) in workspace.coefficients.iter_mut().zip(workspace.row.iter()) {

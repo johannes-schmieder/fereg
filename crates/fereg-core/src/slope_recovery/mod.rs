@@ -273,6 +273,74 @@ fn pair_columns<'a>(
     Ok(candidates)
 }
 
+/// A nonconstant column concentrated about a large common origin can be
+/// exactly translated along an identified explicit intercept. Use only after
+/// the raw PPML coefficient refinement failed on its terminal sample.
+pub(crate) fn intercept_translation(
+    data: &mut PreparedOlsData,
+    admit: impl FnOnce(u128) -> Result<()>,
+) -> Result<Option<Recovery>> {
+    if !data.effect_specs().is_empty() || !data.structural_intercept() {
+        return Ok(None);
+    }
+    let Some((source_column, intercept)) = data
+        .model()
+        .columns
+        .iter()
+        .enumerate()
+        .find(|(_, c)| matches!(c.kind, PreparedOlsColumnKind::Intercept))
+    else {
+        return Ok(None);
+    };
+    let source = data
+        .report_plan()
+        .original_slot(intercept.coefficient_slot)?
+        .get() as usize
+        - 1;
+    for target_column in 0..data.model().columns.len() {
+        let Some(target) = Column::identify(data, target_column).filter(|c| c.mutable) else {
+            continue;
+        };
+        let values = data
+            .sample()
+            .regressors
+            .get(target.storage)
+            .ok_or_else(|| invalid_argument("translated PPML slope is absent"))?;
+        let sketch = screen::Sketch::new(values)?;
+        let spread = sketch.maximum - sketch.minimum;
+        if !(spread > 0. && spread <= basis::WEAK_RATIO * sketch.magnitude) {
+            continue;
+        }
+        // A midpoint independent of row order. The small relative range puts
+        // every represented value within a factor of two of this origin, so
+        // subtraction is exact by Sterbenz's lemma.
+        let origin = sketch.minimum + spread * 0.5;
+        let required = data.owned_buffer_bytes() + values.len() as u128 * 8;
+        admit(required)?;
+        let mut original =
+            crate::memory::fallible_copy(values, "unable to reserve translated PPML slope")?;
+        for (r, x) in original.iter_mut().enumerate() {
+            row_checkpoint(r)?;
+            *x -= origin;
+        }
+        data.sample
+            .swap_recovery_column(target.storage, &mut original)?;
+        return Ok(Some(Recovery {
+            source_column,
+            target_column,
+            map: PairMap {
+                source,
+                target: target.slot,
+                multiple: origin,
+                scale: 1.,
+            },
+            storage_index: target.storage,
+            original,
+        }));
+    }
+    Ok(None)
+}
+
 /// Search explicit continuous columns alone, without attempting FE centering.
 pub fn prepare(prepared: &mut PreparedOlsData, ceiling: u128) -> Result<Option<Recovery>> {
     let mut columns = [Column::default(); SEARCH_WIDTH];

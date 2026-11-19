@@ -214,6 +214,8 @@ pub enum PpmlInterruptPoint {
     Publication,
 }
 
+const NO_SEPARATION_HINT: &str = ". IRLS failed with separation(none). Rerun with default separation detection to check for separated observations.";
+
 /// Fit and certify PPML through the prepared production architecture.
 ///
 /// Every intermediate is owned locally.  The function publishes nothing
@@ -454,7 +456,7 @@ pub fn fit_prepared_ppml_interruptible(
             topology_sharing: request.inject_topology_sharing,
         },
     };
-    let (mut separation_outcome, (fit, terminal_plan, terminal_linear)) =
+    let (mut separation_outcome, (fit, mut terminal_plan, terminal_linear)) =
         fit_with_prepared_ppml_separation(
             owner,
             ppml,
@@ -474,13 +476,41 @@ pub fn fit_prepared_ppml_interruptible(
                 }
             },
             |generation, plan, linear, interrupt| {
-                Ok((
-                    config.publication(generation, plan, linear, interrupt)?,
-                    *plan,
-                    linear,
-                ))
+                let fit = match config.publication(generation, plan, linear, interrupt) {
+                    Err(e)
+                        if e.code == ErrorCode::NonConvergence
+                            && e.message
+                                .strip_suffix(NO_SEPARATION_HINT)
+                                .unwrap_or(&e.message)
+                                == crate::ols::RETAINED_REFINEMENT_EXHAUSTED =>
+                    {
+                        Err(e)
+                    }
+                    other => Ok(other?),
+                };
+                Ok((fit, *plan, linear))
             },
         )?;
+    let fit = match fit {
+        Ok(fit) => fit,
+        Err(original) => {
+            let Some(admitted) = super::slope_recovery::RecoveryAdmission::translate(
+                terminal_plan,
+                request.memory,
+                &mut separation_outcome.prepared,
+            )?
+            else {
+                return Err(original);
+            };
+            terminal_plan = admitted;
+            config.publication(
+                &separation_outcome.prepared,
+                &terminal_plan,
+                terminal_linear,
+                interrupt,
+            )?
+        }
+    };
     fit.validate_generation(&separation_outcome.prepared)?;
     let inference_config = InferenceConfig {
         vce: request.vce,
@@ -560,9 +590,10 @@ pub fn fit_prepared_ppml_interruptible(
         )?,
     };
     match report_map {
-        Some(super::slope_recovery::ReportMap::Pair(map)) => {
-            super::slope_information::check(map, prepared, &fit, &coefficients, &inference)?
-        }
+        Some(
+            super::slope_recovery::ReportMap::Pair(map)
+            | super::slope_recovery::ReportMap::Intercept(map),
+        ) => super::slope_information::check(map, prepared, &fit, &coefficients, &inference)?,
         Some(super::slope_recovery::ReportMap::Absorbed(map)) => {
             super::absorbed_information::check(
                 Some(map),
@@ -893,13 +924,20 @@ impl GenerationFit<'_> {
         linear: PreparedOlsFitConfig,
         interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     ) -> Result<PreparedPpmlIrlsFit> {
-        let fit=self.run(generation,plan,linear,PreparedPpmlIrlsPurpose::Publication,interrupt)
+        let fit = self
+            .run(
+                generation,
+                plan,
+                linear,
+                PreparedPpmlIrlsPurpose::Publication,
+                interrupt,
+            )
             .map_err(|mut error| {
                 if error.code == ErrorCode::NonConvergence
                     && self.separation.methods == crate::ppml_separation::SeparationMethods::NONE
-                    && generation.outcome().contains(&0.0) {
-                    error.message.push_str(
-                        ". IRLS failed with separation(none). Rerun with default separation detection to check for separated observations.");
+                    && generation.outcome().contains(&0.0)
+                {
+                    error.message.push_str(NO_SEPARATION_HINT);
                 }
                 error
             })?;

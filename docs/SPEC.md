@@ -1673,12 +1673,30 @@ form the predictor directly from the certified finite coefficients, original
 design and offset with compensated products. Use it in the ordinary trial
 and strict checkpoint under the same convergence and reconstruction checks.
 
+If coefficient refinement fails on a terminal sample with no absorbed effects
+and an explicit intercept, PPML may retry the fit with one sharply translated
+continuous column centered at its range midpoint. The small relative range
+makes each subtraction exact. This retry uses the same certified sample and
+the existing original-unit coefficient, predictor, sandwich, and Wald checks.
+The covariance must reproduce every conditioned contrast and its mathematical
+rank. Both parameterizations must certify the same model Wald test, which
+leaves the explicit intercept unrestricted. A separately requested Stata
+joint test including that intercept can lose numerical rank after a large
+translation even with the exact original-coordinate covariance.
+
 For an admitted one-effect categorical-intercept profile, a cancellation-sensitive
 strict checkpoint can form a Fisher response in the model span from the
 current accepted means and Hessian. This fallback requires every finite
 column except an absorbed constant to be in the frozen active set. Before
 using it, check the weighted moment of the removed response against every
-raw finite column, its within-level contrasts and each absorbed level. Run the
+raw finite column and each absorbed level. Scale the controls and level dummies
+using the current Hessian and center the controls within levels. For the normalized
+Gram matrix G, a positive lower bound on the smallest diagonal-dominance margin
+gives an upper bound on the missing Newton correction, namely the largest normalized
+score divided by that margin. Multiply by each model row's absolute sum and undo
+the coefficient scaling. Require both predictor and coefficient correction bounds
+to fit the strict tolerance, allowing for floating-point error in the score and
+Gram calculations. An inconclusive bound returns to canonical WLS. Run the
 existing canonical solve and strict profile, score, objective, and exact-Hessian
 checks on the resulting candidate.
 

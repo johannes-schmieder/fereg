@@ -1707,7 +1707,7 @@ pub(crate) fn classify_frozen_linear_fallback(
             | "frozen weighted-linear Cholesky inverse is not finite"
             | "frozen weighted-linear QR inverse is not finite"
             | "frozen weighted-linear score or inverse certificate did not pass"
-            | "retained coefficient refinement exhausted its accuracy budget"
+            | crate::ols::RETAINED_REFINEMENT_EXHAUSTED
             | "retained coefficient refinement is nonfinite"
     ) {
         Some(FrozenLinearFallbackKind::Bread)

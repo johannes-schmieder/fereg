@@ -1291,6 +1291,73 @@ fn interrupt_callback_may_be_non_send_and_runs_only_on_the_caller_thread() {
 }
 
 #[test]
+fn translated_separated_slope_preserves_the_closed_form_fit_and_sandwich() {
+    let (mut request, mut input) = fixture(0, false, false, false, false, false);
+    let z = SourceId::new(2).unwrap();
+    request.ols.model.sources.push(source(z, "z"));
+    let mut term = continuous_term(z);
+    term.id = TermId::new(2).unwrap();
+    term.order = TermOrder::new(2).unwrap();
+    term.coefficient_slot = CoefficientSlot::new(2).unwrap();
+    term.canonical_token = "c.z".into();
+    request.ols.model.terms.push(term);
+    request.ols.bindings.push(OlsInputBinding {
+        stata_var_position: 4,
+        role: OlsInputRole::NumericSource(z),
+    });
+    input.ols.candidate = vec![true; 5].into();
+    input.ols.outcome = column(&[1., 0., 0., 0., 0.]);
+    input
+        .ols
+        .numeric_sources
+        .push((z, column(&[0., 0., 1., 0., 2.])));
+    for shift in [0., 2_f64.powi(20), -2_f64.powi(20)] {
+        input.ols.numeric_sources[0].1 =
+            column(&[shift, shift + 1., shift, shift - 1., shift + 2.]);
+        for (simplex, iterated_rectifier) in [(true, true), (true, false), (false, true)] {
+            request.separation.methods = SeparationMethods {
+                simplex,
+                iterated_rectifier,
+                ..SeparationMethods::NONE
+            };
+            let result =
+                fit_prepared_ppml(request.clone(), input.clone()).unwrap_or_else(|error| {
+                    panic!("shift={shift}, simplex={simplex}, ir={iterated_rectifier}: {error}")
+                });
+            assert_eq!(result.sample().original_rows(), &[0, 1, 3]);
+            assert_eq!(result.coefficients().kept_full_slots(), &[0, 2]);
+            assert!(result
+                .output()
+                .mean()
+                .iter()
+                .all(|v| (v - 1. / 3.).abs() < 1e-10));
+            let coefficients = result.coefficients().values();
+            assert!(coefficients[0].abs() < 1e-12);
+            assert!((coefficients[2] + 3_f64.ln()).abs() < 1e-9);
+            // HC1 in centered coordinates is diag(3/4, 1). The public
+            // intercept equals the centered intercept minus shift * slope.
+            let covariance = &result.inference().vce.covariance;
+            for (position, expected) in [
+                (0, 0.75),
+                (2, -0.75 * shift),
+                (6, -0.75 * shift),
+                (8, 1. + 0.75 * shift * shift),
+            ] {
+                assert!((covariance[position] - expected).abs() < 1e-10 * (1. + expected.abs()));
+            }
+            assert!(result.certificate().passed);
+        }
+    }
+    // At still larger shifts the normalized covariance pivot is below
+    // the mathematical rank certificate's roundoff bound.
+    let shift = 2_f64.powi(24);
+    input.ols.numeric_sources[0].1 = column(&[shift, shift + 1., shift, shift - 1., shift + 2.]);
+    let error = fit_prepared_ppml(request, input).expect_err("unresolved covariance rank");
+    assert_eq!(error.code, ErrorCode::NonConvergence);
+    assert!(error.message.contains("covariance"), "{error}");
+}
+
+#[test]
 fn no_fe_constant_is_identified_with_a_real_robust_covariance_coordinate() {
     let (request, loaded) = fixture(0, false, false, false, false, false);
     let result = fit_prepared_ppml(request, loaded).expect("no-FE composite PPML");
