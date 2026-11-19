@@ -122,6 +122,33 @@ fn numerically_omitted(status: crate::ols::PreparedOlsFitStatus) -> bool {
     matches!(status, CollinearWithFixedEffects | NumericallyRankDeficient)
 }
 
+fn verify_translated_omissions(
+    generation: &PreparedPpmlModelGeneration,
+    fit: &PreparedPpmlIrlsFit,
+) -> Result<()> {
+    let data = generation.fit_view();
+    for (position, coefficient) in fit.coefficients().iter().enumerate() {
+        crate::interrupt::row_checkpoint(position)?;
+        let Some(column) = coefficient
+            .generated_column_index
+            .filter(|_| numerically_omitted(coefficient.status))
+        else {
+            continue;
+        };
+        let base = data.column_value(column, 0)?;
+        for row in 1..fit.mean().len() {
+            crate::interrupt::row_checkpoint(row)?;
+            if data.column_value(column, row)? != base {
+                return Err(FeregError::new(
+                    ErrorCode::NonConvergence,
+                    "translated PPML fit cannot certify an original nonconstant omitted column",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 // A slope can exchange places with a different retained column after changing
 // units. An unrelated omission on the final sample supplies no such evidence.
 fn exact_alternate(
@@ -187,7 +214,11 @@ pub(super) fn replay_original_omission(
     };
     if matches!(recovery, GenerationRecovery::Pair(pair) if matches!(generation.model().columns[pair.source_column].kind, crate::ols::PreparedOlsColumnKind::Intercept))
     {
-        // This fallback was reached only after that exact original fit failed.
+        // Inverse translation preserves the independently certified retained
+        // span and the two participating coefficients must both be identified.
+        // Every other omitted direction must belong to that span exactly. A
+        // constant belongs to the explicit intercept on all original rows.
+        verify_translated_omissions(generation, &stable)?;
         return Ok((stable, None));
     }
     let target = match recovery {
@@ -395,7 +426,10 @@ impl RecoveryAdmission {
             return Ok(None);
         }
         let overhead = generation.owned_buffer_bytes() - generation.fit_view().owned_buffer_bytes();
-        let recovery = intercept_translation(generation.unique_data()?, |required| {
+        let Some(data) = generation.try_unique_data() else {
+            return Ok(None);
+        };
+        let recovery = intercept_translation(data, |required| {
             plan = Self::new(1, memory).upgrade(plan)?;
             if required + overhead > plan.selected_inventory().prepared_generation_bytes {
                 return Err(crate::error::allocation(
@@ -403,7 +437,13 @@ impl RecoveryAdmission {
                 ));
             }
             Ok(())
-        })?;
+        });
+        // This is an optional alternate to the original numerical failure.
+        // An unadmitted alternate has no independent allocation prerequisite.
+        let recovery = match recovery {
+            Err(error) if error.code == ErrorCode::Allocation => return Ok(None),
+            other => other?,
+        };
         generation.slope_recovery = recovery.map(GenerationRecovery::Pair);
         Ok(generation.slope_recovery.as_ref().map(|_| plan))
     }

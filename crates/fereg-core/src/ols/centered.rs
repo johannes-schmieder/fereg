@@ -127,7 +127,7 @@ pub(super) fn remove_location(
 /// An origin change must preserve the represented data, including small
 /// contrasts unrelated to the column's largest magnitude. TwoSum exposes the
 /// subtraction's rounding remainder without an accuracy tolerance.
-pub(super) fn exact_location_difference(value: f64, origin: f64) -> bool {
+pub(crate) fn exact_location_difference(value: f64, origin: f64) -> bool {
     let (difference, remainder) = two_sum(value, -origin);
     difference.is_finite() && remainder == 0.0
 }

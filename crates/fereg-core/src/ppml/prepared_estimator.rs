@@ -439,7 +439,8 @@ pub fn fit_prepared_ppml_interruptible(
     let ppml = request.ppml;
     let separation = request.separation;
     let output_request = request.output;
-    let config = GenerationFit {
+    let mut config = GenerationFit {
+        work: Default::default(),
         separation,
         output: output_request,
         saved_channels: requested_saved_channel_count,
@@ -494,6 +495,11 @@ pub fn fit_prepared_ppml_interruptible(
     let fit = match fit {
         Ok(fit) => fit,
         Err(original) => {
+            let spent = config.work.get();
+            let remaining = config.irls.ppml.max_iterations.saturating_sub(spent.outer);
+            if remaining == 0 {
+                return Err(original);
+            }
             let Some(admitted) = super::slope_recovery::RecoveryAdmission::translate(
                 terminal_plan,
                 request.memory,
@@ -503,12 +509,15 @@ pub fn fit_prepared_ppml_interruptible(
                 return Err(original);
             };
             terminal_plan = admitted;
-            config.publication(
+            config.irls.ppml.max_iterations = remaining;
+            let mut fit = config.publication(
                 &separation_outcome.prepared,
                 &terminal_plan,
                 terminal_linear,
                 interrupt,
-            )?
+            )?;
+            spent.combine(config.work.get()).report(&mut fit);
+            fit
         }
     };
     fit.validate_generation(&separation_outcome.prepared)?;
@@ -857,6 +866,7 @@ fn check_omitted_score(
 /// Exploration, publication and an original-basis replay all bind their
 /// weighted-linear session to the same generation and fit-lifetime plan.
 struct GenerationFit<'a> {
+    work: std::cell::Cell<super::prepared_irls::AttemptWork>,
     irls: PreparedPpmlIrlsConfig,
     separation: SeparationConfig,
     output: PreparedPpmlOutputRequest,
@@ -912,9 +922,12 @@ impl GenerationFit<'_> {
             irls.allocation_snapshot_probe = None;
             None
         };
-        fit_generation_ppml_irls_interruptible(
-            generation, irls, plan, None, purpose, bias, interrupt,
-        )
+        let mut work = super::prepared_irls::AttemptWork::default();
+        let result = fit_generation_ppml_irls_interruptible(
+            generation, irls, plan, None, purpose, bias, &mut work, interrupt,
+        );
+        self.work.set(work);
+        result
     }
 
     fn publication(

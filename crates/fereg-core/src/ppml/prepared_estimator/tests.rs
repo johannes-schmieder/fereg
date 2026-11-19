@@ -1320,10 +1320,40 @@ fn translated_separated_slope_preserves_the_closed_form_fit_and_sandwich() {
                 iterated_rectifier,
                 ..SeparationMethods::NONE
             };
+            let mut attempted = 0;
             let result =
-                fit_prepared_ppml(request.clone(), input.clone()).unwrap_or_else(|error| {
+                fit_prepared_ppml_interruptible(request.clone(), input.clone(), &mut |point| {
+                    attempted += usize::from(point == PpmlInterruptPoint::IrlsIteration);
+                    Ok(())
+                })
+                .unwrap_or_else(|error| {
                     panic!("shift={shift}, simplex={simplex}, ir={iterated_rectifier}: {error}")
                 });
+            assert_eq!(result.convergence().outer_iterations, attempted);
+            if shift != 0. && simplex && iterated_rectifier {
+                assert!(attempted > 2, "the failed raw iteration must be counted");
+                for budget in [attempted - 1, attempted] {
+                    let mut bounded = request.clone();
+                    bounded.ppml.max_iterations = budget;
+                    let mut used = 0;
+                    let bounded =
+                        fit_prepared_ppml_interruptible(bounded, input.clone(), &mut |point| {
+                            used += usize::from(point == PpmlInterruptPoint::IrlsIteration);
+                            Ok(())
+                        });
+                    assert!(used <= budget);
+                    if budget == attempted {
+                        let fit = bounded.expect("exact common iteration budget");
+                        assert_eq!(fit.convergence().outer_iterations, used);
+                        assert_eq!(
+                            fit.convergence().inner_iterations,
+                            result.convergence().inner_iterations
+                        );
+                    } else {
+                        assert_eq!(bounded.unwrap_err().code, ErrorCode::NonConvergence);
+                    }
+                }
+            }
             assert_eq!(result.sample().original_rows(), &[0, 1, 3]);
             assert_eq!(result.coefficients().kept_full_slots(), &[0, 2]);
             assert!(result
@@ -1355,6 +1385,67 @@ fn translated_separated_slope_preserves_the_closed_form_fit_and_sandwich() {
     let error = fit_prepared_ppml(request, input).expect_err("unresolved covariance rank");
     assert_eq!(error.code, ErrorCode::NonConvergence);
     assert!(error.message.contains("covariance"), "{error}");
+}
+
+#[test]
+fn unavailable_intercept_translation_preserves_the_raw_design() {
+    use super::super::slope_recovery::RecoveryAdmission;
+    use crate::ppml_separation::PreparedSeparationRebuilder;
+    let (request, mut input) = fixture(0, false, false, false, false, false);
+    let original: Vec<_> = (0..4).map(|x| 2_f64.powi(40) + f64::from(x)).collect();
+    input.ols.candidate = vec![true; 4].into();
+    input.ols.outcome = column(&[1., 2., 3., 4.]);
+    input.ols.numeric_sources[0].1 = column(&original);
+    let numeric = prepare_numeric_input(&request, &input).unwrap();
+    let dimensions = conservative_preflight_dimensions(&request, &numeric, 0).unwrap();
+    let plan = plan_ppml_memory(dimensions, request.memory).unwrap();
+    let mut owner =
+        PreparedPpmlModelOwner::new(request.ols, request.clusters, input.ols, numeric).unwrap();
+    let mut generation = owner
+        .rebuild_generation(&owner.candidate_original_rows(), 0)
+        .unwrap();
+    let other = generation.prepared().clone();
+    assert!(
+        RecoveryAdmission::translate(plan, request.memory, &mut generation)
+            .unwrap()
+            .is_none()
+    );
+    drop(other);
+    let mut limited = request.memory;
+    limited.available_bytes = Some(1);
+    assert!(RecoveryAdmission::translate(plan, limited, &mut generation)
+        .unwrap()
+        .is_none());
+    for (row, expected) in original.into_iter().enumerate() {
+        assert_eq!(
+            generation.fit_view().column_value(0, row).unwrap(),
+            expected
+        );
+    }
+}
+
+#[test]
+fn unrepresentable_posted_intercept_translation_refuses_the_ordered_predictor() {
+    let (mut request, mut input) = fixture(0, false, false, false, false, false);
+    let x = [0., 1., 2., 3.];
+    let residual = [0.375, -0.375, -0.375, 0.375];
+    let y: [f64; 4] = std::array::from_fn(|i| (x[i] / 3_f64).exp() + residual[i]);
+    // At slope 1/3 both raw score equations vanish exactly in real arithmetic.
+    input.ols.candidate = vec![true; 4].into();
+    input.ols.outcome = column(&y);
+    input.ols.numeric_sources[0].1 = column(&x);
+    request.separation.methods = SeparationMethods::default();
+    let reference = fit_prepared_ppml(request.clone(), input.clone()).unwrap();
+    assert!((reference.coefficients().values()[0] - 1. / 3.).abs() < 1e-10);
+    input.ols.numeric_sources[0].1 = column(&x.map(|v| v + 2_f64.powi(40)));
+    let error = fit_prepared_ppml(request, input).unwrap_err();
+    assert_eq!(error.code, ErrorCode::NonConvergence);
+    assert!(
+        error
+            .message
+            .contains("cannot reproduce the certified predictor"),
+        "{error}"
+    );
 }
 
 #[test]

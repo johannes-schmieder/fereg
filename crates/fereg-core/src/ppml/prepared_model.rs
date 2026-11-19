@@ -132,8 +132,12 @@ impl PreparedPpmlModelGeneration {
         &self.prepared
     }
 
-    pub(super) fn unique_data(&mut self) -> Result<&mut PreparedOlsData> {
+    pub(super) fn try_unique_data(&mut self) -> Option<&mut PreparedOlsData> {
         Arc::get_mut(&mut self.prepared)
+    }
+
+    pub(super) fn unique_data(&mut self) -> Result<&mut PreparedOlsData> {
+        self.try_unique_data()
             .ok_or_else(|| invalid_argument("PPML slope replay still has a live fit binding"))
     }
 

@@ -7,6 +7,7 @@
 #[cfg(test)]
 use crate::fe::PARALLEL_PROJECTION_MIN_ROWS;
 use rayon::prelude::*;
+#[cfg(test)]
 use std::cell::Cell;
 use std::time::{Duration, Instant};
 
@@ -841,13 +842,13 @@ pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync 
             offset,
             binding: None,
             restart_from_projected_seed: false,
-            attempted_iterations: None,
         },
         config,
         memory_plan,
         start,
         PreparedPpmlIrlsPurpose::Publication,
         None,
+        &mut AttemptWork::default(),
         interrupt,
     )? {
         PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
@@ -868,9 +869,44 @@ struct PreparedPpmlFitFrame<'a, P: ?Sized> {
     offset: &'a [f64],
     binding: Option<PpmlGenerationBinding>,
     restart_from_projected_seed: bool,
-    attempted_iterations: Option<&'a Cell<usize>>,
 }
 
+/// Actual work of a generation fit, including work consumed before a numerical
+/// error. Only an intercept-translation restart publishes these prefix counts.
+#[derive(Default, Clone, Copy)]
+pub(super) struct AttemptWork {
+    pub(super) outer: usize,
+    inner: usize,
+    halvings: usize,
+    strict_rejections: usize,
+}
+
+impl AttemptWork {
+    pub(super) fn combine(self, other: Self) -> Self {
+        Self {
+            outer: self.outer.saturating_add(other.outer),
+            inner: self.inner.saturating_add(other.inner),
+            halvings: self.halvings.saturating_add(other.halvings),
+            strict_rejections: self
+                .strict_rejections
+                .saturating_add(other.strict_rejections),
+        }
+    }
+
+    pub(super) fn report(self, fit: &mut PreparedPpmlIrlsFit) {
+        let diag = &mut fit.diagnostics;
+        let prefix = self.outer - diag.iterations;
+        for row in &mut diag.retained_iterations {
+            row.iteration += prefix;
+        }
+        diag.iterations = self.outer;
+        diag.total_inner_iterations = self.inner;
+        diag.total_step_halvings = self.halvings;
+        diag.strict_profile_rejections = self.strict_rejections;
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(super) fn fit_generation_ppml_irls_interruptible(
     generation: &super::prepared_model::PreparedPpmlModelGeneration,
     mut config: PreparedPpmlIrlsConfig,
@@ -878,9 +914,9 @@ pub(super) fn fit_generation_ppml_irls_interruptible(
     start: Option<&PreparedPpmlStart>,
     purpose: PreparedPpmlIrlsPurpose,
     bias: Option<(super::PpmlBiasRequest, &[f64])>,
+    work: &mut AttemptWork,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsRun> {
-    let attempted_iterations = Cell::new(0);
     let frame = |restart_from_projected_seed| -> Result<_> {
         Ok(PreparedPpmlFitFrame {
             prepared: generation.fit_view(),
@@ -893,7 +929,6 @@ pub(super) fn fit_generation_ppml_irls_interruptible(
             offset: generation.offset(),
             binding: Some(PpmlGenerationBinding::capture(generation)?),
             restart_from_projected_seed,
-            attempted_iterations: (!restart_from_projected_seed).then_some(&attempted_iterations),
         })
     };
     let first = run_prepared_ppml_irls(
@@ -903,6 +938,7 @@ pub(super) fn fit_generation_ppml_irls_interruptible(
         start,
         purpose,
         bias,
+        work,
         interrupt,
     );
     let error = match first {
@@ -922,7 +958,7 @@ pub(super) fn fit_generation_ppml_irls_interruptible(
         }
         _ => return Err(error),
     };
-    let spent = attempted_iterations.get();
+    let spent = work.outer;
     let remaining = config.ppml.max_iterations.saturating_sub(spent);
     if remaining == 0 {
         return Err(error);
@@ -936,20 +972,25 @@ pub(super) fn fit_generation_ppml_irls_interruptible(
             "FEREG_SOLVER_TRACE|phase=irls_restart|reason={reason}|start=projected|spent={spent}|remaining={remaining}",
         ));
     }
-    match run_prepared_ppml_irls(
+    let mut retry_work = AttemptWork::default();
+    let retry = run_prepared_ppml_irls(
         frame(true)?,
         config,
         memory_plan,
         start,
         purpose,
         bias,
+        &mut retry_work,
         interrupt,
-    ) {
+    );
+    *work = work.combine(retry_work);
+    match retry {
         Err(retry) if retry.message == offset_start::RESTART_SEED_REFUSED => Err(error),
         result => result,
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     frame: PreparedPpmlFitFrame<'_, P>,
     mut config: PreparedPpmlIrlsConfig,
@@ -957,6 +998,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     start: Option<&PreparedPpmlStart>,
     purpose: PreparedPpmlIrlsPurpose,
     bias: Option<(super::PpmlBiasRequest, &[f64])>,
+    work: &mut AttemptWork,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsRun> {
     let PreparedPpmlFitFrame {
@@ -967,7 +1009,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         offset,
         binding,
         restart_from_projected_seed,
-        attempted_iterations,
     } = frame;
     let model_generation = binding
         .as_ref()
@@ -1159,7 +1200,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     retained_iterations
         .try_reserve_exact(retained_limit)
         .map_err(|_| allocation("unable to reserve prepared PPML diagnostics"))?;
-    let mut total_step_halvings = 0_usize;
+
     let diagnostics_seconds = preparation_trace.lap();
     let mut final_score = prepared_score_certificate(
         prepared,
@@ -1184,13 +1225,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         PpmlInnerToleranceProgress::new(report.change, final_score.relative_infinity_norm)
     });
     let mut rank_frozen = false;
-    let mut completed_iterations = 0_usize;
+
     // Pre-solve steps are outer iterations; their projections are inner work.
     let presolve_steps = presolved.map_or(0, |report| report.steps);
-    if let Some(attempted_iterations) = attempted_iterations {
-        attempted_iterations.set(presolve_steps);
-    }
-    let mut total_inner_iterations = presolved.map_or(0, |report| report.projection_iterations);
+    work.outer = presolve_steps;
+    work.inner = presolved.map_or(0, |report| report.projection_iterations);
     if credited.is_some() {
         strict_control.credit_converged_start();
     }
@@ -1230,10 +1269,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         // iterations as the allocator window.  `None` is the normal path and
         // avoids even an extra clock read.
         let audited_iteration_clock = allocation_audit.is_measuring().then(Instant::now);
-        completed_iterations = iteration;
-        if let Some(attempted_iterations) = attempted_iterations {
-            attempted_iterations.set(presolve_steps + iteration);
-        }
+        work.outer = presolve_steps + iteration;
         let inner_tolerance = scheduled_inner_tolerance(
             config.ppml,
             iteration,
@@ -1335,10 +1371,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 ));
             }
             certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
-            accumulate_inner_iterations(
-                &mut total_inner_iterations,
-                output.frame().absorption_report(),
-            )?;
+            accumulate_inner_iterations(&mut work.inner, output.frame().absorption_report())?;
             let selected_engine = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication) {
                 config
                     .solver_plan
@@ -1409,7 +1442,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             }
             result
         } else if let Some((rank, error, seconds)) = profiled_step {
-            total_inner_iterations = total_inner_iterations
+            work.inner = work
+                .inner
                 .checked_add(1)
                 .ok_or_else(|| internal("profile step count overflow"))?;
             solver_report
@@ -1466,7 +1500,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     );
                     joint.fill_candidate(&mut workspace)?;
                     certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
-                    total_inner_iterations = total_inner_iterations
+                    work.inner = work
+                        .inner
                         .checked_add(report.iterations.max(1))
                         .ok_or_else(|| {
                             FeregError::new(
@@ -1506,7 +1541,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &mut memory,
                         &mut solver_report,
                         &mut certified_linear_subproblems,
-                        &mut total_inner_iterations,
+                        &mut work.inner,
                         &mut allocation_audit,
                     )?;
                     rank_frozen = true;
@@ -1534,7 +1569,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     let cmg = direction.cmg().expect("successful fused CMG is retained");
                     cmg.fill_candidate(&mut workspace, offset)?;
                     certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
-                    total_inner_iterations = total_inner_iterations
+                    work.inner = work
+                        .inner
                         .checked_add(report.iterations.max(1))
                         .ok_or_else(|| {
                             FeregError::new(
@@ -1575,7 +1611,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &mut memory,
                         &mut solver_report,
                         &mut certified_linear_subproblems,
-                        &mut total_inner_iterations,
+                        &mut work.inner,
                         &mut allocation_audit,
                     )?;
                     rank_frozen = true;
@@ -1597,7 +1633,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 Ok(output) if output.certified() => {
                     certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
                     accumulate_inner_iterations(
-                        &mut total_inner_iterations,
+                        &mut work.inner,
                         output.response_absorption_report(),
                     )?;
                     solver_report
@@ -1649,7 +1685,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     // warmed steady-state window.
                     let canonical = session.solve_fresh()?;
                     accumulate_inner_iterations(
-                        &mut total_inner_iterations,
+                        &mut work.inner,
                         canonical.frame().absorption_report(),
                     )?;
                     let solver = solver_report
@@ -1717,7 +1753,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     &mut memory,
                     &mut solver_report,
                     &mut certified_linear_subproblems,
-                    &mut total_inner_iterations,
+                    &mut work.inner,
                     &mut allocation_audit,
                 )?
             } else {
@@ -1819,7 +1855,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         let increase = (accepted.objective.deviance - previous_objective.deviance).max(0.0)
             / previous_objective.deviance.abs().max(1.0);
         maximum_deviance_increase_relative = maximum_deviance_increase_relative.max(increase);
-        total_step_halvings = total_step_halvings
+        work.halvings = work
+            .halvings
             .checked_add(accepted.step_halvings)
             .ok_or_else(|| {
                 FeregError::new(
@@ -1920,8 +1957,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     config,
                     finite_rank,
                     objective: &mut objective,
-                    total_inner_iterations: &mut total_inner_iterations,
-                    total_step_halvings: &mut total_step_halvings,
+                    total_inner_iterations: &mut work.inner,
+                    total_step_halvings: &mut work.halvings,
                     score_workspace: &mut score_workspace,
                     final_score: &mut final_score,
                     final_score_generation: &mut final_score_generation,
@@ -1939,8 +1976,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 solver_admission,
                 solver_memory_budget,
             }
-            .run()?;
-            match outcome {
+            .run();
+            work.strict_rejections = strict_control.rejected_cycles();
+            match outcome? {
                 controller::StrictCycleOutcome::JointAccepted => break,
                 controller::StrictCycleOutcome::CheckpointAccepted => {
                     exploration_terminal = PreparedPpmlMuTerminal::Converged;
@@ -2103,10 +2141,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 converged: true,
                 two_consecutive_convergence: true,
                 rank_frozen,
-                iterations: completed_iterations + presolve_steps,
-                total_inner_iterations,
+                iterations: work.outer,
+                total_inner_iterations: work.inner,
                 retained_iterations,
-                total_step_halvings,
+                total_step_halvings: work.halvings,
                 strict_profile_rejections: strict_control.rejected_cycles(),
                 final_score,
                 solver: solver_report.ok_or_else(|| {

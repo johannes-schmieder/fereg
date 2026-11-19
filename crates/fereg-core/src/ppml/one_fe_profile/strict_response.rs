@@ -370,6 +370,32 @@ mod tests {
     }
 
     #[test]
+    fn identity_gram_compares_nonzero_fisher_movement_with_tolerance() {
+        for order in [[0, 1, 2, 3], [3, 2, 1, 0]] {
+            let rows = order.map(|i| [[-1., -1.], [-1., 1.], [1., -1.], [1., 1.]][i]);
+            let removed = rows.map(|[_, x2]| 1e-9 * x2);
+            let matrix = DenseMatrix::from_row_major(4, 2, rows.concat()).unwrap();
+            let data = ProfiledColumns::selected(&matrix, &[0, 1]).unwrap();
+            let effect = crate::fe::EffectTerm::new(vec![0; 4], 1, true, vec![]).unwrap();
+            let mut profile =
+                ProfiledOneFe::reserve(4, 2, 1, ThreadConfig::from_requested(1, true).unwrap())
+                    .unwrap();
+            profile.slots.copy_from_slice(&[0, 1]);
+            profile.scales.copy_from_slice(&[2., 2.]);
+            profile.mean.copy_from_slice(&removed);
+            // The normalized controls and group dummy have identity Gram. The
+            // sole nonzero score is 2e-9, and the maximum row sum is 3/2.
+            let mut verify = |tolerance| {
+                profile.verify_fisher_correction(
+                    data, &effect, &[1.; 4], &removed, &[1.; 4], &[0.; 4], &[0.; 2], tolerance,
+                )
+            };
+            assert_eq!(verify(1e-12).unwrap_err().code, ErrorCode::NonConvergence);
+            verify(1e-8).unwrap();
+        }
+    }
+
+    #[test]
     fn weighted_center_certifies_orthogonal_leverage_rows_in_both_orders() {
         for order in [[0, 1, 2, 3], [3, 2, 1, 0]] {
             let x = order.map(|i| [2_f64.powi(40), 0., 1., 2.][i]);

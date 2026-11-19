@@ -2,6 +2,7 @@
 
 mod canonical_products;
 mod centered;
+pub(crate) use centered::exact_location_difference;
 pub(crate) mod finite_operations;
 mod finite_wls_kernel;
 pub(crate) mod omitted_score;

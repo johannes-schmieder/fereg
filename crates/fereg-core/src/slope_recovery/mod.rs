@@ -321,7 +321,11 @@ pub(crate) fn intercept_translation(
             crate::memory::fallible_copy(values, "unable to reserve translated PPML slope")?;
         for (r, x) in original.iter_mut().enumerate() {
             row_checkpoint(r)?;
-            *x -= origin;
+            let shifted = *x - origin;
+            if !crate::ols::exact_location_difference(*x, origin) || shifted + origin != *x {
+                return Ok(None);
+            }
+            *x = shifted;
         }
         data.sample
             .swap_recovery_column(target.storage, &mut original)?;

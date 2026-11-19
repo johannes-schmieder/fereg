@@ -1678,6 +1678,8 @@ and an explicit intercept, PPML may retry the fit with one sharply translated
 continuous column centered at its range midpoint. The small relative range
 makes each subtraction exact. This retry uses the same certified sample and
 the existing original-unit coefficient, predictor, sandwich, and Wald checks.
+Both attempts share the requested outer iteration limit. The posted iteration
+counts include recorded work on the failed raw attempt.
 The covariance must reproduce every conditioned contrast and its mathematical
 rank. Both parameterizations must certify the same model Wald test, which
 leaves the explicit intercept unrestricted. A separately requested Stata
