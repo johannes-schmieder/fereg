@@ -1,5 +1,23 @@
 # Validation status
 
+## 0.6.6 release qualification, November 19, 2026
+
+The corresponding source archive includes the complete locked dependency
+closure, which built the signed universal macOS plugin offline. The Windows
+x86-64, Linux x86-64, and macOS binaries passed their platform loading checks.
+
+- Apple Silicon and Linux each passed 183 licensed Stata/MP 19 checks. Eleven
+  checks passed in Intel Stata under Rosetta, and six passed in Apple Silicon
+  Stata/MP 18. The Linux total includes the focused retest of the unchanged
+  plugin with a better-conditioned independent reference.
+- The Windows Stata/MP 19 qualification includes the new numerical OLS
+  fixtures, package loading, transaction checks and sequential PyStata calls.
+- The Mac binary passed 119 runs of the 17 public Poisson separation examples.
+  The original twelve reported do-files also produced their expected results
+  locally.
+- The staged package passed independent OLS and PPML installation checks.
+  The local direct install also passed at the Stata/BE macro limit.
+
 ## 0.6.5 release qualification, November 19, 2026
 
 The source archive at `03606d77` contains the locked dependency closure and
