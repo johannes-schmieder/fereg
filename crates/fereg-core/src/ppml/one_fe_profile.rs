@@ -13,6 +13,8 @@ use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use rayon::prelude::*;
 
+mod strict_response;
+
 const GROUPS_PER_BLOCK: usize = 64;
 /// Rows per predictor block: one task, and one column-major pass per column.
 const PREDICTOR_ROWS: usize = 4096;
@@ -655,6 +657,16 @@ impl ProfiledOneFe {
         }
         self.direction.fill(0.);
         self.profile(data, design, offset, 0., config)?;
+        self.solve_centered_direction(data, design, y, q)
+    }
+
+    fn solve_centered_direction(
+        &mut self,
+        data: impl ProfiledDesign,
+        design: &FeDesign,
+        y: &[f64],
+        q: &[f64],
+    ) -> Result<f64> {
         // Trace-only lap (FEREG_PHASE_TIMING): no arithmetic or decision effect.
         let trace =
             crate::diagnostics::phase_ledger::PhaseLedger::new("ppml_one_fe_direction", ["max"]);

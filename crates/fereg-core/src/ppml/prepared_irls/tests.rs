@@ -5695,6 +5695,88 @@ fn finite_poisson_keeps_a_positive_row_with_tiny_fitted_mean() {
 }
 
 #[test]
+fn projected_strict_response_matches_newton_and_rejects_an_unrepresented_score() {
+    let x = vec![-1., 0., 1.];
+    let y = [1., 2., 5.];
+    let weights = [1.; 3];
+    let offset = [0.; 3];
+    let design = FeDesign::new(
+        3,
+        vec![crate::fe::EffectTerm::new(vec![0; 3], 1, true, vec![]).unwrap()],
+    )
+    .unwrap();
+    let config = PreparedPpmlIrlsConfig::default();
+    // At mu=2, the intercept and slope scores are 2 and 4, and the
+    // diagonal Fisher entries are 6 and 4. A skipped independent x² would
+    // have a nonzero score even after that projected Newton correction.
+    for extra_column in [false, true] {
+        let mut xs = vec![x.clone()];
+        if extra_column {
+            xs.push(vec![1., 0., 1.]);
+        }
+        let prepared = prepared(&y, &xs);
+        let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+        let mut workspace = PpmlIterationWorkspace::from_initial_state(
+            plan,
+            vec![2.0_f64.ln(); 3],
+            vec![0.; xs.len() + 1],
+        )
+        .unwrap();
+        workspace
+            .refresh_working_state(&y, &weights, &offset, config.ppml.bounds)
+            .unwrap();
+        let mut profile = ProfiledOneFe::new(
+            &prepared,
+            &[0],
+            &design,
+            &y,
+            &weights,
+            config.linear.execution.threads,
+        )
+        .unwrap();
+        let rhs = profile.strict_response(
+            &prepared,
+            &[0],
+            &design,
+            &y,
+            &weights,
+            &offset,
+            &workspace,
+            1e-12,
+        );
+        if extra_column {
+            assert_eq!(rhs.unwrap_err().code, ErrorCode::NonConvergence);
+        } else {
+            for (&value, &x) in rhs.unwrap().iter().zip(&x) {
+                assert!((value - (2.0_f64.ln() + 1. / 3. + x)).abs() < 1e-14);
+            }
+        }
+    }
+}
+
+#[test]
+fn strict_one_fe_recovers_positive_low_mean_rows_on_the_accepted_hessian() {
+    let x = [-32_f64, 0., 1., -32., 0., 1.];
+    let group = vec![1., 1., 1., 2., 2., 2.];
+    let weights = [2., 1., 4., 2., 1., 4.];
+    let offset = [1., -0.5, 0.25, 1., -0.5, 0.25];
+    let mu: [f64; 6] =
+        std::array::from_fn(|i| (if i < 3 { 64. } else { 96. }) * (x[i] + offset[i]).exp());
+    // Weighted residuals (1, -33, 32) in each group annihilate its dummy and x.
+    let y: [f64; 6] = std::array::from_fn(|i| mu[i] + [1., -33., 32.][i % 3] / weights[i]);
+    let prepared = prepared_many_fe(&y, &x, &[group]);
+    let config = PreparedPpmlIrlsConfig::default();
+    let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+    let fit = fit_prepared_ppml_irls(&prepared, &y, &weights, &offset, config, plan, None)
+        .expect("unique finite group-intercept optimum");
+    assert!(fit.diagnostics().final_score.passed);
+    assert!((fit.coefficients()[0].value.unwrap() - 1.0).abs() < 1e-11);
+    for (&actual, expected) in fit.mean().iter().zip(mu) {
+        assert!((actual / expected - 1.0).abs() < 1e-10);
+    }
+}
+
+#[test]
 fn affine_no_fe_poisson_matches_two_cell_optimum() {
     let n = 48;
     let y: Vec<_> = (0..n)

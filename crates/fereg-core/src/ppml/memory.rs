@@ -3372,6 +3372,14 @@ impl PpmlIterationWorkspace {
         self.certify_steady_state_capacity()
     }
 
+    pub(super) fn set_equivalent_working_response(&mut self, response: &[f64]) -> Result<()> {
+        copy_equal_len(
+            &mut self.working_response,
+            response,
+            "PPML projected Newton response",
+        )
+    }
+
     /// Reuse the working-response buffer for a Hessian-only final
     /// recertification. The accepted predictor is already in the model span;
     /// projecting `eta - offset` under the accepted `q * mu` weights rebuilds

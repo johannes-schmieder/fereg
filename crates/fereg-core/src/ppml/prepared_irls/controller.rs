@@ -581,12 +581,63 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictCycle<'_, '_, P> {
             self.direction.lsmr_mut(),
         )
     }
+    fn project_sensitive_response(&mut self) -> Result<()> {
+        let Some(profile) = self.direction.profile_mut() else {
+            return Ok(());
+        };
+        let candidate = &mut self.candidate;
+        let workspace = &mut *candidate.workspace;
+        let envelope = strict_profile_envelope(candidate.config.ppml);
+        if !workspace
+            .working_response()
+            .iter()
+            .zip(workspace.eta())
+            .any(|(response, eta)| {
+                8.0 * f64::EPSILON * response.abs() > envelope * eta.abs().max(1.0)
+            })
+        {
+            return Ok(());
+        }
+
+        let columns = self
+            .session
+            .one_fe_original_columns(profile.active_columns())?;
+        *candidate.total_inner_iterations = candidate
+            .total_inner_iterations
+            .checked_add(1)
+            .ok_or_else(|| internal("one-FE strict Fisher solve count overflowed"))?;
+        match profile.strict_response(
+            candidate.prepared,
+            columns,
+            self.session.fe_design(),
+            candidate.outcome,
+            candidate.prior_weights,
+            candidate.offset,
+            workspace,
+            self.control.tolerance,
+        ) {
+            Ok(response) => {
+                workspace.set_equivalent_working_response(response)?;
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(
+                        "FEREG_SOLVER_TRACE|phase=one_fe_strict_newton_rhs",
+                    );
+                }
+                Ok(())
+            }
+            // A refused projection leaves the ordinary canonical response intact.
+            Err(error) if error.code == ErrorCode::NonConvergence => Ok(()),
+            Err(error) => Err(error),
+        }
+    }
+
     fn prepare_attempt(&mut self) -> Result<(f64, Option<PpmlSolverEngine>)> {
         // Strict construction starts from accepted eta, rather than the stale ordinary frame.
         self.candidate.workspace.refresh_prepared_working_state(
             self.candidate.inputs,
             self.candidate.config.ppml.bounds,
         )?;
+        self.project_sensitive_response()?;
         *self.frame_generation = next_frame_generation(*self.frame_generation)?;
         refresh_linear_frame(
             self.session,
