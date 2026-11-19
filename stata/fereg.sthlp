@@ -210,6 +210,15 @@ dimensions. Separate dimensions with spaces. Use {cmd:#}, as in
 {cmd:state#year}, to form one interaction dimension; {cmd:##} is invalid in a
 cluster term. Multiway covariance uses inclusion-exclusion and the common
 finite-sample correction after absorbed-effect nesting is accounted for.
+If the covariance has negative eigenvalues, {cmd:fereg} sets them to zero
+using the Cameron-Gelbach-Miller adjustment and reports the adjustment above
+the coefficient table. It adjusts the full covariance in the reported units,
+including the reported constant. {cmd:reghdfe} applies the adjustment in
+standardized units and, with a reported constant, replaces the slope block
+with the result of adjusting that block separately. The resulting standard
+errors can differ.
+For clustered models, {cmd:e(fereg_psd_adjusted)} is one if {cmd:fereg}
+applied the adjustment and zero otherwise.
 
 {pstd}
 {cmd:dof(pairwise)} is the default reference-compatible absorbed-DoF policy.

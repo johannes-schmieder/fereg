@@ -404,15 +404,16 @@ fn fit_clustered_view_with_reservation<
 ) -> Result<CertifiedPreparedOlsClustered<CategoricalTopologyDofReport>> {
     validate_config(prepared, config)?;
     let ols = prepared.clustered_ols();
-    let (fit, score_scratch) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(ols, config.fit, rows)?;
-    compose_clustered_view(
-        prepared,
-        fit,
-        config,
-        reservation,
-        ClusteredPerturbations::default(),
-        score_scratch,
-    )
+    super::prepared_scores::fit_with_score_retry(ols, config.fit, rows, |fit, score_scratch| {
+        compose_clustered_view(
+            prepared,
+            fit,
+            config,
+            reservation,
+            ClusteredPerturbations::default(),
+            score_scratch,
+        )
+    })
 }
 
 #[cfg(test)]

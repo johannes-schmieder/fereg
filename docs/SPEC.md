@@ -1346,6 +1346,18 @@ by inclusion–exclusion and apply one common correction
 OLS cluster dimensions. `#` defines one interaction dimension; `##` is invalid.
 FW robust meat uses multiplicity, while cluster scores use full weighted sums.
 
+Independently form the weighted score Gram on the retained columns. Check
+both inverse products in coordinates scaled by the weighted column norms.
+This uses the same row-norm tolerances and avoids making acceptance depend on
+the units of the regressors. If a fast Gram fails, repeat its calculation
+with short row blocks and compensated merging when admitted. For a remaining
+score-design refusal, rerun the fit at most once on the same prepared sample,
+using the same solver request, rank thresholds and result checks. Tighten the
+projection tolerance to at most 1e-14 and use compensated merging of short
+finite-moment blocks in dense and scratch modes. The retry drops the rejected
+fit before preparing new work, counts discarded projection work, and gives
+the rejected fit no authority over rank, covariance or publication.
+
 PPML supports one through five cluster dimensions. Its bread is the inverse
 of `sum q_i mu_i x_tilde_i x_tilde_i'` at the accepted Hessian.
 Robust scores use `q_i(y_i−mu_i)x_tilde_i`; FW meat uses f_i times the
@@ -1396,7 +1408,9 @@ covariance reconstruction. Johannes approved full-matrix OLS repair including
 the reported constant; never restore a separately clipped slope block afterward.
 This intentional difference from pinned reghdfe has an independent regression. Multiway repair sets negative covariance
 eigenvalues to zero and independently checks the eigensystem and reconstructed
-matrix. Robust and one-way clustered covariance must already satisfy the
+matrix. Clustered OLS reports the adjustment through `e(fereg_psd_adjusted)`
+and displays a note when repair was applied, including on replay.
+Robust and one-way clustered covariance must already satisfy the
 strict PSD policy; they do not receive that multiway repair. Do not clip individual scores, coefficients or
 subset meats. Wald rank and missing/undefined test statistics preserve the
 canonical identified coordinates. OLS uses t/F; PPML uses z/Wald chi-squared.

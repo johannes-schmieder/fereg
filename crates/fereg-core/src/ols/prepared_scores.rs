@@ -1,3 +1,7 @@
+mod accurate_gram;
+mod retry;
+pub(super) use retry::fit_with_score_retry;
+
 use std::cell::RefCell;
 
 use crate::data::DenseMatrix;
@@ -615,15 +619,15 @@ pub(super) fn build_prepared_ols_score_design<
             fit,
             weights,
         },
+        tolerance,
         reservation,
     )?;
-    certificate.passed = certificate.left_inverse_relative_infinity_norm <= tolerance
-        && certificate.right_inverse_relative_infinity_norm <= tolerance
-        && certificate.intercept_coordinate_relative_infinity_norm <= tolerance;
+    certificate.passed = certificate.within(tolerance);
     if !certificate.passed {
-        return Err(invalid_data(
-            "prepared robust score-design certificate did not pass",
-        ));
+        if crate::diagnostics::solver_trace_enabled() {
+            eprintln!("FEREG_SOLVER_TRACE|phase=ols_score_certificate_failed|rows={nrows}|rank={rank}|tolerance={tolerance:.17e}|strided={used_strided_cache}|certificate={certificate:?}");
+        }
+        return Err(invalid_data(retry::SCORE_DESIGN_CERTIFICATE_FAILED));
     }
     let centered_influence_map = centered_influence_map(
         normalized_intercept_position,
@@ -809,6 +813,7 @@ fn fill_raw_score_block<P: PreparedOlsFitView + ?Sized>(
     Ok(())
 }
 
+#[derive(Clone, Copy)]
 struct ScoreCertificateInputs<'storage, 'weights> {
     storage: &'storage PreparedOlsScoreStorage<'weights>,
     nrows: usize,
@@ -822,24 +827,16 @@ struct ScoreCertificateInputs<'storage, 'weights> {
 
 fn certify_score_design<R: PreparedInferenceReservation>(
     inputs: ScoreCertificateInputs<'_, '_>,
+    tolerance: f64,
     reservation: &mut R,
 ) -> Result<PreparedOlsScoreDesignCertificate> {
     let ScoreCertificateInputs {
         storage,
         nrows,
         rank,
-        means,
-        finite_positions,
-        normalized_intercept_position,
-        fit,
         weights,
+        ..
     } = inputs;
-    let dimension = fit.bread().dimension();
-    if means.len() != rank || finite_positions.len() != rank {
-        return Err(invalid_argument(
-            "prepared robust score certificate dimensions are inconsistent",
-        ));
-    }
     let gram = match storage {
         PreparedOlsScoreStorage::Dense(within) => {
             certify_dense_score_gram(within.as_slice(), nrows, rank, weights, reservation)?
@@ -851,6 +848,49 @@ fn certify_score_design<R: PreparedInferenceReservation>(
             certify_scratch_score_gram(storage, nrows, rank, weights, reservation)?
         }
     };
+
+    let first = score_inverse_certificate(inputs, &gram)?;
+    if first.within(tolerance) || matches!(storage, PreparedOlsScoreStorage::Scratch(_)) {
+        return Ok(first);
+    }
+    drop(gram);
+    let refined = accurate_gram::build(storage, nrows, rank, weights, reservation)?;
+    if let Some(refined) = refined {
+        if crate::diagnostics::solver_trace_enabled() {
+            eprintln!("FEREG_SOLVER_TRACE|phase=ols_score_gram_recheck|rows={nrows}|rank={rank}");
+        }
+        score_inverse_certificate(inputs, &refined)
+    } else {
+        Ok(first)
+    }
+}
+
+impl PreparedOlsScoreDesignCertificate {
+    fn within(self, tolerance: f64) -> bool {
+        self.left_inverse_relative_infinity_norm <= tolerance
+            && self.right_inverse_relative_infinity_norm <= tolerance
+            && self.intercept_coordinate_relative_infinity_norm <= tolerance
+    }
+}
+
+fn score_inverse_certificate(
+    inputs: ScoreCertificateInputs<'_, '_>,
+    gram: &[f64],
+) -> Result<PreparedOlsScoreDesignCertificate> {
+    let ScoreCertificateInputs {
+        rank,
+        means,
+        finite_positions,
+        normalized_intercept_position,
+        fit,
+        ..
+    } = inputs;
+    let dimension = fit.bread().dimension();
+    if means.len() != rank || finite_positions.len() != rank || gram.len() != rank * rank {
+        return Err(invalid_argument(
+            "prepared robust score certificate dimensions are inconsistent",
+        ));
+    }
 
     let mut left_error = 0.0_f64;
     let mut right_error = 0.0_f64;
@@ -880,13 +920,35 @@ fn certify_score_design<R: PreparedInferenceReservation>(
                     &mut right_correction,
                 )?;
             }
-            left_product += left_correction;
-            right_product += right_correction;
-            let identity = if row == column { 1.0 } else { 0.0 };
+            // In normalized score coordinates G becomes D^-1 G D^-1
+            // and B becomes D B D. Check both inverse products there with
+            // the same row-norm bound, independently of regressor units.
+            let row_norm = gram[row * rank + row].sqrt();
+            let column_norm = gram[column * rank + column].sqrt();
+            if !row_norm.is_finite()
+                || row_norm <= 0.
+                || !column_norm.is_finite()
+                || column_norm <= 0.
+            {
+                return Err(invalid_data(
+                    "prepared robust score-design certificate has an invalid Gram column norm",
+                ));
+            }
+            let left_product = (left_product + left_correction) * (row_norm / column_norm);
+            let right_product = (right_product + right_correction) * (column_norm / row_norm);
+            let identity = f64::from(row == column);
             left_row_error += (left_product - identity).abs();
             right_row_error += (right_product - identity).abs();
             left_scale += left_product.abs();
             right_scale += right_product.abs();
+            if ![left_row_error, right_row_error, left_scale, right_scale]
+                .into_iter()
+                .all(f64::is_finite)
+            {
+                return Err(invalid_data(
+                    "prepared robust score inverse certificate is not finite",
+                ));
+            }
         }
         left_error = left_error.max(left_row_error / left_scale);
         right_error = right_error.max(right_row_error / right_scale);

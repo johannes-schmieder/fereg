@@ -308,7 +308,9 @@ fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
         match result {
             Ok(mut result) => {
                 if let Some(IidProjectionRetryWork { initial, residual }) = rejected_work {
-                    result.fit.record_inference_retry_work(initial, residual)?;
+                    result
+                        .fit
+                        .record_inference_retry_work([(&initial).into(), (&residual).into()])?;
                 }
                 return Ok(result);
             }

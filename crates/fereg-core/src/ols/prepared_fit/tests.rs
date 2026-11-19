@@ -98,6 +98,7 @@ fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
                 false,
                 true,
                 None,
+                false,
             )
         } else {
             finite::solve_one_shot(
@@ -113,6 +114,7 @@ fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
                 false,
                 false,
                 None,
+                false,
             )
         }
     };

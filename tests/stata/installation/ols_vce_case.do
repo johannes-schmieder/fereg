@@ -107,4 +107,32 @@ foreach request in "cluster Firm" "cluster" "robust firm" "bogus" "cluster firm#
     confirm new variable forbidden_output
 }
 
+* Balanced 3-by-3 grid. The interaction slope scores in y_cross sum to zero
+* within either dimension, making their two-way inclusion-exclusion variance
+* negative. The additive slope scores in y_add have positive two-way variance.
+clear
+set obs 18
+generate byte a = floor((_n-1)/6)-1
+generate byte b = mod(floor((_n-1)/2),3)-1
+generate byte x = 2*mod(_n,2)-1
+generate double y_cross = (1+a*b)*x + a+b
+generate double y_add = (1+a+b)*x + a-b
+foreach case in clipped positive oneway robust {
+    local y = cond("`case'" == "positive", "y_add", "y_cross")
+    local vce "cluster a b"
+    if "`case'" == "oneway" local vce "cluster a"
+    if "`case'" == "robust" local vce "robust"
+    tempfile transcript
+    log using "`transcript'", text replace name(psd)
+    noisily fereg `y' x, vce(`vce')
+    noisily fereg
+    log close psd
+    local note "Cameron-Gelbach-Miller adjustment"
+    local count = (strlen(fileread("`transcript'")) - ///
+        strlen(subinstr(fileread("`transcript'"), "`note'", "", .))) / strlen("`note'")
+    assert `count' == 2*("`case'" == "clipped")
+    if "`case'" == "robust" assert missing(e(fereg_psd_adjusted))
+    else assert e(fereg_psd_adjusted) == ("`case'" == "clipped")
+}
+
 display as result "END_FIXTURE|ols_vce_case|rc=0"

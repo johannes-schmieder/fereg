@@ -294,32 +294,32 @@ fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
     defer_dof: bool,
 ) -> Result<CertifiedPreparedOlsRobust> {
     validate_config(config)?;
-    let (fit, scores) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(
-        prepared, config.fit, rows)?;
-    let early_dof = if defer_dof {
-        None
-    } else {
-        Some(prepared.inference_compute_absorbed_dof(config.absorbed_dof)?)
-    };
-    ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let absorbed_dof = match early_dof {
-            Some(report) => report,
-            None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
+    super::prepared_scores::fit_with_score_retry(prepared, config.fit, rows, |fit, scores| {
+        let early_dof = if defer_dof {
+            None
+        } else {
+            Some(prepared.inference_compute_absorbed_dof(config.absorbed_dof)?)
         };
-        let summary =
-            prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
-        let mut reservation = SystemPreparedInferenceReservation;
-        let components = compose_view_internal(
-            prepared,
-            fit,
-            summary,
-            config,
-            &mut reservation,
-            RobustPerturbations::default(),
-            scores,
-        )?;
-        Ok(components.with_absorbed_dof(absorbed_dof))
-    })?
+        ThreadTeam::new(config.fit.execution.threads).install(|| {
+            let absorbed_dof = match early_dof {
+                Some(report) => report,
+                None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
+            };
+            let summary =
+                prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+            let mut reservation = SystemPreparedInferenceReservation;
+            let components = compose_view_internal(
+                prepared,
+                fit,
+                summary,
+                config,
+                &mut reservation,
+                RobustPerturbations::default(),
+                scores,
+            )?;
+            Ok(components.with_absorbed_dof(absorbed_dof))
+        })?
+    })
 }
 
 // Keep the legacy workspace and ownership boundaries explicit during migration.

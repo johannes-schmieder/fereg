@@ -871,6 +871,7 @@ program define _fereg_estimate_ols, eclass
     ereturn local title2 "Absorbing `fe_rows' HDFE group"
     ereturn local predict "fereg_p"
     if `"`vce_wire'"' == "cluster" {
+        ereturn scalar fereg_psd_adjusted = `certificate_shadow'[26,2]
         local posted_cluster_labels = strtrim(`"`cluster_labels'"')
         local minimum_clusters .
         forvalues row = 1/`n_cluster_terms' {

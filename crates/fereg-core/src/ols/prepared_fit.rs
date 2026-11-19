@@ -189,6 +189,32 @@ impl PreparedOlsFitConfig {
     }
 }
 
+/// Sequential work from a discarded fit, without its diagnostics or heap owners.
+#[derive(Clone, Copy)]
+pub(super) struct InferenceProjectionWork {
+    iterations: usize,
+    checkpoint_retries: usize,
+    pilot_iterations: usize,
+    solver_workspace_peak: crate::memory::SolverWorkspacePeak,
+    setup_seconds: f64,
+    solve_seconds: f64,
+    certification_seconds: f64,
+}
+
+impl From<&SolveReport> for InferenceProjectionWork {
+    fn from(report: &SolveReport) -> Self {
+        Self {
+            iterations: report.iterations,
+            checkpoint_retries: report.checkpoint_retries,
+            pilot_iterations: report.pilot_iterations,
+            solver_workspace_peak: report.solver_workspace_peak,
+            setup_seconds: report.setup_seconds,
+            solve_seconds: report.solve_seconds,
+            certification_seconds: report.certification_seconds,
+        }
+    }
+}
+
 /// Internal scientific status of one canonical prepared coefficient slot.
 ///
 /// An absorbed-model intercept is transiently deferred by the within problem,
@@ -666,30 +692,29 @@ impl CertifiedPreparedOlsFit {
         &self.residual_absorption_report
     }
 
-    /// Count a rejected IID attempt without retaining its scientific authority.
+    /// Count a rejected inference attempt without retaining its scientific authority.
     /// Only sequential work and workspace maxima merge; accepted routes and
     /// certificates continue to describe this fit alone.
     pub(super) fn record_inference_retry_work(
         &mut self,
-        initial: SolveReport,
-        residual: SolveReport,
+        earlier: [InferenceProjectionWork; 2],
     ) -> Result<()> {
         // A derived accepted residual must retain its zero-work report.
         // The initial report carries all work of the rejected full attempt.
         let current = &mut self.absorption_report;
-        for earlier in [initial, residual] {
+        for earlier in earlier {
             current.iterations = current
                 .iterations
                 .checked_add(earlier.iterations)
-                .ok_or_else(|| allocation("IID retry iteration count overflows"))?;
+                .ok_or_else(|| allocation("inference retry iteration count overflows"))?;
             current.checkpoint_retries = current
                 .checkpoint_retries
                 .checked_add(earlier.checkpoint_retries)
-                .ok_or_else(|| allocation("IID retry work count overflows"))?;
+                .ok_or_else(|| allocation("inference retry work count overflows"))?;
             current.pilot_iterations = current
                 .pilot_iterations
                 .checked_add(earlier.pilot_iterations)
-                .ok_or_else(|| allocation("IID retry pilot count overflows"))?;
+                .ok_or_else(|| allocation("inference retry pilot count overflows"))?;
             current.solver_workspace_peak = current
                 .solver_workspace_peak
                 .max(earlier.solver_workspace_peak);
@@ -704,14 +729,14 @@ impl CertifiedPreparedOlsFit {
             .iter()
             .all(|value| value.is_finite())
             {
-                return Err(invalid_data("IID retry work timing is not finite"));
+                return Err(invalid_data("inference retry work timing is not finite"));
             }
         }
         self.absorption_report.checkpoint_retries = self
             .absorption_report
             .checkpoint_retries
             .checked_add(1)
-            .ok_or_else(|| allocation("IID retry count overflows"))?;
+            .ok_or_else(|| allocation("inference retry count overflows"))?;
         Ok(())
     }
 
@@ -882,6 +907,7 @@ impl<'a> NormalizedWeights<'a> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct LinearSolveFrame<'a> {
     prepared_ols: bool,
+    accurate_moments: bool,
     response: &'a [f64],
     weights: NormalizedWeights<'a>,
     bread_weight_scale: PreparedOlsBreadWeightScale,
@@ -893,6 +919,7 @@ impl<'a> LinearSolveFrame<'a> {
         let bread_weight_scale = prepared_bread_weight_scale(prepared, weights)?;
         Ok(Self {
             prepared_ols: true,
+            accurate_moments: false,
             response: &prepared.fit_sample().outcome,
             weights,
             bread_weight_scale,
@@ -959,6 +986,7 @@ impl<'a> LinearSolveFrame<'a> {
         };
         Ok(Self {
             prepared_ols: false,
+            accurate_moments: false,
             response,
             weights: NormalizedWeights {
                 values,
@@ -1858,6 +1886,7 @@ fn fit_projection_only_internal<'a, P: PreparedOlsFitView + ?Sized, R: FitReserv
         false,
         false,
         alias_capture,
+        false,
     )?
     .ok_or_else(|| invalid_argument("ordinary finite projection declined its source"))?;
     if qr.bread.is_some() {
@@ -2035,7 +2064,9 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
     CertifiedPreparedOlsFit,
     super::prepared_scores::PreparedOlsScoreProduct,
 )> {
-    fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config, None)
+    fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(
+        prepared, config, None, false,
+    )
 }
 
 pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments<
@@ -2044,6 +2075,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_m
     prepared: &P,
     config: PreparedOlsFitConfig,
     rows: Option<LoadedOlsRows>,
+    accurate_moments: bool,
 ) -> Result<(
     CertifiedPreparedOlsFit,
     super::prepared_scores::PreparedOlsScoreProduct,
@@ -2055,6 +2087,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_m
         MAX_FAST_SCORE_CACHE_BYTES.min(32 * 1024 * 1024),
         Some(&mut scratch),
         rows,
+        accurate_moments,
     )?;
     let scores = super::prepared_scores::take_prepared_ols_score_product(&mut fit, scratch)?;
     Ok((fit, scores))
@@ -2068,7 +2101,14 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_li
     config: PreparedOlsFitConfig,
     max_fast_score_cache_bytes: usize,
 ) -> Result<CertifiedPreparedOlsFit> {
-    fit_for_inference_with_scratch(prepared, config, max_fast_score_cache_bytes, None, None)
+    fit_for_inference_with_scratch(
+        prepared,
+        config,
+        max_fast_score_cache_bytes,
+        None,
+        None,
+        false,
+    )
 }
 
 fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
@@ -2077,6 +2117,7 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
     max_fast_score_cache_bytes: usize,
     retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
     rows: Option<LoadedOlsRows>,
+    accurate_moments: bool,
 ) -> Result<CertifiedPreparedOlsFit> {
     let team = fit_thread_team(config);
     // Inference needs the projected columns again. Prefer a packed cache when
@@ -2086,28 +2127,30 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
     let retain_fast_score_cache = true;
     team.install(|| {
         let mut reservation = SystemFitReservation;
+        validate_config(prepared, config)?;
+        let mut frame = LinearSolveFrame::from_prepared_ols(prepared)?;
+        frame.accurate_moments = accurate_moments;
         match config.execution.mode {
-            PreparedOlsExecutionMode::Fast => {
-                validate_config(prepared, config)?;
-                let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
-                fit_with_controls_internal_mode_with_frame(
-                    prepared,
-                    frame,
-                    config,
-                    &mut reservation,
-                    FitPerturbations::default(),
-                    retain_fast_score_cache,
-                    max_fast_score_cache_bytes,
-                    None,
-                    None,
-                    rows,
-                )
-            }
-            PreparedOlsExecutionMode::Low => fit_with_controls_low_internal(
+            PreparedOlsExecutionMode::Fast => fit_with_controls_internal_mode_with_frame(
                 prepared,
+                frame,
                 config,
                 &mut reservation,
                 FitPerturbations::default(),
+                retain_fast_score_cache,
+                max_fast_score_cache_bytes,
+                None,
+                None,
+                rows,
+            ),
+            PreparedOlsExecutionMode::Low => fit_with_controls_low_internal_with_frame(
+                prepared,
+                frame,
+                config,
+                &mut reservation,
+                FitPerturbations::default(),
+                None,
+                None,
                 retained_scratch,
             ),
         }

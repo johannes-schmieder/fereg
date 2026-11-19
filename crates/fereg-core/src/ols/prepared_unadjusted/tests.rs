@@ -1880,7 +1880,7 @@ fn iid_projection_retry_accounting_preserves_residual_report_and_checks_overflow
     let mut rejected_residual = residual.clone();
     rejected_residual.iterations = 7;
     rejected_residual.pilot_iterations = 3;
-    fit.record_inference_retry_work(initial.clone(), rejected_residual)
+    fit.record_inference_retry_work([(&initial).into(), (&rejected_residual).into()])
         .unwrap();
     assert_eq!(fit.residual_absorption_report(), &residual);
     assert_eq!(
@@ -1891,7 +1891,7 @@ fn iid_projection_retry_accounting_preserves_residual_report_and_checks_overflow
     let mut overflow = initial;
     overflow.checkpoint_retries = usize::MAX;
     assert_eq!(
-        fit.record_inference_retry_work(overflow, residual)
+        fit.record_inference_retry_work([(&overflow).into(), (&residual).into()])
             .unwrap_err()
             .code,
         ErrorCode::Allocation

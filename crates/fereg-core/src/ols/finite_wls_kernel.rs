@@ -6,6 +6,7 @@
 //! certificates. All observation sources are concrete enum variants; there
 //! are no trait objects or callbacks in the row loops.
 
+pub(super) mod accurate_dense_moments;
 mod axis;
 mod dense_partitions;
 mod direction;

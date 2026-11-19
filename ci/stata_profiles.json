@@ -459,6 +459,8 @@
         "tests/stata/development/feppml_reference_refresh.do",
         "tests/stata/development/feppml_factor_reference_separation.do",
         "tests/stata/development/feppml_separation_recovery.do",
+        "tests/stata/development/ols_score_design_rare_base.do",
+        "tests/stata/development/ols_score_design_units.do",
         "tests/stata/development/feppml_saved_intercept_recovery.do",
         "tests/stata/development/feppml_saved_map_pilot.do",
         "tests/stata/development/feppml_separated_none_transaction.do",

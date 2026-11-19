@@ -68,6 +68,7 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     perturb_bread: bool,
     build_bread: bool,
     alias_capture: AliasCapture<'_>,
+    accurate_moments: bool,
 ) -> Result<Option<FiniteFit>> {
     let rows = prepared.fit_sample().n_active();
     let columns = prepared.fit_model().columns.len();
@@ -155,6 +156,7 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             weights,
             bread_weight_scale,
             reservation,
+            accurate_moments,
         )?;
         let Some(result) = factor_and_bread(
             &storage,
@@ -201,6 +203,7 @@ fn prepare_moments<R: FitReservation>(
     weights: NormalizedWeights<'_>,
     bread_weight_scale: PreparedOlsBreadWeightScale,
     reservation: &mut R,
+    accurate_moments: bool,
 ) -> Result<()> {
     let source = storage.source(
         &workspace.candidate_ids,
@@ -211,7 +214,11 @@ fn prepare_moments<R: FitReservation>(
     let layout_source = validate_moment_source(source)?;
     let layout = layout_source.layout();
     let count = workspace.candidate_ids.len();
-    let partial_elements = if matches!(storage, ProjectedFiniteRows::Centered(_)) {
+    use crate::ols::finite_wls_kernel::accurate_dense_moments;
+    let accurate = accurate_moments && !matches!(storage, ProjectedFiniteRows::Centered(_));
+    let partial_elements = if accurate {
+        accurate_dense_moments::workspace_elements(layout_source)?
+    } else if matches!(storage, ProjectedFiniteRows::Centered(_)) {
         layout
             .partial_elements
             .max(crate::ols::finite_wls_kernel::centered_compression_elements(source)?)
@@ -231,12 +238,23 @@ fn prepare_moments<R: FitReservation>(
         reservation,
     )?;
     resize(&mut workspace.rhs, count, 0., reservation)?;
-    fill_finite_wls_moments(
-        layout_source,
-        &mut workspace.moment_partials[..layout.partial_elements],
-        &mut workspace.rhs,
-        &mut workspace.gram,
-    )?;
+    if accurate {
+        accurate_dense_moments::fill(
+            layout_source,
+            &mut workspace.moment_partials,
+            &mut workspace.rhs,
+            &mut workspace.gram,
+        )?;
+        // Dense/scratch factorization does not consume the moment bank.
+        workspace.moment_partials = Vec::new();
+    } else {
+        fill_finite_wls_moments(
+            layout_source,
+            &mut workspace.moment_partials[..layout.partial_elements],
+            &mut workspace.rhs,
+            &mut workspace.gram,
+        )?;
+    }
     Ok(())
 }
 
