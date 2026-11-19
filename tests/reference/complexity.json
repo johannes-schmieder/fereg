@@ -1,22 +1,10 @@
 {
   "growth": [
     {
-      "after": 132440,
-      "before": 132283,
+      "after": 132473,
+      "before": 132440,
       "metric": "fereg-core/production_lines",
       "reason": "Add bounded integer-dual and structural-rank checks, exact proof reuse, and stable Poisson predictor reconstruction."
-    },
-    {
-      "after": 1725,
-      "before": 1724,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Route exact dual search, certified proof reuse, and recoverable weighted IR exhaustion through the existing estimator."
-    },
-    {
-      "after": 3462,
-      "before": 3455,
-      "metric": "file/crates/fereg-core/src/ppml/memory.rs",
-      "reason": "Admit bounded exact structural rank recovery in the existing final-sample inference workspace."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -22822,18 +22810,23 @@
       },
       "crates/fereg-core/src/ppml/one_fe_profile/strict_response.rs": {
         "chunk_candidates": [],
-        "dispatch_candidates": [],
+        "dispatch_candidates": [
+          {
+            "condition": "prepared . fit_model ( ) . columns . iter ( ) . enumerate ( ) . any ( | ( j , column ) |",
+            "line": 24
+          }
+        ],
         "functions": {
           "orthogonal#1": {
-            "line": 80,
+            "line": 112,
             "lines": 24
           },
           "strict_response#1": {
             "line": 9,
-            "lines": 69
+            "lines": 101
           }
         },
-        "production_lines": 92
+        "production_lines": 120
       },
       "crates/fereg-core/src/ppml/preparation_trace.rs": {
         "chunk_candidates": [],
@@ -27530,29 +27523,25 @@
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
-            "condition": "workspace_bound ( w , report . effects . len ( ) as u128 ) > admitted_bytes . min ( MAX_BYTES ) || ( rows as u128 + w ) . saturating_mul ( w ) . saturating_mul ( w ) > MAX_WORK",
-            "line": 47
-          },
-          {
             "condition": "level < columns",
-            "line": 75
+            "line": 82
           }
         ],
         "functions": {
           "certified_basis#1": {
-            "line": 110,
+            "line": 117,
             "lines": 39
           },
           "refine#1": {
             "line": 21,
-            "lines": 84
+            "lines": 91
           },
           "workspace_bound#1": {
             "line": 14,
             "lines": 6
           }
         },
-        "production_lines": 129
+        "production_lines": 134
       },
       "crates/fereg-core/src/ppml/topology_identity.rs": {
         "chunk_candidates": [],
@@ -32779,7 +32768,7 @@
         "dispatch_candidates": 1725,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 132440
+        "production_lines": 132473
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

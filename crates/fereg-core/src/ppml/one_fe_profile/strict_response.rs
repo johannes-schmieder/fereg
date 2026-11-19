@@ -17,6 +17,21 @@ impl ProfiledOneFe {
         workspace: &PpmlIterationWorkspace,
         tolerance: f64,
     ) -> Result<&[f64]> {
+        // A tiny raw moment is not evidence that an omitted column adds no
+        // score direction. Its scale may be dominated by a group constant
+        // or by a large multiple of a kept column. Only the explicit
+        // intercept is known to belong to the absorbed group span here.
+        if prepared
+            .fit_model()
+            .columns
+            .iter()
+            .enumerate()
+            .any(|(j, column)| {
+                column.kind != crate::ols::PreparedOlsColumnKind::Intercept && !columns.contains(&j)
+            })
+        {
+            return Err(numerical());
+        }
         let data = ProfiledRawColumns::new(prepared, columns)?;
         self.mean.copy_from_slice(workspace.mean());
         self.solve_centered_direction(&data, design, y, q)?;
@@ -67,6 +82,23 @@ impl ProfiledOneFe {
             orthogonal(
                 0..y.len(),
                 |row| prepared.fit_column_value(column, row),
+                &self.mean,
+                q,
+                score,
+                tolerance,
+            )?;
+            orthogonal(
+                0..y.len(),
+                |row| {
+                    let group = effect.codes()[row] as usize;
+                    let anchor = *effect
+                        .level_index()
+                        .members(group)
+                        .first()
+                        .ok_or_else(numerical)?;
+                    Ok(prepared.fit_column_value(column, row)?
+                        - prepared.fit_column_value(column, anchor)?)
+                },
                 &self.mean,
                 q,
                 score,

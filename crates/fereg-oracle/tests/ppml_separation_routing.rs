@@ -241,7 +241,8 @@ fn classify(
 /// versus Auto comparison. A successful weighted rectifier reports its own
 /// iteration count, while the added unit-dual check independently certifies
 /// its no-drop claim. Seeds 2/5/8/11/17 report terminal CG/Auto iterations 2/1
-/// in all three method configurations; all remaining cells agree.
+/// with simplex disabled. With simplex enabled both arms reuse the exact
+/// replayed simplex proof and record zero terminal IR projections.
 ///
 /// All 54 cells (108 arms) must complete and match the independent LP retained
 /// count/hash. Between arms, every drop, reason, generation and published
@@ -251,19 +252,14 @@ fn classify(
 /// must agree. Fixed-worker repeatability and
 /// cross-worker decisions remain checked below.
 const DIVERGENCES: &[(usize, usize, &str)] = &[
-    (2, 0, "ir-iterations"),
     (2, 1, "ir-iterations"),
     (2, 2, "ir-iterations"),
-    (5, 0, "ir-iterations"),
     (5, 1, "ir-deletion-and-terminal-iterations"),
     (5, 2, "ir-deletion-and-terminal-iterations"),
-    (8, 0, "ir-iterations"),
     (8, 1, "ir-iterations"),
     (8, 2, "ir-iterations"),
-    (11, 0, "ir-iterations"),
     (11, 1, "ir-deletion-and-terminal-iterations"),
     (11, 2, "ir-deletion-and-terminal-iterations"),
-    (17, 0, "ir-iterations"),
     (17, 1, "ir-deletion-and-terminal-iterations"),
     (17, 2, "ir-deletion-and-terminal-iterations"),
 ];
@@ -322,6 +318,15 @@ fn auto_projection_divergence_census_is_pinned() {
                     .as_ref()
                     .unwrap_or_else(|error| panic!("{context} must complete: {error:?}"));
                 assert_eq!(retained_witness(arm), LP_WITNESS[seed], "{context}");
+                if index == 0 && [2, 5, 8, 11, 17].contains(&seed) {
+                    let terminal = arm.separation().methods.last().expect("terminal method");
+                    assert_eq!(
+                        terminal.method,
+                        SeparationMethod::IteratedRectifier,
+                        "{context}"
+                    );
+                    assert_eq!(terminal.iterations, 0, "{context}");
+                }
             }
             let class = classify(&cg, &auto);
             if class != "same" {

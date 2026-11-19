@@ -44,8 +44,15 @@ pub(super) fn refine(
     let fe_width = report.initial_categories - (report.effects.len() - 1);
     let width = fe_width.saturating_add(data.model().columns.len());
     let w = width as u128;
-    if workspace_bound(w, report.effects.len() as u128) > admitted_bytes.min(MAX_BYTES)
-        || (rows as u128 + w).saturating_mul(w).saturating_mul(w) > MAX_WORK
+    let channels = report.effects.len() as u128;
+    // Each exact dependency re-reads the original design. Count every FE
+    // channel, including one-level partitions with no encoded columns.
+    let row_reads = (rows as u128)
+        .saturating_mul(w + 1)
+        .saturating_mul(w + channels);
+    let elimination = (rows as u128 + w).saturating_mul(w).saturating_mul(w);
+    if workspace_bound(w, channels) > admitted_bytes.min(MAX_BYTES)
+        || elimination.saturating_add(row_reads) > MAX_WORK
     {
         return Ok(());
     }

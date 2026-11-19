@@ -5709,10 +5709,16 @@ fn projected_strict_response_matches_newton_and_rejects_an_unrepresented_score()
     // At mu=2, the intercept and slope scores are 2 and 4, and the
     // diagonal Fisher entries are 6 and 4. A skipped independent x² would
     // have a nonzero score even after that projected Newton correction.
-    for extra_column in [false, true] {
+    let translated = (1_u64 << 40) as f64;
+    for extra_column in [
+        None,
+        Some([1., 0., 1.]),
+        Some([translated + 1., translated, translated + 1.]),
+        Some([1. - translated, 0., 1. + translated]),
+    ] {
         let mut xs = vec![x.clone()];
-        if extra_column {
-            xs.push(vec![1., 0., 1.]);
+        if let Some(values) = extra_column {
+            xs.push(values.to_vec());
         }
         let prepared = prepared(&y, &xs);
         let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
@@ -5744,7 +5750,7 @@ fn projected_strict_response_matches_newton_and_rejects_an_unrepresented_score()
             &workspace,
             1e-12,
         );
-        if extra_column {
+        if extra_column.is_some() {
             assert_eq!(rhs.unwrap_err().code, ErrorCode::NonConvergence);
         } else {
             for (&value, &x) in rhs.unwrap().iter().zip(&x) {
