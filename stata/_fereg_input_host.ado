@@ -1,4 +1,4 @@
-*! fereg public host facts for the parallel input policy 0.6.6 19nov2026
+*! fereg public host facts for the parallel input policy 0.6.7 20nov2026
 // Reports public c() facts only; the plugin decides whether its parallel
 // numeric reader is qualified for them. Alias variables (Stata 18 and later)
 // resolve through another frame and are reported for every variable read.

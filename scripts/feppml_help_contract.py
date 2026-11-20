@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_HELP_PATH = ROOT / "stata" / "feppml.sthlp"
 CANONICAL_HELP_PATH = PUBLIC_HELP_PATH
 # Reviewed bytes of stata/feppml.sthlp.
-REVIEWED_PUBLIC_HELP_SHA256 = "6dc138e6381bcbc0aa2edcac247588c31bbc59195cc00fda48eb13cb78ce72db"
+REVIEWED_PUBLIC_HELP_SHA256 = "d9d704eee672cb5ec9ff3b788572c57ae48f683d83e431740fde287e7e6a1051"
 SHARED_FIXTURE_PATH = (
     ROOT / "tests" / "stata" / "documentation" / "feppml_help_examples.do"
 )

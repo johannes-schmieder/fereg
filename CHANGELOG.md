@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.7 — 2026-11-20
+
+- Scale Poisson separation checks to larger sparse designs, including models
+  with many factor levels, interacted fixed effects and exact aliases.
+- Reuse verified sparse support, carry exact checks across separation stages,
+  and allocate dense audit workspace only where needed.
+- Certify separated observations and finite-only support against the original
+  design. Preserve the separation and singleton accounting after certification.
+
 ## 0.6.6 — 2026-11-19
 
 - Validate robust and clustered OLS score designs in scale-normalized

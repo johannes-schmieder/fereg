@@ -348,11 +348,11 @@ pub(super) fn configure(
     request.arg("result_major", result_version.major);
     request.arg("result_minor", result_version.minor);
     for field in [
-        "ado=0.6.6",
+        "ado=0.6.7",
         "protocol_major=1",
         "protocol_minor=7",
         "stata=18.0",
-        "plugin=0.6.6",
+        "plugin=0.6.7",
         "include_intercept=1",
         "candidate_all=0",
         "input_complete=0",

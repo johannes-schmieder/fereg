@@ -228,6 +228,10 @@ capture noisily do "tests/stata/development/ols_score_design_rare_base.do"
 if _rc exit 9152
 capture noisily do "tests/stata/installation/ols_vce_case.do"
 if _rc exit 9153
+* Check adaptive sparse PPML separation and finite-only support.
+capture noisily do "tests/stata/development/feppml_adaptive_sparse_support.do"
+if _rc exit 9154
+di as result "WINDOWS_ADAPTIVE_SPARSE_PPML=PASS"
 * Fresh Python processes test changing host threads and native error recovery.
 shell python scripts/check_pystata_threads.py ///
     --utilities "C:/Program Files/Stata19/utilities" ///
