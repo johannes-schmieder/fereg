@@ -56,7 +56,11 @@ fn certifies_a_strict_ray_with_no_deletions_elsewhere() {
         panic!("expected a raw-design separating direction");
     };
     for i in 0..outcome.len() {
-        let score: i64 = design.row(i).iter().map(|&j| coefficients[j]).sum();
+        let score: i64 = design
+            .row(i)
+            .iter()
+            .map(|&j| coefficients[j as usize])
+            .sum();
         assert_eq!(score < 0, (8..38).contains(&i));
         assert!(score <= 0);
     }
@@ -96,7 +100,7 @@ fn verifies_binary_model_with_aliased_columns_and_reversed_rows() {
     let alias = BinaryDesign::from_rows(outcome.len(), width + 1, 10_000, |i, row| {
         row.fill(0.);
         for &j in design.row(outcome.len() - 1 - i) {
-            row[j] = 1.;
+            row[j as usize] = 1.;
         }
         row[width] = row[1];
         Ok(())

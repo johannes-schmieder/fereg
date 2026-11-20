@@ -390,11 +390,25 @@ fn verify_phase_one_farkas_certificate(
     dual: &[f64],
     tolerance: f64,
 ) -> Result<Option<SeparationCertificate>> {
-    let boundary = cone.len();
+    verify_indexed_farkas_certificate(cone, &[], dual, tolerance)
+}
+
+fn verify_indexed_farkas_certificate(
+    cone: &[Vec<f64>],
+    groups: &[u32],
+    dual: &[f64],
+    tolerance: f64,
+) -> Result<Option<SeparationCertificate>> {
+    let boundary = if groups.is_empty() {
+        cone.len()
+    } else {
+        groups.len()
+    };
     let nullity = cone.first().map_or(0, Vec::len);
     if boundary == 0
         || nullity == 0
         || dual.len() != boundary + 1
+        || groups.iter().any(|&index| index as usize >= cone.len())
         || cone.iter().any(|row| row.len() != nullity)
         || cone
             .iter()
@@ -420,8 +434,12 @@ fn verify_phase_one_farkas_certificate(
     let mut stationarity = 0.0_f64;
     for column in 0..nullity {
         let mut value = 0.0_f64;
-        for row in 0..boundary {
-            value = cone[row][column].mul_add(dual[row], value);
+        for (row, &weight) in dual[..boundary].iter().enumerate() {
+            if !groups.is_empty() {
+                crate::interrupt::row_checkpoint(row)?;
+            }
+            let projected = groups.get(row).map_or(row, |&index| index as usize);
+            value = cone[projected][column].mul_add(weight, value);
         }
         stationarity = stationarity.max(value.abs());
     }

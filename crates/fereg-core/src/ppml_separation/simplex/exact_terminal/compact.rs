@@ -22,7 +22,7 @@ fn positive_basis(
         }
         row.fill(0.);
         for &j in ones {
-            row[j] = 1.;
+            row[j as usize] = 1.;
         }
         space.insert(&row)?;
         Ok(true)
@@ -95,7 +95,7 @@ pub(in crate::ppml_separation::simplex) fn compact_no_recession(
             return Ok(false);
         }
         for &j in ones {
-            aggregate[j] += 1.;
+            aggregate[j as usize] += 1.;
         }
         if w > 1. {
             extra_rows.push(i);
@@ -125,11 +125,11 @@ pub(in crate::ppml_separation::simplex) fn compact_no_recession(
         let proved = raw_positive_dual(width, m, ids.len(), Some(&hint), 0., work.0, |j, col| {
             let (positive, boundary) = col.split_at_mut(ids.len());
             for (value, &i) in positive.iter_mut().zip(&ids) {
-                *value = f64::from(design.row(i).binary_search(&j).is_ok());
+                *value = f64::from(design.row(i).binary_search(&(j as u32)).is_ok());
             }
             boundary[0] = aggregate[j];
             for (value, &i) in boundary[1..].iter_mut().zip(&extra_rows) {
-                *value = f64::from(design.row(i).binary_search(&j).is_ok());
+                *value = f64::from(design.row(i).binary_search(&(j as u32)).is_ok());
             }
             Ok(())
         })?
@@ -204,7 +204,11 @@ fn quotient_balance(
         free[j] = 0;
         // All visits are subsets of a CSR allocation with at most usize::MAX
         // nonzeros. Even the aggregate of i64 coefficients fits in i128.
-        let score = |row: &[usize]| row.iter().map(|&c| i128::from(relation[c])).sum::<i128>();
+        let score = |row: &[u32]| {
+            row.iter()
+                .map(|&c| i128::from(relation[c as usize]))
+                .sum::<i128>()
+        };
         for (i, &y) in outcome.iter().enumerate() {
             crate::interrupt::row_checkpoint(i)?;
             if y > 0. {
@@ -297,7 +301,7 @@ mod tests {
             let mut counts = [0.; 12];
             for &i in &boundary {
                 for &j in design.row(i) {
-                    counts[j] += 1.;
+                    counts[j as usize] += 1.;
                 }
             }
             let mut work = Work(1_000_000);

@@ -2045,6 +2045,15 @@ the differences must span the finite slopes and remaining categorical
 contrasts. A finite column treated as constant must be constant on the entire
 current sample. Resource limits or failure to find a witness give no conclusion.
 
+When the explicit simplex exceeds its cell budget, a compact lane can use
+original 0/1 columns and absorbed intercepts. It can select a small positive-row
+basis over finite fields, stream the boundary projection to find independent
+contrasts, and coalesce exactly equal projected constraints. Each coalesced
+constraint keeps its original multiplicity. Terminal replay expands the dual
+to physical boundary order and verifies its exact moments on the original
+design. These reductions affect the search for an exact proof and preserve
+the original sample and deletion certificate rules.
+
 A dense simplex full-positive-rank claim requires a nonzero minor of the raw
 positive design over a prime field. Phase-I infeasibility must also pass a
 raw-design test. Either the positive and full designs have the same row span,

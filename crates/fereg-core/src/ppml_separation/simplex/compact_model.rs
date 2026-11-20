@@ -2,7 +2,7 @@
 //! cannot fit. Both outcomes require an independent raw-design proof.
 use super::{combine_basis, compact_tableau, exact_terminal, reserve};
 use super::{fallible_collect, no_separation_certificate, nullspace_basis};
-use super::{fallible_filled, verify_phase_one_farkas_certificate};
+use super::{fallible_filled, verify_indexed_farkas_certificate};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, Result};
 use crate::ppml::ExactNullspace;
@@ -19,11 +19,14 @@ pub(crate) enum CompactModel {
     Terminal(DetectionProposal),
 }
 
+mod positive_rows;
+mod projection;
+
 const MAX_WORK: usize = 128 << 20;
 
 pub(crate) struct BinaryDesign {
     offsets: Vec<usize>,
-    indices: Vec<usize>,
+    indices: Vec<u32>,
     columns: usize,
 }
 
@@ -34,7 +37,8 @@ impl BinaryDesign {
         limit: usize,
         mut read: impl FnMut(usize, &mut [f64]) -> Result<()>,
     ) -> Result<Option<Self>> {
-        if rows as u128 > (1u128 << 53)
+        if u32::try_from(columns).is_err()
+            || rows as u128 > (1u128 << 53)
             || rows.saturating_mul(columns).saturating_mul(2) > MAX_WORK
             || rows.saturating_add(1).saturating_add(columns) > limit
         {
@@ -42,7 +46,7 @@ impl BinaryDesign {
         }
         let mut offsets = fallible_filled(rows + 1, 0, "unable to reserve compact binary rows")?;
         let mut row = fallible_filled(columns, 0., "unable to reserve compact binary input row")?;
-        let max_ones = limit - offsets.len() - row.len();
+        let max_ones = (limit - offsets.len() - row.len()).saturating_mul(2);
         for i in 0..rows {
             crate::interrupt::row_checkpoint(i)?;
             read(i, &mut row)?;
@@ -70,7 +74,7 @@ impl BinaryDesign {
             indices.extend(
                 row.iter()
                     .enumerate()
-                    .filter_map(|(j, &x)| (x == 1.).then_some(j)),
+                    .filter_map(|(j, &x)| (x == 1.).then_some(j as u32)),
             );
         }
         Ok(Some(Self {
@@ -84,12 +88,12 @@ impl BinaryDesign {
         self.columns
     }
 
-    pub(crate) fn row(&self, row: usize) -> &[usize] {
+    pub(crate) fn row(&self, row: usize) -> &[u32] {
         &self.indices[self.offsets[row]..self.offsets[row + 1]]
     }
 
     fn cells(&self) -> usize {
-        self.offsets.len() + self.indices.len()
+        self.offsets.capacity() + self.indices.capacity().div_ceil(2)
     }
 }
 
@@ -99,13 +103,20 @@ pub(crate) fn compact_model_admitted(
     width: usize,
     limit: usize,
 ) -> bool {
+    width > 0
+        && positive > 0
+        && positive < rows
+        && width.saturating_mul(width).saturating_add(rows) <= limit
+}
+
+fn dense_positive_admitted(rows: usize, positive: usize, width: usize, limit: usize) -> bool {
     let positive_cells = positive.saturating_mul(width);
     let elimination = positive_cells.saturating_mul(positive.min(width));
     let scratch = positive_cells
         .saturating_mul(2)
         .saturating_add(width.saturating_mul(width.saturating_add(8)))
         .saturating_add(rows.saturating_mul(3));
-    positive > 0 && positive < rows && elimination <= MAX_WORK && scratch <= limit
+    elimination <= MAX_WORK && scratch <= limit
 }
 
 pub(crate) fn compact_model(
@@ -117,143 +128,206 @@ pub(crate) fn compact_model(
     max_cells: usize,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<CompactModel>> {
-    let mut positive = fallible_collect(
-        outcome
-            .iter()
-            .enumerate()
-            .filter_map(|(i, &y)| (y > 0.).then_some(i)),
-        outcome.len(),
-        "unable to reserve compact simplex positive rows",
-    )?;
     let width = design.ncols();
-    if !compact_model_admitted(outcome.len(), positive.len(), width, max_cells) {
-        return Ok(None);
-    }
+    let positive_count = outcome.iter().filter(|&&y| y > 0.).count();
     let Some(available) = max_cells.checked_sub(design.cells()) else {
         return Ok(None);
     };
-    // Preserve an original-row map while factoring only the positive rows.
-    // The numerical nullspace proposes directions; exact checks use original
-    // binary rows, including every zero outcome.
-    if !compact_model_admitted(outcome.len(), positive.len(), width, available) {
+    if !compact_model_admitted(outcome.len(), positive_count, width, available) {
         return Ok(None);
     }
-    let Some(basis) = positive_nullspace(design, &mut positive, tolerance, interrupt)? else {
-        return Ok(None);
+    let mut pivots = 0;
+    let search = CompactSearch {
+        outcome,
+        design,
+        tolerance,
+        certificate_tolerance,
+        max_iterations,
+        available,
     };
-    let mut basis = basis;
-    let boundary_count = outcome.iter().filter(|&&y| y == 0.).count();
-    if basis.is_empty() {
-        return Ok(exact_terminal::compact_full_positive_rank(
-            design, outcome, &positive, MAX_WORK,
-        )?
-        .then(|| {
-            terminal(
-                no_separation_certificate(SeparationCertificateProof::SimplexFullPositiveRank {
-                    columns: width,
-                }),
-                0,
-                "finite regressors have full column rank on the positive-outcome sample",
-            )
-        }));
+    if dense_positive_admitted(outcome.len(), positive_count, width, available) {
+        let positive = fallible_collect(
+            outcome
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &y)| (y > 0.).then_some(i)),
+            positive_count,
+            "unable to reserve compact simplex positive rows",
+        )?;
+        return search.solve(positive, &mut pivots, interrupt);
     }
 
-    let dimension = basis.len();
-    let cone_cells = boundary_count.saturating_mul(dimension + 3);
-    let live = cone_cells
-        .saturating_add(dimension.saturating_mul(width + 3))
-        .saturating_add(outcome.len().saturating_mul(2))
-        .saturating_add(width);
-    if live > available {
-        return Ok(None);
-    }
-    let boundary = fallible_collect(
-        outcome
-            .iter()
-            .enumerate()
-            .filter_map(|(i, &y)| (y == 0.).then_some(i)),
-        boundary_count,
-        "unable to reserve compact simplex zero rows",
-    )?;
-    let Some(mut cone) = binary_cone(design, &boundary, &basis, tolerance)? else {
+    let Some(selected) = positive_rows::select(design, outcome, available, interrupt)? else {
         return Ok(None);
     };
-    let reduction = live.saturating_add(dimension.saturating_mul(dimension + 8));
-    if reduction > available || !reduce_cone(&mut cone, &mut basis, tolerance)? {
+    let rank = selected.len();
+    let proposal = search.solve(selected, &mut pivots, interrupt)?;
+    if proposal.is_some() || rank == width {
+        return Ok(proposal);
+    }
+    let Some(odd) = positive_rows::select_odd(design, outcome, available, interrupt)? else {
         return Ok(None);
+    };
+    if odd.len() > rank {
+        search.solve(odd, &mut pivots, interrupt)
+    } else {
+        Ok(None)
     }
-    let retained = basis.len();
-    let live = live.saturating_sub((dimension - retained).saturating_mul(width + 3));
-    let proposal = compact_tableau::propose(
-        &cone,
-        tolerance,
-        max_iterations,
-        available - live,
-        interrupt,
-    )?;
-    if crate::diagnostics::solver_trace_enabled() {
-        let branch = match &proposal {
-            Some(compact_tableau::Proposal::Direction { .. }) => "direction",
-            Some(compact_tableau::Proposal::PositiveWeights { .. }) => "dual",
-            None => "unresolved",
-        };
-        eprintln!("FEREG_SOLVER_TRACE|phase=compact_tableau|dimension={dimension}|retained={retained}|boundary={boundary_count}|branch={branch}");
-    }
-    match proposal {
-        Some(compact_tableau::Proposal::Direction {
-            coordinates,
-            iterations,
-        }) => {
-            drop(cone);
-            let coefficients = combine_basis(&basis, &coordinates)?;
-            drop(basis);
-            let scratch = available.saturating_sub(2 * outcome.len() + width + dimension);
-            Ok(lift_ray(
-                design,
-                outcome,
-                &coefficients,
-                &positive,
-                tolerance,
-                scratch,
-            )?
-            .map(|coefficients| CompactModel::Direction {
-                coefficients,
-                iterations,
-            }))
+}
+
+struct CompactSearch<'a> {
+    outcome: &'a [f64],
+    design: &'a BinaryDesign,
+    tolerance: f64,
+    certificate_tolerance: f64,
+    max_iterations: usize,
+    available: usize,
+}
+
+impl CompactSearch<'_> {
+    fn solve(
+        &self,
+        mut positive: Vec<usize>,
+        pivots: &mut usize,
+        interrupt: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<Option<CompactModel>> {
+        let Self {
+            outcome,
+            design,
+            tolerance,
+            certificate_tolerance,
+            max_iterations,
+            available,
+        } = *self;
+        let width = design.ncols();
+        if !dense_positive_admitted(outcome.len(), positive.len(), width, available) {
+            return Ok(None);
         }
-        Some(compact_tableau::Proposal::PositiveWeights {
-            weights,
-            iterations,
-        }) => {
-            let dual = fallible_collect(
-                weights.iter().map(|w| -*w).chain(std::iter::once(-1.)),
-                weights.len() + 1,
-                "unable to reserve compact Farkas certificate",
-            )?;
-            let certificate =
-                verify_phase_one_farkas_certificate(&cone, &dual, certificate_tolerance)?;
-            drop(dual);
-            drop(cone);
-            drop(basis);
-            let Some(certificate) = certificate else {
-                if crate::diagnostics::solver_trace_enabled() {
-                    eprintln!("FEREG_SOLVER_TRACE|phase=compact_terminal|failed=numerical_farkas");
-                }
-                return Ok(None);
-            };
-            let scratch = available.saturating_sub(2 * outcome.len() + weights.len());
-            Ok(exact_terminal::compact_no_recession(
-                design, outcome, &boundary, &weights, &positive, MAX_WORK, scratch,
+        // The pivot subset only reduces proposal work. A numerical direction or
+        // dual still has to balance the full raw design before we can certify it.
+        let Some(mut basis) = positive_nullspace(design, &mut positive, tolerance, interrupt)?
+        else {
+            return Ok(None);
+        };
+        let boundary_count = outcome.iter().filter(|&&y| y == 0.).count();
+        if basis.is_empty() {
+            return Ok(exact_terminal::compact_full_positive_rank(
+                design, outcome, &positive, MAX_WORK,
             )?
             .then(|| {
                 terminal(
+                    no_separation_certificate(
+                        SeparationCertificateProof::SimplexFullPositiveRank { columns: width },
+                    ),
+                    *pivots,
+                    "finite regressors have full column rank on the positive-outcome sample",
+                )
+            }));
+        }
+
+        let dimension = basis.len();
+        let boundary = fallible_collect(
+            outcome
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &y)| (y == 0.).then_some(i)),
+            boundary_count,
+            "unable to reserve compact simplex zero rows",
+        )?;
+        let fixed_cells = boundary
+            .capacity()
+            .saturating_add(positive.capacity())
+            .saturating_add(width);
+        let Some(cone_budget) = available.checked_sub(fixed_cells) else {
+            return Ok(None);
+        };
+        let Some(projected) =
+            projection::build(design, &boundary, &mut basis, tolerance, cone_budget)?
+        else {
+            return Ok(None);
+        };
+        let retained = basis.len();
+        let remaining = cone_budget - projected.live_cells;
+        if remaining <= boundary_count.saturating_mul(2) {
+            return Ok(None); // The numerical dual and its Farkas replay coexist.
+        }
+        let proposal = projected.propose(
+            boundary_count,
+            (tolerance, max_iterations),
+            pivots,
+            remaining,
+            interrupt,
+        )?;
+        if crate::diagnostics::solver_trace_enabled() {
+            let branch = match &proposal {
+                Some(compact_tableau::Proposal::Direction { .. }) => "direction",
+                Some(compact_tableau::Proposal::PositiveWeights { .. }) => "dual",
+                None => "unresolved",
+            };
+            eprintln!("FEREG_SOLVER_TRACE|phase=compact_tableau|dimension={dimension}|retained={retained}|boundary={boundary_count}|branch={branch}");
+        }
+        match proposal {
+            Some(compact_tableau::Proposal::Direction {
+                coordinates,
+                iterations,
+            }) => {
+                drop(projected);
+                let coefficients = combine_basis(&basis, &coordinates)?;
+                drop(basis);
+                let scratch = available.saturating_sub(fixed_cells + retained);
+                Ok(lift_ray(
+                    design,
+                    outcome,
+                    &coefficients,
+                    &positive,
+                    tolerance,
+                    scratch,
+                )?
+                .map(|coefficients| CompactModel::Direction {
+                    coefficients,
+                    iterations,
+                }))
+            }
+            Some(compact_tableau::Proposal::PositiveWeights {
+                weights,
+                iterations,
+            }) => {
+                let dual = fallible_collect(
+                    weights.iter().map(|w| -*w).chain(std::iter::once(-1.)),
+                    weights.len() + 1,
+                    "unable to reserve compact Farkas certificate",
+                )?;
+                let certificate = verify_indexed_farkas_certificate(
+                    &projected.rows,
+                    &projected.index,
+                    &dual,
+                    certificate_tolerance,
+                )?;
+                drop(dual);
+                drop(projected);
+                drop(basis);
+                let Some(certificate) = certificate else {
+                    if crate::diagnostics::solver_trace_enabled() {
+                        eprintln!(
+                            "FEREG_SOLVER_TRACE|phase=compact_terminal|failed=numerical_farkas"
+                        );
+                    }
+                    return Ok(None);
+                };
+                let scratch = available.saturating_sub(fixed_cells + weights.len());
+                Ok(exact_terminal::compact_no_recession(
+                    design, outcome, &boundary, &weights, &positive, MAX_WORK, scratch,
+                )?
+                .then(|| {
+                    terminal(
                     certificate,
                     iterations,
                     "model simplex phase-I infeasibility passed an independent Farkas certificate",
                 )
-            }))
+                }))
+            }
+            None => Ok(None),
         }
-        None => Ok(None),
     }
 }
 
@@ -272,7 +346,7 @@ fn positive_nullspace(
     for (i, &origin) in positive.iter().enumerate() {
         crate::interrupt::row_checkpoint(i)?;
         for &j in design.row(origin) {
-            rows[i * width + j] = 1.;
+            rows[i * width + j as usize] = 1.;
         }
     }
     let matrix = DenseMatrix::from_row_major(positive.len(), width, rows)?;
@@ -294,114 +368,6 @@ fn positive_nullspace(
     )?;
     *positive = pivots;
     Ok(Some(basis))
-}
-
-/// Visit the original binary rows once, accumulating only their nonzero
-/// coordinates into the numerical cone. Ignore small roundoff in this
-/// proposal; the coefficients and dual still have to balance raw rows.
-fn binary_cone(
-    design: &BinaryDesign,
-    boundary: &[usize],
-    basis: &[Vec<f64>],
-    tolerance: f64,
-) -> Result<Option<Vec<Vec<f64>>>> {
-    let mut remaining = MAX_WORK;
-    let mut cone = Vec::new();
-    reserve(
-        &mut cone,
-        boundary.len(),
-        "unable to reserve compact cone rows",
-    )?;
-    for &row in boundary {
-        crate::interrupt::row_checkpoint(row)?;
-        let mut values = fallible_filled(basis.len(), 0., "unable to reserve compact cone row")?;
-        let Some(work) = remaining.checked_sub(design.row(row).len().saturating_mul(basis.len()))
-        else {
-            return Ok(None);
-        };
-        remaining = work;
-        for &j in design.row(row) {
-            for (score, direction) in values.iter_mut().zip(basis) {
-                *score += direction[j];
-            }
-        }
-        for value in &mut values {
-            if value.abs() <= tolerance {
-                *value = 0.;
-            }
-        }
-        cone.push(values);
-    }
-    Ok(Some(cone))
-}
-
-/// Aliased effects often leave many more coordinates in the positive-row
-/// nullspace than directions observable on the zero rows. A proposed column
-/// basis gives the small transposed program independent equations.
-fn reduce_cone(cone: &mut [Vec<f64>], basis: &mut Vec<Vec<f64>>, tolerance: f64) -> Result<bool> {
-    let dimension = basis.len();
-    let maximum = cone.iter().flatten().fold(0.0_f64, |m, v| m.max(v.abs()));
-    let threshold = tolerance * maximum;
-    let mut rows: Vec<(usize, Vec<f64>)> = Vec::new();
-    reserve(
-        &mut rows,
-        dimension,
-        "unable to reserve compact cone pivots",
-    )?;
-    let mut work = fallible_filled(dimension, 0., "unable to reserve compact cone contrast")?;
-    let mut remaining = MAX_WORK;
-    for (i, row) in cone.iter().enumerate() {
-        crate::interrupt::row_checkpoint(i)?;
-        let Some(left) = remaining.checked_sub((1 + rows.len()).saturating_mul(dimension)) else {
-            return Ok(false);
-        };
-        remaining = left;
-        work.copy_from_slice(row);
-        for (column, direction) in &rows {
-            let multiplier = work[*column];
-            for (value, &prior) in work.iter_mut().zip(direction) {
-                *value -= multiplier * prior;
-            }
-            work[*column] = 0.;
-        }
-        let Some((column, &pivot)) = work
-            .iter()
-            .enumerate()
-            .max_by(|(_, a), (_, b)| a.abs().total_cmp(&b.abs()))
-            .filter(|(_, value)| value.abs() > threshold)
-        else {
-            continue;
-        };
-        let direction = fallible_collect(
-            work.iter().map(|x| *x / pivot),
-            dimension,
-            "unable to reserve compact cone direction",
-        )?;
-        rows.push((column, direction));
-        if rows.len() == dimension {
-            return Ok(true);
-        }
-    }
-    let mut keep = fallible_filled(dimension, false, "unable to reserve compact cone mask")?;
-    for (column, _) in rows {
-        keep[column] = true;
-    }
-    // Represent the zero-dimensional cone by one zero coordinate for the
-    // normalized Farkas check. The exact raw proof still handles every alias.
-    if !keep.contains(&true) {
-        keep[0] = true;
-    }
-    for row in cone {
-        let mut selected = keep.iter();
-        row.retain(|_| *selected.next().expect("cone width checked at construction"));
-    }
-    let mut selected = keep.iter();
-    basis.retain(|_| {
-        *selected
-            .next()
-            .expect("basis width checked at construction")
-    });
-    Ok(true)
 }
 
 fn terminal(
@@ -480,7 +446,8 @@ fn lift_ray(
         }
         row.fill(0.);
         let mut score = 0.;
-        for &j in design.row(i) {
+        for &column in design.row(i) {
+            let j = column as usize;
             if positions[j] != usize::MAX {
                 row[positions[j]] = 1.;
                 score += coefficients[j];
@@ -520,7 +487,7 @@ fn verify_ray(design: &BinaryDesign, outcome: &[f64], coefficients: &[i64]) -> R
         let score: i128 = design
             .row(i)
             .iter()
-            .map(|&j| i128::from(coefficients[j]))
+            .map(|&j| i128::from(coefficients[j as usize]))
             .sum();
         if score > 0 || (y > 0. && score != 0) {
             return Ok(false);

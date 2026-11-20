@@ -8,6 +8,37 @@ use super::fallible_filled;
 use crate::error::Result;
 use crate::linalg::neumaier_add;
 
+mod grouped;
+
+/// Each optional pair identifies one original boundary row and its exact
+/// multiplicity. The ordinary tableau uses each row once in input order.
+#[derive(Clone, Copy)]
+struct Cone<'a> {
+    rows: &'a [Vec<f64>],
+    groups: &'a [(usize, usize)],
+    stored_once: bool,
+}
+
+impl<'a> Cone<'a> {
+    fn len(self) -> usize {
+        if self.groups.is_empty() {
+            self.rows.len()
+        } else {
+            self.groups.len()
+        }
+    }
+
+    fn iter(self) -> impl Iterator<Item = (&'a [f64], f64)> {
+        (0..self.len()).map(move |i| {
+            let (row, count) = self.groups.get(i).copied().unwrap_or((i, 1));
+            (
+                self.rows[if self.stored_once { i } else { row }].as_slice(),
+                count as f64,
+            )
+        })
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum Proposal {
     Direction {
@@ -31,6 +62,7 @@ pub(crate) fn workspace_cells(boundary: usize, dimension: usize) -> Option<usize
         .checked_add(boundary.max(dimension))
 }
 
+#[cfg(test)]
 pub(crate) fn propose(
     cone: &[Vec<f64>],
     tolerance: f64,
@@ -38,11 +70,98 @@ pub(crate) fn propose(
     available_cells: usize,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<Proposal>> {
-    let boundary = cone.len();
+    propose_counting(
+        cone,
+        tolerance,
+        max_iterations,
+        &mut 0,
+        available_cells,
+        interrupt,
+    )
+}
+
+pub(super) fn propose_counting(
+    cone: &[Vec<f64>],
+    tolerance: f64,
+    max_iterations: usize,
+    pivots: &mut usize,
+    available_cells: usize,
+    interrupt: &mut dyn FnMut() -> Result<()>,
+) -> Result<Option<Proposal>> {
     let dimension = cone.first().map_or(0, Vec::len);
-    if dimension == 0 || !(0.0..1.0).contains(&tolerance) || tolerance == 0.0 {
+    if dimension == 0 || !(0.0..1.0).contains(&tolerance) || tolerance == 0.0 || max_iterations == 0
+    {
         return Ok(None);
     }
+    let direct = Cone {
+        rows: cone,
+        groups: &[],
+        stored_once: false,
+    };
+    if let Some(proposal) = solve(
+        direct,
+        tolerance,
+        max_iterations,
+        pivots,
+        available_cells,
+        1 << 30,
+        interrupt,
+    )? {
+        return Ok(Some(proposal));
+    }
+    grouped::retry(
+        cone,
+        tolerance,
+        max_iterations,
+        pivots,
+        available_cells,
+        interrupt,
+    )
+}
+
+/// Phase I on exactly identical constraints coalesced as the cone is
+/// produced. Index pairs hold the first physical boundary row and its count.
+pub(super) fn propose_streamed(
+    rows: &[Vec<f64>],
+    groups: &[(usize, usize)],
+    boundary: usize,
+    (tolerance, max_iterations): (f64, usize),
+    pivots: &mut usize,
+    available: usize,
+    interrupt: &mut dyn FnMut() -> Result<()>,
+) -> Result<Option<Proposal>> {
+    let cone = Cone {
+        rows,
+        groups,
+        stored_once: true,
+    };
+    let proposal = solve(
+        cone,
+        tolerance,
+        max_iterations,
+        pivots,
+        available,
+        1 << 30,
+        interrupt,
+    )?;
+    if crate::diagnostics::solver_trace_enabled() {
+        eprintln!("FEREG_SOLVER_TRACE|phase=compact_streamed_tableau|boundary={boundary}|groups={}|dimension={}|pivots={pivots}|proposed={}",
+            rows.len(), rows[0].len(), u8::from(proposal.is_some()));
+    }
+    grouped::expand(proposal, groups, boundary, available)
+}
+
+fn solve(
+    cone: Cone<'_>,
+    tolerance: f64,
+    max_iterations: usize,
+    pivots: &mut usize,
+    available_cells: usize,
+    cell_visits: usize,
+    interrupt: &mut dyn FnMut() -> Result<()>,
+) -> Result<Option<Proposal>> {
+    let boundary = cone.len();
+    let dimension = cone.rows[0].len();
     if workspace_cells(boundary, dimension).is_none_or(|cells| cells > available_cells) {
         return Ok(None);
     }
@@ -54,12 +173,11 @@ pub(crate) fn propose(
     // tableau, and may check the original cone once if its mass is near zero.
     // Pricing scratch, output weights, normalization, and ratio/basis scans
     // cost at most eight row widths and four basis lengths beyond those passes.
-    const CELL_VISITS: usize = 1 << 30;
-    if cells > CELL_VISITS / 16 || max_iterations == 0 {
+    if cells > cell_visits / 16 {
         return Ok(None);
     }
     let per_pivot = 4 * cells + 8 * width + 4 * dimension;
-    let pivot_limit = max_iterations.min((CELL_VISITS - 16 * cells) / per_pivot);
+    let pivot_limit = (max_iterations - *pivots).min((cell_visits - 16 * cells) / per_pivot);
     interrupt()?;
     let mut tableau = fallible_filled(cells, 0., "unable to reserve transposed simplex tableau")?;
     let mut scales = fallible_filled(dimension, 0., "unable to reserve transposed simplex scales")?;
@@ -105,7 +223,7 @@ pub(crate) fn propose(
             {
                 return Ok(Some(Proposal::PositiveWeights {
                     weights,
-                    iterations,
+                    iterations: *pivots,
                 }));
             }
         }
@@ -119,13 +237,17 @@ pub(crate) fn propose(
             )?
             .map(|coordinates| Proposal::Direction {
                 coordinates,
-                iterations,
+                iterations: *pivots,
             }));
         };
         let Some((leaving, step)) = leaving_row(&tableau, &basis, width, column, tolerance) else {
             return Ok(None);
         };
-        if iterations == pivot_limit || !pivot(&mut tableau, width, leaving, column) {
+        if iterations == pivot_limit {
+            return Ok(None);
+        }
+        *pivots += 1;
+        if !pivot(&mut tableau, width, leaving, column) {
             return Ok(None);
         }
         basis[leaving] = column;
@@ -140,14 +262,14 @@ pub(crate) fn propose(
 }
 
 fn initialize(
-    cone: &[Vec<f64>],
+    cone: Cone<'_>,
     width: usize,
     tableau: &mut [f64],
     scales: &mut [f64],
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<bool> {
     let boundary = cone.len();
-    for (index, row) in cone.iter().enumerate() {
+    for (index, (row, _)) in cone.iter().enumerate() {
         crate::interrupt::row_checkpoint(index)?;
         if row.len() != scales.len() || row.iter().any(|v| !v.is_finite()) {
             return Ok(false);
@@ -169,9 +291,9 @@ fn initialize(
         };
         let mut sum = 0.;
         let mut correction = 0.;
-        for (value, original) in row.iter_mut().zip(cone) {
+        for (value, (original, count)) in row.iter_mut().zip(cone.iter()) {
             *value = original[axis] / *scale;
-            neumaier_add(*value, &mut sum, &mut correction);
+            neumaier_add(*value * count, &mut sum, &mut correction);
         }
         let rhs = -(sum + correction);
         if rhs < 0. {
@@ -255,7 +377,7 @@ fn pivot(tableau: &mut [f64], width: usize, leaving: usize, column: usize) -> bo
 }
 
 fn positive_weights(
-    cone: &[Vec<f64>],
+    cone: Cone<'_>,
     scales: &[f64],
     tableau: &[f64],
     basis: &[usize],
@@ -268,6 +390,9 @@ fn positive_weights(
         1.,
         "unable to reserve transposed simplex weights",
     )?;
+    for (weight, &(_, count)) in weights.iter_mut().zip(cone.groups) {
+        *weight = count as f64;
+    }
     for (row, &basic) in tableau.chunks_exact(width).zip(basis) {
         if row[width - 1] < -tolerance {
             return Ok(None);
@@ -282,7 +407,7 @@ fn positive_weights(
         let mut sum = 0.;
         let mut correction = 0.;
         let mut magnitude = 0.;
-        for (row, &weight) in cone.iter().zip(&weights) {
+        for ((row, _), &weight) in cone.iter().zip(&weights) {
             let term = (row[axis] / scale) * (weight / largest);
             neumaier_add(term, &mut sum, &mut correction);
             magnitude += term.abs();
@@ -295,7 +420,7 @@ fn positive_weights(
 }
 
 fn direction(
-    cone: &[Vec<f64>],
+    cone: Cone<'_>,
     scales: &[f64],
     transformed: &[f64],
     tolerance: f64,
@@ -325,7 +450,7 @@ fn direction(
     }
     let mut negative = 0.0_f64;
     let mut positive = 0.0_f64;
-    for (i, row) in cone.iter().enumerate() {
+    for (i, (row, _)) in cone.iter().enumerate() {
         if i % crate::interrupt::CHECKPOINT_ROW_STRIDE == 0 {
             interrupt()?;
         }

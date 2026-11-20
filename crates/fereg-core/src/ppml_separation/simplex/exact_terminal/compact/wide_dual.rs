@@ -32,7 +32,7 @@ pub(super) fn certify(
     for (column, &i) in positive.iter().chain(extras).enumerate() {
         crate::interrupt::row_checkpoint(column)?;
         for &j in design.row(i) {
-            system[j * stride + column] = 1;
+            system[j as usize * stride + column] = 1;
         }
     }
     for (row, &count) in system.chunks_exact_mut(stride).zip(aggregate) {
@@ -57,7 +57,8 @@ pub(super) fn certify(
         if !work.take(1, row.len() + 1) {
             return false;
         }
-        for &j in row {
+        for &column in row {
+            let j = column as usize;
             let Some(sum) = moment[j].checked_add(weight) else {
                 return false;
             };
