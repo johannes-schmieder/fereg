@@ -1,5 +1,30 @@
 # Validation status
 
+## 0.6.7 release qualification, November 20, 2026
+
+The offline source archive at `98f0e3b2` built the signed universal Mac
+plugin. The refreshed RustSec audit found zero advisories.
+
+- Stata/MP 19 passed 186 applicable fixtures on Apple Silicon and 186 on
+  Linux x86-64. Stata/MP 18 passed 11 on Apple Silicon. Intel Stata under
+  Rosetta passed 16. Windows x86-64 passed its native build, loader, Stata
+  and sequential PyStata checks, including the adaptive sparse separation
+  fixture.
+- All 119 public Poisson separation checks passed. Three synthetic Linux
+  designs with more than two million rows matched the analytic estimation
+  samples and fitted means.
+- Thirteen reported do-files produced the expected outcomes on Mac,
+  including the deliberate refusals when separation was disabled. In the
+  first twelve, all 84 successful estimator calls and 34 additional
+  specifications retained the same observations and reproduced the full
+  coefficient vectors and covariance matrices of 0.6.6. The five new
+  Poisson specifications and an alternative factor encoding matched
+  independently verified samples, with fitted means within 4.7e-12 of
+  an independent calculation.
+- Twelve tests passed on the combined staged archive. An isolated Stata
+  installation at the BE macro limit verified 38 package files and
+  independent OLS and Poisson fits.
+
 ## 0.6.6 release qualification, November 19, 2026
 
 The corresponding source archive includes the complete locked dependency

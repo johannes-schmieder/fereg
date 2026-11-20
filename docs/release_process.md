@@ -124,6 +124,11 @@ and full notes. Older releases link to their archived notes under
 response and an actual `github install` at the Stata/BE limit are checked
 after publication.
 
+For 0.6.7 the primary GitHub Release carries the complete offline source ZIP.
+The version tag contains all three native binaries, the root Stata package,
+installation instructions and the archived titles and descriptions. GitHub
+also offers a downloadable archive of this tagged distribution.
+
 Versioned installation uses the release tag,
 `https://raw.githubusercontent.com/johannes-schmieder/fereg/<tag>/`: tag the
 commit whose `dist/` holds that release's plugins, so the tagged root package
