@@ -21,9 +21,9 @@ use crate::ols::{
     PreparedOlsFitConfig,
 };
 use crate::ppml_separation::{
-    compact_model, compact_model_admitted, model_simplex_interruptible,
-    separation_generation_capacity, separation_method_count, simplex_workspace_peak_cells,
-    BinaryDesign, CompactModel, PREFLIGHT_REPORT_GENERATIONS,
+    compact_model, model_simplex_interruptible, separation_generation_capacity,
+    separation_method_count, simplex_workspace_peak_cells, BinaryDesign, CompactInput,
+    CompactModel, PREFLIGHT_REPORT_GENERATIONS,
 };
 use crate::ppml_separation::{
     DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
@@ -1344,13 +1344,14 @@ fn commit_numerical(
         exact_fe_certificate,
         direction,
         exact_graph_span,
+        exact_primal,
         note,
         ..
     } = proposal;
     // The direction has already passed the independent span/sign
     // certificate. It is not needed to construct or publish the atomic
     // deletion transaction, so release its N-vector before cascade/rebuild.
-    drop((direction, exact_graph_span));
+    drop((direction, exact_graph_span, exact_primal));
     let cascade = {
         let view = coordinator.view();
         complete_cascade(view.prepared, &primary_rows, config)?
@@ -2066,6 +2067,15 @@ fn prepared_simplex_proposal(
         .and_then(|value| value.checked_add(topology_cells))
         .ok_or_else(|| allocation("prepared simplex construction workspace overflowed"))?;
     let peak_cells = kernel_peak_cells.max(construction_peak_cells);
+    if positive_rank::pure_pair(generation, &topology) {
+        let available = peak_cells
+            .min(config.simplex_max_tableau_cells)
+            .saturating_sub(topology_cells);
+        if let Some(proof) = pure_pair_simplex(generation, boundary, available, config, interrupt)?
+        {
+            return Ok(proof);
+        }
+    }
     let dense_exceeds_limit = peak_cells > config.simplex_max_tableau_cells;
     let skipped = || {
         bind_numerical_proposal(
@@ -2097,12 +2107,19 @@ fn prepared_simplex_proposal(
             .all(|spec| spec.slopes.is_empty());
         let effects = topology.effect_specs.len();
         drop(topology);
-        if intercept_only
-            && compact_model_admitted(rows, positive, columns, config.simplex_max_tableau_cells)
-        {
+        if intercept_only {
             if let Some(proof) = prepared_compact_simplex(generation, effects, config, interrupt)? {
                 return Ok(proof);
             }
+        }
+        if let Some(proof) =
+            reconcile::sparse_slope_ray(generation, SeparationMethod::Simplex, config)?
+        {
+            return Ok(proof);
+        }
+        if let Some(proof) = reconcile::factor_pair(generation, SeparationMethod::Simplex, config)?
+        {
+            return Ok(proof);
         }
         return skipped();
     }
@@ -2142,36 +2159,62 @@ fn prepared_compact_simplex(
     let input_cells = config
         .simplex_max_tableau_cells
         .saturating_sub(effects.saturating_mul(16));
-    let Some(design) =
-        BinaryDesign::from_rows(rows, columns, input_cells, |i, row| raw.write(i, row))?
-    else {
-        return Ok(None);
-    };
-    drop(raw);
-    let compact = compact_model(
-        generation.outcome(),
-        &design,
-        config.projection_tolerance,
-        config.certificate_tolerance,
-        config.simplex_max_iterations,
-        config.simplex_max_tableau_cells,
-        &mut || interrupt(PpmlInterruptPoint::SeparationSimplexPivot),
+    let mut pivots = 0;
+    let mut poll = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
+    let outcome = generation.outcome();
+    let finite = generation.model().columns.len();
+    let absorbed = columns - finite;
+    let input = BinaryDesign::prepare(
+        outcome,
+        (columns, finite + effects, raw.sparse_row_visits()),
+        input_cells,
+        config,
+        &mut pivots,
+        &mut |i, row| {
+            // The sparse reader emits absorbed coordinates first. Restore
+            // finite-first order for packed simplex coefficients.
+            let mut absorbed_ones = 0;
+            let mut binary = true;
+            raw.terms(i, |coordinate, value| {
+                if value == 1. {
+                    if coordinate < absorbed {
+                        row.push((finite + coordinate) as u32);
+                        absorbed_ones += 1;
+                    } else {
+                        row.push((coordinate - absorbed) as u32);
+                    }
+                } else if value != 0. {
+                    binary = false;
+                }
+            })?;
+            row.rotate_left(absorbed_ones);
+            Ok(binary)
+        },
+        &mut poll,
     )?;
-    drop(design);
-    if crate::diagnostics::solver_trace_enabled() {
-        eprintln!(
-            "FEREG_SOLVER_TRACE|phase=compact_simplex|rows={rows}|columns={columns}|certified={}",
-            u8::from(compact.is_some())
-        );
-    }
-    match compact {
-        Some(CompactModel::Terminal(raw)) => Ok(Some(bind_numerical_proposal(generation, raw)?)),
+    drop(raw);
+    let compact = match input {
+        Some(CompactInput::Proof(proof)) => Some(proof),
+        Some(CompactInput::Design(design)) => {
+            compact_model(outcome, &design, config, &mut pivots, &mut poll)?
+        }
+        None => None,
+    };
+    let proposal = match compact {
+        Some(CompactModel::Terminal(raw)) => Some(bind_numerical_proposal(generation, raw)?),
         Some(CompactModel::Direction {
             coefficients,
             iterations,
-        }) => reconcile::compact_ray(generation, coefficients, iterations, config),
-        None => Ok(None),
+        }) => reconcile::compact_ray(generation, coefficients, iterations, config)?,
+        None => None,
+    };
+    if crate::diagnostics::solver_trace_enabled() {
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=compact_simplex|rows={rows}|columns={columns}|certified={}",
+            u8::from(proposal.is_some())
+        );
     }
+    Ok(proposal)
 }
 
 fn prepared_simplex_design(
@@ -2293,6 +2336,14 @@ fn prepared_bound_iterated_rectifier(
     {
         return Ok(factor);
     }
+    if let Some(proof) =
+        reconcile::sparse_slope_ray(generation, SeparationMethod::IteratedRectifier, config)?
+    {
+        return Ok(proof);
+    }
+    if let Some(proof) = positive_rank::direct_slope_support(generation, config, interrupt)? {
+        return Ok(proof);
+    }
     let admission = graph_admitted.into();
     let candidate =
         prepared_rectifier_candidate(generation, ppml, config, linear, admission, interrupt);
@@ -2304,6 +2355,11 @@ fn prepared_bound_iterated_rectifier(
                 ErrorCode::NonConvergence | ErrorCode::InvalidData
             ) =>
         {
+            if let Some(indicators) =
+                reconcile::factor_pair(generation, SeparationMethod::IteratedRectifier, config)?
+            {
+                return Ok(indicators);
+            }
             if let Some(supported) = reconcile::support(
                 generation,
                 SeparationMethod::IteratedRectifier,
@@ -2326,6 +2382,87 @@ fn prepared_bound_iterated_rectifier(
         }
         Err(error) => Err(error),
     }
+}
+
+/// A pure two-intercept graph exposes all strict edges in one direction.
+fn pure_pair_simplex(
+    generation: &PreparedPpmlModelGeneration,
+    boundary: usize,
+    cells: usize,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? else {
+        return Ok(None);
+    };
+    let vertices = design.effects().iter().map(|e| e.n_levels()).sum();
+    if graph::categorical_peak_bytes(design.nobs(), boundary, vertices) > cells as u128 * 8 {
+        return Ok(None);
+    }
+    let Some(graph::GraphDirection { direction, span }) =
+        graph::direction(&design, generation.outcome(), &mut || {
+            interrupt(PpmlInterruptPoint::SeparationSimplex)
+        })?
+    else {
+        return Ok(None);
+    };
+    bind_graph_direction(
+        generation,
+        config,
+        SeparationMethod::Simplex,
+        direction,
+        span,
+    )
+    .map(Some)
+}
+
+fn bind_graph_direction(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    method: SeparationMethod,
+    direction: Vec<f64>,
+    span: graph::ExactGraphSpan,
+) -> Result<PreparedNumericalProposal> {
+    let scale = infinity_norm(&direction);
+    let dropped = fallible_collect(
+        direction.iter().enumerate().filter_map(|(row, &value)| {
+            (generation.outcome()[row] == 0.0 && value < -config.tolerance * scale).then_some(row)
+        }),
+        direction.len(),
+        "unable to reserve graph separation proposal",
+    )?;
+    let certificate = detector_direction_certificate(
+        generation.outcome(),
+        &direction,
+        &dropped,
+        config.certificate_tolerance,
+    )?;
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=separation_graph_proposal|generation={}|rows={}|kind={}|proposed={}",
+            generation.generation(), direction.len(),
+            if span.has_binary_column() { "binary_finite" } else { "categorical" },
+            dropped.len()));
+    }
+    let mut proposal = bind_numerical_proposal(
+        generation,
+        DetectionProposal {
+            method,
+            dropped,
+            iterations: 0,
+            status: MethodStatus::Certified,
+            certificate: Some(certificate),
+            exact_fe_certificate: None,
+            direction: Some(direction),
+            note: if method == SeparationMethod::Simplex {
+                "exact two-intercept separation direction".into()
+            } else {
+                "prepared iterated-rectifier candidate direction".into()
+            },
+        },
+    )?;
+    proposal.exact_graph_span = Some(span);
+    Ok(proposal)
 }
 
 fn prepared_rectifier_candidate(
@@ -2355,44 +2492,13 @@ fn prepared_rectifier_candidate(
                             )?,
                         };
                     if let Some(graph::GraphDirection { direction, span }) = candidate {
-                        let scale = infinity_norm(&direction);
-                        let dropped = fallible_collect(
-                            direction.iter().enumerate().filter_map(|(row, &value)| {
-                                (generation.outcome()[row] == 0.0
-                                    && value < -config.tolerance * scale)
-                                    .then_some(row)
-                            }),
-                            direction.len(),
-                            "unable to reserve graph separation proposal",
-                        )?;
-                        let certificate = detector_direction_certificate(
-                            generation.outcome(),
-                            &direction,
-                            &dropped,
-                            config.certificate_tolerance,
-                        )?;
-                        if crate::diagnostics::solver_trace_enabled() {
-                            crate::diagnostics::emit_solver_trace(&format!(
-                                "FEREG_SOLVER_TRACE|phase=separation_graph_proposal|generation={}|rows={}|kind={}|proposed={}",
-                                generation.generation(), direction.len(),
-                                if span.has_binary_column() { "binary_finite" } else { "categorical" },
-                                dropped.len()));
-                        }
-                        let mut proposal = bind_numerical_proposal(
+                        return bind_graph_direction(
                             generation,
-                            DetectionProposal {
-                                method: SeparationMethod::IteratedRectifier,
-                                dropped,
-                                iterations: 0,
-                                status: MethodStatus::Certified,
-                                certificate: Some(certificate),
-                                exact_fe_certificate: None,
-                                direction: Some(direction),
-                                note: "prepared iterated-rectifier candidate direction".into(),
-                            },
-                        )?;
-                        proposal.exact_graph_span = Some(span);
-                        return Ok(proposal);
+                            config,
+                            SeparationMethod::IteratedRectifier,
+                            direction,
+                            span,
+                        );
                     }
                 }
             }
@@ -3638,6 +3744,23 @@ fn replay_positive_support(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<SeparationCertificate>> {
+    if observed.method == SeparationMethod::IteratedRectifier
+        && observed.certificate.as_ref().is_some_and(|c| {
+            matches!(
+                c.proof,
+                crate::ppml_separation::SeparationCertificateProof::ExactPositiveDual { .. }
+            )
+        })
+    {
+        if let Some(replay) = positive_rank::direct_slope_support(generation, config, interrupt)? {
+            if replay.certificate == observed.certificate
+                && replay.note == observed.note
+                && replay.iterations == observed.iterations
+            {
+                return Ok(replay.certificate);
+            }
+        }
+    }
     let replay =
         reconcile::support(generation, observed.method, config, interrupt)?.ok_or_else(|| {
             FeregError::new(
@@ -3867,12 +3990,19 @@ fn validate_prepared_numerical_metadata(
     }
 
     let has_drops = !proposal.dropped_original_rows.is_empty();
-    if proposal.exact_graph_span.is_some()
-        && (!has_drops || proposal.method != SeparationMethod::IteratedRectifier)
-    {
-        return Err(invalid_argument(
-            "exact separation proof requires an IR deletion proposal",
-        ));
+    if let Some(graph) = &proposal.exact_graph_span {
+        let eligible = proposal.method == SeparationMethod::IteratedRectifier
+            || (proposal.method == SeparationMethod::Simplex
+                && !graph.has_binary_column()
+                && positive_rank::pure_pair(
+                    generation,
+                    &DetectorTopology::new(generation.prepared())?,
+                ));
+        if !has_drops || !eligible {
+            return Err(invalid_argument(
+                "invalid detector for exact graph deletion proof",
+            ));
+        }
     }
     if has_drops {
         if proposal.status != MethodStatus::Certified || proposal.direction.is_none() {

@@ -3517,6 +3517,43 @@ fn complete_span_admission_boundary(mut plan: PpmlMemoryPlan) {
 #[path = "unit_policy_tests.rs"]
 mod unit_policy_tests;
 
+#[test]
+fn sparse_proof_work_follows_linear_geometry_and_requested_passes() {
+    let work = primal::ProofBudget::sparse_work;
+    assert_eq!(work(1_000, 3), 3_000);
+    assert_eq!(work(1_000_000, 128), 64_000_000);
+    assert_eq!(work(70_000_000, 2), 140_000_000);
+    assert_eq!(work(70_000_000, usize::MAX), 280_000_000);
+    assert_eq!(work(usize::MAX, 0), 0);
+    assert_eq!(work(usize::MAX, 2), 0);
+}
+
+#[test]
+fn sparse_proof_uses_only_the_requested_methods_released_memory() {
+    let (request, clusters, loaded, uses) = fixture();
+    let numeric = prepare_numeric(&loaded, &uses);
+    let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
+    let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+    let model = coordinator.view().prepared;
+    let k = model.model().columns.len();
+    let released = 7 * (model.outcome().len() + k * k);
+    let mut config = SeparationConfig {
+        simplex_max_tableau_cells: 1,
+        ..SeparationConfig::default()
+    };
+    let words = |method, config| primal::ProofBudget::for_sparse(model, method, config).words;
+    assert_eq!(words(SeparationMethod::Simplex, config), 1);
+    assert_eq!(words(SeparationMethod::IteratedRectifier, config), released);
+    let detector = 8 * model.outcome().len() + 2 * k * k + 3 * k;
+    config.simplex_max_tableau_cells = 2 * released + detector;
+    assert_eq!(
+        words(SeparationMethod::IteratedRectifier, config),
+        2 * released
+    );
+    config.methods.simplex = false;
+    assert_eq!(words(SeparationMethod::IteratedRectifier, config), released);
+}
+
 #[path = "binary_graph_tests.rs"]
 mod binary_graph_tests;
 
@@ -3525,3 +3562,70 @@ mod alias_prefix_tests;
 
 #[path = "positive_rank/tests.rs"]
 mod positive_rank_tests;
+
+#[path = "factor_graph_tests.rs"]
+mod factor_graph_tests;
+
+#[path = "primal/sparse_tests.rs"]
+mod sparse_tests;
+
+#[test]
+fn grouped_compact_ray_must_fit_its_physical_output_and_exact_sparse_replay() {
+    let n = 1024;
+    for closed in [false, true] {
+        let (request, clusters, mut loaded, uses) = fixture();
+        let mut x = Vec::new();
+        let mut g = Vec::new();
+        let mut y = Vec::new();
+        for i in 0..n {
+            let (a, b, positive) = match i % 4 {
+                0 => (0., 1., 1.),
+                1 => (1., 2., 1.),
+                3 if closed => (0., 2., 0.),
+                _ => (1., 1., 0.),
+            };
+            x.push(a);
+            g.push(b);
+            y.push(positive);
+        }
+        loaded.candidate = vec![true; n].into();
+        loaded.outcome = column(&y);
+        loaded.numeric_sources[0].1 = column(&x);
+        loaded.numeric_sources[1].1 = column(&g);
+        loaded.numeric_sources[2].1 = column(&g);
+        let numeric = prepare_numeric(&loaded, &uses);
+        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
+        let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+        let generation = coordinator.view().prepared;
+        let run = |cells| {
+            prepared_compact_simplex(
+                generation,
+                1,
+                SeparationConfig {
+                    simplex_max_tableau_cells: cells,
+                    ..SeparationConfig::default()
+                },
+                &mut |_| Ok(()),
+            )
+            .unwrap()
+        };
+        let tight = run(2 * n); // Groups and the terminal Farkas replay both fit.
+        if closed {
+            assert_eq!(tight.unwrap().status, MethodStatus::NoSeparation);
+        } else {
+            assert!(tight.is_none());
+            let proof = run(4 * n).expect("the physical row banks now fit");
+            assert!(matches!(
+                proof.exact_primal,
+                Some(primal::Witness::Sparse(_))
+            ));
+            assert_eq!(
+                proof.dropped_original_rows,
+                (0..n).filter(|i| i % 4 >= 2).collect::<Vec<_>>()
+            );
+            for (i, &z) in proof.direction.unwrap().iter().enumerate() {
+                assert!(if i % 4 >= 2 { z < 0. } else { z == 0. });
+            }
+        }
+    }
+}

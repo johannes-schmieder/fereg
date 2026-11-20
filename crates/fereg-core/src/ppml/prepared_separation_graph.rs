@@ -30,10 +30,10 @@ pub(super) struct GraphDirection {
     pub(super) span: ExactGraphSpan,
 }
 
-struct PairDirection {
+pub(super) struct PairDirection {
     direction: Vec<f64>,
     split: usize,
-    potentials: Vec<usize>,
+    pub(super) potentials: Vec<usize>,
 }
 
 impl ExactGraphSpan {
@@ -166,6 +166,16 @@ pub(super) fn workspace_bytes(design: &BorrowedInterceptFeDesign<'_>) -> Result<
         .and_then(|n| n.checked_add(4096))
         .ok_or_else(|| allocation("separation graph workspace overflows"))?;
     Ok(Some(bytes))
+}
+
+/// Pure categorical calls borrow both code arrays. At most one arc per zero
+/// enters both CSR edge banks. Parents, offsets, cursor, visits, stack, finish
+/// order and component labels together use at most 57 bytes per vertex, even
+/// while the output direction is allocated. During return and replay only
+/// potentials and the observation-scale direction, ids and replay remain.
+pub(super) fn categorical_peak_bytes(rows: usize, zeros: usize, vertices: usize) -> u128 {
+    let (n, z, v) = (rows as u128, zeros as u128, vertices as u128);
+    (64 * v + 16 * z + 8 * n).max(16 * v + 32 * n) + 4096
 }
 
 fn root(parent: &mut [usize], mut v: usize) -> usize {
@@ -309,7 +319,7 @@ fn categorical_pair_direction(
     }))
 }
 
-fn pair_direction(
+pub(super) fn pair_direction(
     codes: [&[u32]; 2],
     level_counts: [usize; 2],
     outcome: &[f64],

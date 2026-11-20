@@ -192,7 +192,7 @@ impl CellRelations {
     }
 }
 
-fn gcd(mut a: u64, mut b: u64) -> u64 {
+pub(super) fn gcd(mut a: u64, mut b: u64) -> u64 {
     while b != 0 {
         (a, b) = (b, a % b);
     }
@@ -202,7 +202,7 @@ fn gcd(mut a: u64, mut b: u64) -> u64 {
 /// Euclidean reconstruction in the symmetric uniqueness interval
 /// 2·|numerator|·denominator < PRIME. Larger integral solutions are also
 /// worth trying, since the caller checks the candidate independently.
-fn rational_candidate(word: u64) -> (i64, i64) {
+pub(super) fn rational_candidate(word: u64) -> (i64, i64) {
     const LIMIT: i64 = 32_767; // floor(sqrt(PRIME / 2))
     let (mut previous, mut current) = (PRIME as i64, word as i64);
     let (mut previous_factor, mut factor) = (0i64, 1i64);
@@ -240,14 +240,36 @@ pub(super) fn exact_score(row: &[f64], coefficients: &[i64]) -> Option<(Ordering
     if row.len() != coefficients.len() {
         return None;
     }
-    let mut positive = [0u64; LIMBS];
-    let mut negative = [0u64; LIMBS];
+    let mut sum = ExactSum::new();
     for (&value, &coefficient) in row.iter().zip(coefficients) {
-        if !value.is_finite() {
+        if !sum.add(value, coefficient) {
             return None;
         }
+    }
+    Some(sum.score())
+}
+
+/// Streaming exact moments use the same finite dyadic product accumulator as
+/// raw-row recession scores. Separate unsigned subtotals cover cancellation.
+pub(super) struct ExactSum {
+    positive: [u64; LIMBS],
+    negative: [u64; LIMBS],
+}
+
+impl ExactSum {
+    pub(super) fn new() -> Self {
+        Self {
+            positive: [0; LIMBS],
+            negative: [0; LIMBS],
+        }
+    }
+
+    pub(super) fn add(&mut self, value: f64, coefficient: i64) -> bool {
+        if !value.is_finite() {
+            return false;
+        }
         if coefficient == 0 || value == 0. {
-            continue;
+            return true;
         }
         let bits = value.to_bits();
         let exponent = (bits >> 52) as usize & 0x7ff;
@@ -259,9 +281,9 @@ pub(super) fn exact_score(row: &[f64], coefficients: &[i64]) -> Option<(Ordering
         };
         let product = u128::from(mantissa) * u128::from(coefficient.unsigned_abs());
         let total = if value.is_sign_negative() == coefficient.is_negative() {
-            &mut positive
+            &mut self.positive
         } else {
-            &mut negative
+            &mut self.negative
         };
         let shift = exponent.saturating_sub(1);
         let limb = shift / 64;
@@ -272,14 +294,22 @@ pub(super) fn exact_score(row: &[f64], coefficients: &[i64]) -> Option<(Ordering
         if offset != 0 {
             add_word(total, limb + 2, (product >> (128 - offset)) as u64);
         }
+        true
     }
-    let sign = positive.iter().rev().cmp(negative.iter().rev());
-    let value = match sign {
-        Ordering::Equal => 0.,
-        Ordering::Greater => rounded_difference(&mut positive, &negative),
-        Ordering::Less => -rounded_difference(&mut negative, &positive),
-    };
-    Some((sign, value))
+
+    pub(super) fn zero(&self) -> bool {
+        self.positive == self.negative
+    }
+
+    pub(super) fn score(mut self) -> (Ordering, f64) {
+        let sign = self.positive.iter().rev().cmp(self.negative.iter().rev());
+        let value = match sign {
+            Ordering::Equal => 0.,
+            Ordering::Greater => rounded_difference(&mut self.positive, &self.negative),
+            Ordering::Less => -rounded_difference(&mut self.negative, &self.positive),
+        };
+        (sign, value)
+    }
 }
 
 fn add_word(total: &mut [u64; LIMBS], mut index: usize, mut addend: u64) {

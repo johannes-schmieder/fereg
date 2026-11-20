@@ -396,3 +396,192 @@ fn transposed_dual_replays_every_coordinate_and_detects_one_bit_departures() {
     crossed[1][1] = f64::from_bits(3f64.to_bits() + 1);
     assert!(certify(&crossed, Terms::TwoFe, 256).is_none());
 }
+
+#[test]
+fn sparse_raw_dual_replays_joint_cells_and_global_leverage_margin() {
+    let check = |groups: usize, shift: f64, opposite: f64, tol: f64, extreme: bool| {
+        let mut rows = Vec::new();
+        for j in 0..groups {
+            let group = j as f64;
+            // At the two interior x values the unperturbed local slope is -x.
+            // Unequal opposite perturbations need unequal positive boundary
+            // weights in their exact inverse ratio.
+            let base = if extreme { 0. } else { group / 8. };
+            rows.extend([
+                [1., base - 1., group, 1. - base],
+                [0., base, group, -base + shift],
+                [2., base + 1., group, -1. - base],
+                [0., base, group, -base + opposite],
+            ]);
+        }
+        rows.rotate_left(1);
+        let owner = PreparedSeparationCoordinator::new(panel(&rows, Terms::AbsorbedSlope)).unwrap();
+        let model = owner.view().prepared;
+        let topology = DetectorTopology::new(model.prepared()).unwrap();
+        let config = SeparationConfig {
+            certificate_tolerance: tol,
+            ..SeparationConfig::default()
+        };
+        positive_rank::sparse_dual::supports(
+            positive_rank::sparse_dual::Search::Full,
+            model,
+            &topology,
+            2 * groups,
+            20_000,
+            config,
+            &mut |_| Ok(()),
+        )
+        .unwrap()
+    };
+    assert!(check(64, -1., 2f64.powi(-12), 1e-7, false));
+    assert!(check(64, -2f64.powi(-40), 2f64.powi(-40), 1e-7, false));
+    // Each local relation remains exact, but the original-axis normalized
+    // dual margin falls below tolerance at this leverage.
+    assert!(!check(16, -1., 2f64.powi(-40), 1e-7, false));
+    assert!(check(16, -1., 2f64.powi(-40), 1e-15, false));
+    // Both zeros now depart on the same side. Their raw scores have one
+    // sign in the direction x+slope, even at a one-bit displacement.
+    assert!(!check(16, -1., -2f64.powi(-40), 1e-7, false));
+    // Converting one column to a common integer scale exceeds i128.
+    assert!(!check(1, -1., f64::from_bits(1), 1e-7, true));
+}
+
+#[test]
+fn sparse_dual_sweeps_balance_asymmetric_boundary_multiplicities() {
+    // Fixed-effect margins force the off-diagonal totals to agree. The
+    // three repeated 01 rows require weights 1 each and the 10 row needs 3.
+    // The finite regressor is additive across corners and must also balance.
+    let mut rows = Vec::new();
+    for block in 0..16 {
+        for (y, a, b) in [
+            (2., 0., 0.),
+            (1., 1., 1.),
+            (0., 0., 1.),
+            (0., 0., 1.),
+            (0., 0., 1.),
+            (0., 1., 0.),
+        ] {
+            rows.push([
+                y,
+                0.5 + a + 0.5 * b,
+                (2 * block) as f64 + a,
+                (2 * block) as f64 + b,
+            ]);
+        }
+    }
+    for scale in [1., 2f64.powi(900), 2f64.powi(-900)] {
+        let scaled: Vec<_> = rows
+            .iter()
+            .map(|&[y, x, g, h]| [y, x * scale, g, h])
+            .collect();
+        let coordinator = PreparedSeparationCoordinator::new(panel(&scaled, Terms::TwoFe)).unwrap();
+        let model = coordinator.view().prepared;
+        let topology = DetectorTopology::new(model.prepared()).unwrap();
+        let check = |search| {
+            positive_rank::sparse_dual::supports(
+                search,
+                model,
+                &topology,
+                32,
+                4000,
+                SeparationConfig::default(),
+                &mut |_| Ok(()),
+            )
+            .unwrap()
+        };
+        assert!(!check(positive_rank::sparse_dual::Search::Direct));
+        assert!(check(positive_rank::sparse_dual::Search::Full));
+    }
+}
+
+#[test]
+fn ir_only_proves_symmetric_tiny_opposing_slope_movements_before_projection() {
+    let gap = 2f64.powi(-40);
+    let mut rows = Vec::new();
+    for j in 0..32 {
+        let g = j as f64;
+        rows.extend([
+            [1., -1., g, 1.],
+            [2., 1., g, -1.],
+            [0., 0., g, gap],
+            [0., 0., g, -gap],
+        ]);
+    }
+    let fit = detect_prepared_ppml_separation(
+        panel(&rows, Terms::AbsorbedSlope),
+        PpmlConfig::default(),
+        SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: false,
+                iterated_rectifier: true,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        },
+        None,
+        None,
+    )
+    .unwrap();
+    assert!(fit.separation.dropped_observations.is_empty());
+    let report = fit
+        .separation
+        .methods
+        .iter()
+        .find(|m| m.method == SeparationMethod::IteratedRectifier)
+        .unwrap();
+    assert_eq!(report.iterations, 0);
+    assert_eq!(
+        report.certificate.as_ref().unwrap().proof,
+        Proof::ExactPositiveDual { boundary_rows: 64 }
+    );
+}
+
+#[test]
+fn ir_only_composes_local_duals_across_different_retained_faces() {
+    let mut rows = Vec::new();
+    let gap = 2f64.powi(-40);
+    let mut boundary = 0;
+    for j in 0..48 {
+        let g = j as f64;
+        rows.extend([[1., -1., g, 1.], [1., 1., g, -1.], [0., 0., g, 0.]]);
+        boundary += 1;
+        if j % 2 == 1 {
+            rows.extend([[0., 0., g, -gap], [0., 0., g, gap]]);
+            boundary += 2;
+        }
+    }
+    rows.rotate_right(3);
+    let fit = detect_prepared_ppml_separation(
+        panel(&rows, Terms::AbsorbedSlope),
+        PpmlConfig::default(),
+        SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: false,
+                iterated_rectifier: true,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        },
+        None,
+        None,
+    )
+    .unwrap();
+    assert!(fit.separation.dropped_observations.is_empty());
+    let report = fit
+        .separation
+        .methods
+        .iter()
+        .find(|m| m.method == SeparationMethod::IteratedRectifier)
+        .unwrap();
+    assert_eq!(report.iterations, 0);
+    assert_eq!(
+        report.certificate.as_ref().unwrap().proof,
+        Proof::ExactPositiveDual {
+            boundary_rows: boundary
+        }
+    );
+}

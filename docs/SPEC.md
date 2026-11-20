@@ -2017,6 +2017,40 @@ budgeting operations for a raw proof. That credit is capped at one million cells
 adds no allocation to the existing phase memory envelope. A small simplex table
 can therefore skip simplex while IR still verifies a recession direction.
 
+Sparse original-design proofs account for work and storage separately. A pass
+reads the actual row incidences, level memberships or coefficient recipes.
+Each linear scan stage may spend up to 64 million charged operations, or the cost of four
+complete linear passes when the design is larger. A smaller requested pass
+count still binds. Elimination, fill-in and combinatorial exploration retain
+their own fixed work limits. Each sparse simplex proof fits the requested
+cell ceiling. A sparse IR or Mu proof may reuse the released projection
+workspace or the available part of an already admitted simplex arena. The
+memory calculation reserves space for a candidate retained during its
+replacement and uses the same limits during independent proof replay.
+
+For a pure pair of categorical intercept effects, the quotient graph of
+positive observations and directed zero rows can expose all strict edges in one
+pass through its strongly connected components. A terminal proof can instead
+route integer flow along directed trees and verify the normalized positive
+boundary margin and exact zero sums on every original level. For explicit
+main-effect factor axes and mixed explicit and absorbed axes, endpoint
+potentials can propose a separating direction when the emitted columns span
+those potentials. Check the emitted levels and omitted levels against the raw
+factor recipes, then replay the scores. Extra model columns have zero
+coefficients in such a proposal and still enter the terminal check.
+
+With heterogeneous slopes, sparse interpolation can visit the active
+coordinates of each row, placing level coefficients before shared regressors.
+Finite-field elimination proposes coefficients. Signed scores are recomputed
+in the original binary64 model before any commit. If a proposed direction
+has an adverse zero row, that row can become an additional equality for a
+bounded retry. On the retained sample, signed integer multipliers can be
+proposed by group balance, small within-cell equations or sparse projections.
+A proof using those multipliers must have strictly positive normalized margin
+on every boundary observation and exact zero moments on every original
+model coordinate. Failure to reconstruct a direction or balancing measure
+leaves the other requested methods available.
+
 If a numerical proposal contains spurious rows, a separately verified
 direction can certify a smaller set. Restart the detectors on the next
 generation after any deletion. An independently replayed positive-support
@@ -2046,7 +2080,11 @@ contrasts. A finite column treated as constant must be constant on the entire
 current sample. Resource limits or failure to find a witness give no conclusion.
 
 When the explicit simplex exceeds its cell budget, a compact lane can use
-original 0/1 columns and absorbed intercepts. It can select a small positive-row
+original 0/1 columns and absorbed intercepts. For repeated sparse input it
+can group identical raw supports and outcome classes before projection.
+A terminal proof rechecks original supports and classes, lifts the grouped
+dual to physical rows using their multiplicities and verifies the original
+boundary margin. It can select a small positive-row
 basis over finite fields, stream the boundary projection to find independent
 contrasts, and coalesce exactly equal projected constraints. Each coalesced
 constraint keeps its original multiplicity. Terminal replay expands the dual

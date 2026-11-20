@@ -10,7 +10,7 @@ pub(in crate::ppml::prepared_separation) struct Factor {
     emitted: Vec<bool>,
 }
 
-fn has_constant(model: &PreparedPpmlModelGeneration) -> bool {
+pub(super) fn has_constant(model: &PreparedPpmlModelGeneration) -> bool {
     model.fit_view().has_absorbed_intercept()
         || model
             .model()
@@ -19,8 +19,13 @@ fn has_constant(model: &PreparedPpmlModelGeneration) -> bool {
             .any(|column| column.kind == PreparedOlsColumnKind::Intercept)
 }
 
-fn mark_emitted(generation: &PreparedPpmlModelGeneration, source: usize, present: &mut [bool]) {
-    for column in &generation.model().columns {
+pub(super) fn mark_emitted(
+    generation: &PreparedPpmlModelGeneration,
+    source: usize,
+    present: &mut [bool],
+) -> Result<()> {
+    for (index, column) in generation.model().columns.iter().enumerate() {
+        crate::interrupt::row_checkpoint(index)?;
         if let PreparedOlsColumnKind::Categorical {
             categorical_source_index,
             level_code: Some(level),
@@ -32,6 +37,7 @@ fn mark_emitted(generation: &PreparedPpmlModelGeneration, source: usize, present
             }
         }
     }
+    Ok(())
 }
 
 /// Look for an observed, zero-only residual cell. The score is exactly
@@ -44,17 +50,28 @@ pub(super) fn find(
         return Ok(None);
     }
     let data = generation.fit_view();
-    let mut work = budget.work_cells;
+    let n = generation.outcome().len();
+    let columns = generation.model().columns.len();
+    // One row scan, one recipe scan, and up to three passes on a level mask.
+    let pass = n.saturating_mul(4).saturating_add(columns);
+    let mut work = ProofBudget::sparse_work(pass, data.categorical_sources().len());
     for (source, axis) in data.categorical_sources().iter().enumerate() {
+        crate::interrupt::row_checkpoint(source)?;
         let codes = axis.codes(data.fe_topology())?;
         let size = axis.n_levels(data.fe_topology())?;
-        let charge = codes.len().saturating_add(generation.model().columns.len());
-        if size.div_ceil(2) > budget.words || charge > work {
-            break;
+        let charge = codes
+            .len()
+            .saturating_add(columns)
+            .saturating_add(size.saturating_mul(3));
+        // Binding can retain the direction, compact and original row lists
+        // together. Two one-byte masks suffice to independently replay levels.
+        let peak = n.saturating_mul(3).saturating_add(size.div_ceil(4));
+        if peak > budget.words || charge > work {
+            continue;
         }
         work -= charge;
         let mut emitted = fallible_filled(size, false, "unable to reserve exact factor cells")?;
-        mark_emitted(generation, source, &mut emitted);
+        mark_emitted(generation, source, &mut emitted)?;
         if !emitted.contains(&true) || !emitted.contains(&false) {
             continue;
         }
@@ -90,7 +107,7 @@ impl Factor {
         let codes = axis.codes(data.fe_topology())?;
         let size = axis.n_levels(data.fe_topology())?;
         let mut emitted = fallible_filled(size, false, "unable to replay exact factor witness")?;
-        mark_emitted(generation, self.source, &mut emitted);
+        mark_emitted(generation, self.source, &mut emitted)?;
         if emitted != self.emitted {
             return Ok(false);
         }

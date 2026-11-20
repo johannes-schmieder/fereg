@@ -19,6 +19,8 @@ pub(crate) enum CompactModel {
     Terminal(DetectionProposal),
 }
 
+mod grouped;
+pub(crate) use grouped::CompactInput;
 mod positive_rows;
 mod projection;
 
@@ -31,57 +33,32 @@ pub(crate) struct BinaryDesign {
 }
 
 impl BinaryDesign {
+    #[cfg(test)]
     pub(crate) fn from_rows(
         rows: usize,
         columns: usize,
         limit: usize,
         mut read: impl FnMut(usize, &mut [f64]) -> Result<()>,
     ) -> Result<Option<Self>> {
-        if u32::try_from(columns).is_err()
-            || rows as u128 > (1u128 << 53)
-            || rows.saturating_mul(columns).saturating_mul(2) > MAX_WORK
-            || rows.saturating_add(1).saturating_add(columns) > limit
-        {
-            return Ok(None);
-        }
-        let mut offsets = fallible_filled(rows + 1, 0, "unable to reserve compact binary rows")?;
-        let mut row = fallible_filled(columns, 0., "unable to reserve compact binary input row")?;
-        let max_ones = (limit - offsets.len() - row.len()).saturating_mul(2);
-        for i in 0..rows {
-            crate::interrupt::row_checkpoint(i)?;
-            read(i, &mut row)?;
-            let mut count = offsets[i];
-            for &x in &row {
-                if x != 0. && x != 1. {
-                    return Ok(None);
+        let mut dense = vec![0.; columns];
+        let mut support = |i, row: &mut Vec<u32>| {
+            read(i, &mut dense)?;
+            for (j, &x) in dense.iter().enumerate() {
+                if x != 0. {
+                    if x != 1. {
+                        return Ok(false);
+                    }
+                    row.push(j as u32);
                 }
-                count += usize::from(x == 1.);
             }
-            if count > max_ones {
-                return Ok(None);
-            }
-            offsets[i + 1] = count;
-        }
-        let mut indices = Vec::new();
-        reserve(
-            &mut indices,
-            offsets[rows],
-            "unable to reserve compact binary indices",
-        )?;
-        for i in 0..rows {
-            crate::interrupt::row_checkpoint(i)?;
-            read(i, &mut row)?;
-            indices.extend(
-                row.iter()
-                    .enumerate()
-                    .filter_map(|(j, &x)| (x == 1.).then_some(j as u32)),
-            );
-        }
-        Ok(Some(Self {
-            offsets,
-            indices,
-            columns,
-        }))
+            Ok(true)
+        };
+        grouped::RawSupport::new((columns, columns, columns), &mut support).pack(
+            rows,
+            &[],
+            None,
+            limit.saturating_sub(columns),
+        )
     }
 
     pub(crate) fn ncols(&self) -> usize {
@@ -122,66 +99,91 @@ fn dense_positive_admitted(rows: usize, positive: usize, width: usize, limit: us
 pub(crate) fn compact_model(
     outcome: &[f64],
     design: &BinaryDesign,
-    tolerance: f64,
-    certificate_tolerance: f64,
-    max_iterations: usize,
-    max_cells: usize,
+    config: crate::ppml_separation::SeparationConfig,
+    pivots: &mut usize,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<CompactModel>> {
-    let width = design.ncols();
-    let positive_count = outcome.iter().filter(|&&y| y > 0.).count();
-    let Some(available) = max_cells.checked_sub(design.cells()) else {
-        return Ok(None);
-    };
-    if !compact_model_admitted(outcome.len(), positive_count, width, available) {
-        return Ok(None);
-    }
-    let mut pivots = 0;
-    let search = CompactSearch {
+    CompactSearch::new(
         outcome,
         design,
-        tolerance,
-        certificate_tolerance,
-        max_iterations,
-        available,
-    };
-    if dense_positive_admitted(outcome.len(), positive_count, width, available) {
-        let positive = fallible_collect(
-            outcome
-                .iter()
-                .enumerate()
-                .filter_map(|(i, &y)| (y > 0.).then_some(i)),
-            positive_count,
-            "unable to reserve compact simplex positive rows",
-        )?;
-        return search.solve(positive, &mut pivots, interrupt);
-    }
-
-    let Some(selected) = positive_rows::select(design, outcome, available, interrupt)? else {
-        return Ok(None);
-    };
-    let rank = selected.len();
-    let proposal = search.solve(selected, &mut pivots, interrupt)?;
-    if proposal.is_some() || rank == width {
-        return Ok(proposal);
-    }
-    let Some(odd) = positive_rows::select_odd(design, outcome, available, interrupt)? else {
-        return Ok(None);
-    };
-    if odd.len() > rank {
-        search.solve(odd, &mut pivots, interrupt)
-    } else {
-        Ok(None)
-    }
+        config,
+        None,
+        config.simplex_max_tableau_cells,
+    )
+    .run(pivots, interrupt)
 }
 
 struct CompactSearch<'a> {
     outcome: &'a [f64],
     design: &'a BinaryDesign,
+    groups: Option<&'a grouped::RowGroups>,
     tolerance: f64,
     certificate_tolerance: f64,
     max_iterations: usize,
     available: usize,
+}
+
+impl<'a> CompactSearch<'a> {
+    fn new(
+        outcome: &'a [f64],
+        design: &'a BinaryDesign,
+        config: crate::ppml_separation::SeparationConfig,
+        groups: Option<&'a grouped::RowGroups>,
+        limit: usize,
+    ) -> Self {
+        Self {
+            outcome,
+            design,
+            groups,
+            tolerance: config.projection_tolerance,
+            certificate_tolerance: config.certificate_tolerance,
+            max_iterations: config.simplex_max_iterations,
+            available: limit.saturating_sub(design.cells()),
+        }
+    }
+
+    fn run(
+        &self,
+        pivots: &mut usize,
+        interrupt: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<Option<CompactModel>> {
+        let width = self.design.ncols();
+        let outcome = self.outcome;
+        let positive_count = outcome.iter().filter(|&&y| y > 0.).count();
+        if !compact_model_admitted(outcome.len(), positive_count, width, self.available) {
+            return Ok(None);
+        }
+        if dense_positive_admitted(outcome.len(), positive_count, width, self.available) {
+            let positive = fallible_collect(
+                outcome
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, &y)| (y > 0.).then_some(i)),
+                positive_count,
+                "unable to reserve compact simplex positive rows",
+            )?;
+            return self.solve(positive, pivots, interrupt);
+        }
+        let Some(selected) =
+            positive_rows::select(self.design, outcome, self.available, interrupt)?
+        else {
+            return Ok(None);
+        };
+        let rank = selected.len();
+        let proposal = self.solve(selected, pivots, interrupt)?;
+        if proposal.is_some() || rank == width {
+            return Ok(proposal);
+        }
+        let Some(odd) = positive_rows::select_odd(self.design, outcome, self.available, interrupt)?
+        else {
+            return Ok(None);
+        };
+        if odd.len() > rank {
+            self.solve(odd, pivots, interrupt)
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 impl CompactSearch<'_> {
@@ -195,9 +197,9 @@ impl CompactSearch<'_> {
             outcome,
             design,
             tolerance,
-            certificate_tolerance,
             max_iterations,
             available,
+            ..
         } = *self;
         let width = design.ncols();
         if !dense_positive_admitted(outcome.len(), positive.len(), width, available) {
@@ -292,18 +294,12 @@ impl CompactSearch<'_> {
                 weights,
                 iterations,
             }) => {
-                let dual = fallible_collect(
-                    weights.iter().map(|w| -*w).chain(std::iter::once(-1.)),
-                    weights.len() + 1,
-                    "unable to reserve compact Farkas certificate",
+                let certificate = self.farkas(
+                    &projected,
+                    &boundary,
+                    &weights,
+                    remaining.saturating_sub(weights.capacity()),
                 )?;
-                let certificate = verify_indexed_farkas_certificate(
-                    &projected.rows,
-                    &projected.index,
-                    &dual,
-                    certificate_tolerance,
-                )?;
-                drop(dual);
                 drop(projected);
                 drop(basis);
                 let Some(certificate) = certificate else {
@@ -328,6 +324,34 @@ impl CompactSearch<'_> {
             }
             None => Ok(None),
         }
+    }
+    fn farkas(
+        &self,
+        cone: &projection::BoundaryCone,
+        boundary: &[usize],
+        weights: &[f64],
+        available: usize,
+    ) -> Result<Option<SeparationCertificate>> {
+        if let Some(groups) = self.groups {
+            return groups.farkas(
+                cone,
+                boundary,
+                weights,
+                self.certificate_tolerance,
+                available,
+            );
+        }
+        let dual = fallible_collect(
+            weights.iter().map(|w| -*w).chain(std::iter::once(-1.)),
+            weights.len() + 1,
+            "unable to reserve compact Farkas certificate",
+        )?;
+        verify_indexed_farkas_certificate(
+            &cone.rows,
+            &cone.index,
+            &dual,
+            self.certificate_tolerance,
+        )
     }
 }
 

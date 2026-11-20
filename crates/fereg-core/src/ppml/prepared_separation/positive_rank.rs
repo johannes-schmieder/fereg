@@ -4,11 +4,29 @@ use super::*;
 use crate::ppml::modular_rank::{insert, residue, PRIME};
 use crate::ppml_separation::SeparationCertificateProof;
 
+mod circulation;
 mod coverage;
 mod dual;
 pub(super) use dual::exact_dual;
 mod packed;
+pub(super) mod sparse_dual;
 pub(super) use coverage::positive_twins;
+
+pub(super) fn pure_pair(
+    model: &PreparedPpmlModelGeneration,
+    topology: &DetectorTopology<'_>,
+) -> bool {
+    topology.effect_specs.len() == 2
+        && topology
+            .effect_specs
+            .iter()
+            .all(|e| e.intercept && e.slopes.is_empty())
+        && model
+            .model()
+            .columns
+            .iter()
+            .all(|c| matches!(c.kind, crate::ols::PreparedOlsColumnKind::Intercept))
+}
 
 pub(super) fn detect(
     generation: &PreparedPpmlModelGeneration,
@@ -23,8 +41,8 @@ pub(super) fn detect(
         generation,
         topology,
         positive,
-        config
-            .simplex_max_tableau_cells
+        primal::ProofBudget::for_sparse(generation, SeparationMethod::Simplex, config)
+            .words
             .saturating_sub(topology_cells),
         config,
         interrupt,
@@ -32,6 +50,81 @@ pub(super) fn detect(
 }
 
 pub(super) fn detect_for(
+    method: SeparationMethod,
+    generation: &PreparedPpmlModelGeneration,
+    topology: &DetectorTopology<'_>,
+    positive: usize,
+    limit: usize,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<DetectionProposal>> {
+    if let Some(proof) = rank_or_coverage(
+        method, generation, topology, positive, limit, config, interrupt,
+    )? {
+        return Ok(Some(proof));
+    }
+    if sparse_dual::supports(
+        sparse_dual::Search::Full,
+        generation,
+        topology,
+        positive,
+        limit,
+        config,
+        interrupt,
+    )? {
+        return Ok(Some(no_separation(
+            method,
+            SeparationCertificateProof::ExactPositiveDual {
+                boundary_rows: generation.outcome().len() - positive,
+            },
+        )));
+    }
+    Ok(None)
+}
+
+/// On a varying-slope IR generation, test global balance and exact small-cell
+/// relations before repeated weighted projections. Reconstruct those same
+/// direct proposals on terminal replay.
+pub(super) fn direct_slope_support(
+    model: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<PreparedNumericalProposal>> {
+    if !model
+        .fit_view()
+        .effect_specs()
+        .iter()
+        .any(|s| !s.slopes.is_empty())
+    {
+        return Ok(None);
+    }
+    let method = SeparationMethod::IteratedRectifier;
+    let topology = DetectorTopology::new(model.prepared())?;
+    let metadata =
+        topology.sources.len() + topology.effect_specs.len() + topology.effect_to_source.len();
+    let limit = primal::ProofBudget::for_sparse(model, method, config)
+        .words
+        .saturating_sub(metadata);
+    let positive = model.outcome().iter().filter(|&&y| y > 0.).count();
+    let mut poll = |_| interrupt(PpmlInterruptPoint::SeparationIrIteration);
+    if sparse_dual::supports(
+        sparse_dual::Search::Direct,
+        model,
+        &topology,
+        positive,
+        limit,
+        config,
+        &mut poll,
+    )? {
+        let proof = SeparationCertificateProof::ExactPositiveDual {
+            boundary_rows: model.outcome().len() - positive,
+        };
+        return bind_numerical_proposal(model, no_separation(method, proof)).map(Some);
+    }
+    Ok(None)
+}
+
+fn rank_or_coverage(
     method: SeparationMethod,
     generation: &PreparedPpmlModelGeneration,
     topology: &DetectorTopology<'_>,
@@ -62,6 +155,16 @@ pub(super) fn detect_for(
         return Ok(Some(no_separation(
             method,
             SeparationCertificateProof::SimplexPositiveRowCoverage {
+                boundary_rows: boundary,
+            },
+        )));
+    }
+    if boundary > 0
+        && circulation::certified(generation, topology, limit, config.certificate_tolerance)?
+    {
+        return Ok(Some(no_separation(
+            method,
+            SeparationCertificateProof::ExactPositiveDual {
                 boundary_rows: boundary,
             },
         )));

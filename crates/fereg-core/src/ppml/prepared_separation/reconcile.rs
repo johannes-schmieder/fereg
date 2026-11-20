@@ -14,12 +14,9 @@ pub(super) fn support(
         SeparationMethod::Mu => PpmlInterruptPoint::SeparationMu,
         _ => PpmlInterruptPoint::SeparationSimplex,
     };
-    let limit = if method == SeparationMethod::Simplex {
-        config.simplex_max_tableau_cells
-    } else {
-        primal::ProofBudget::new(model, method, config).words
-    };
-    let limit = limit.saturating_sub(meta);
+    let limit = primal::ProofBudget::for_sparse(model, method, config)
+        .words
+        .saturating_sub(meta);
     let mut report_break = |_| interrupt(marker);
     let mut result = positive_rank::detect_for(
         method,
@@ -102,6 +99,9 @@ fn checked_candidate(
     )? {
         Some(proved) => proved,
         None => {
+            if let Some(indicators) = factor_pair(model, proposal.method, config)? {
+                return Ok(indicators);
+            }
             if let Some(no_drop) = support(model, proposal.method, config, interrupt)? {
                 return Ok(no_drop);
             }
@@ -146,10 +146,61 @@ pub(super) fn omitted_factor(
     method: SeparationMethod,
     config: SeparationConfig,
 ) -> Result<Option<PreparedNumericalProposal>> {
-    let budget = primal::ProofBudget::new(model, method, config);
+    let budget = primal::ProofBudget::for_sparse(model, method, config);
     let Some(witness) = primal::omitted_factor(model, budget)? else {
         return Ok(None);
     };
+    bind_witness(model, method, config, witness)
+}
+
+pub(super) fn sparse_slope_ray(
+    model: &PreparedPpmlModelGeneration,
+    method: SeparationMethod,
+    config: SeparationConfig,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let budget = primal::ProofBudget::for_sparse(model, method, config);
+    let Some(witness) = primal::sparse_interpolant(model, budget)? else {
+        return Ok(None);
+    };
+    let proposal = bind_witness(model, method, config, witness)?;
+    if crate::diagnostics::solver_trace_enabled() {
+        if let Some(p) = &proposal {
+            crate::diagnostics::emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=separation_sparse_primal|generation={}|method={method:?}|rows={}|proposed={}",
+                model.generation(), model.outcome().len(), p.dropped_original_rows.len()
+            ));
+        }
+    }
+    Ok(proposal)
+}
+
+pub(super) fn factor_pair(
+    model: &PreparedPpmlModelGeneration,
+    method: SeparationMethod,
+    config: SeparationConfig,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let budget = primal::ProofBudget::for_sparse(model, method, config);
+    let Some(witness) = primal::factor_pair(model, budget)? else {
+        return Ok(None);
+    };
+    let proposal = bind_witness(model, method, config, witness)?;
+    if crate::diagnostics::solver_trace_enabled() {
+        if let Some(p) = &proposal {
+            crate::diagnostics::emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=separation_factor_pair|generation={}|method={method:?}|rows={}|proposed={}",
+                model.generation(), model.outcome().len(), p.dropped_original_rows.len()
+            ));
+        }
+    }
+    Ok(proposal)
+}
+
+fn bind_witness(
+    model: &PreparedPpmlModelGeneration,
+    method: SeparationMethod,
+    config: SeparationConfig,
+    witness: primal::Witness,
+) -> Result<Option<PreparedNumericalProposal>> {
     let Some(mut raw) = materialize(model, &witness, method, config)? else {
         return Ok(None);
     };
@@ -161,27 +212,27 @@ pub(super) fn omitted_factor(
 
 pub(super) fn compact_ray(
     model: &PreparedPpmlModelGeneration,
-    coefficients: Vec<i64>,
+    mut coefficients: Vec<i64>,
     iterations: usize,
     config: SeparationConfig,
 ) -> Result<Option<PreparedNumericalProposal>> {
     let method = SeparationMethod::Simplex;
-    let witness = primal::Witness::Coefficients {
-        units: fallible_filled(
-            coefficients.len(),
-            1.,
-            "unable to reserve compact ray units",
-        )?,
-        values: coefficients,
-        absorbed: true,
-    };
-    let Some(mut raw) = materialize(model, &witness, method, config)? else {
+    let finite = model.model().columns.len();
+    if finite > coefficients.len()
+        || primal::RawRows::sparse_replay_words(model, coefficients.capacity())
+            > config.simplex_max_tableau_cells
+    {
         return Ok(None);
-    };
-    raw.iterations = iterations;
-    let mut bound = bind_numerical_proposal(model, raw)?;
-    bound.exact_primal = Some(witness);
-    Ok(Some(bound))
+    }
+    // The simplex has finite columns first. The sparse witness visits each
+    // row's absorbed terms followed by the same finite columns. Its exact
+    // dyadic accumulator omits implicit zeros and rounds each score once.
+    coefficients.rotate_left(finite);
+    let mut proposal = bind_witness(model, method, config, primal::Witness::Sparse(coefficients))?;
+    if let Some(proof) = &mut proposal {
+        proof.iterations = iterations;
+    }
+    Ok(proposal)
 }
 
 fn materialize(

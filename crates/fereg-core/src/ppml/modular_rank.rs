@@ -21,7 +21,7 @@ pub(super) fn residue(value: f64) -> u64 {
     }
 }
 
-fn inverse(mut x: u64) -> u64 {
+pub(super) fn inverse(mut x: u64) -> u64 {
     let mut power = PRIME - 2;
     let mut result = 1;
     while power != 0 {

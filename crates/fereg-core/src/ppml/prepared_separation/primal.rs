@@ -5,8 +5,10 @@ use super::*;
 use std::cmp::Ordering;
 
 mod factor;
+mod factor_graph;
 mod fe_pair;
 mod pair;
+mod sparse;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Column {
@@ -16,7 +18,9 @@ pub(super) enum Column {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Witness {
+    Sparse(Vec<i64>),
     Factor(factor::Factor),
+    FactorPair(factor_graph::FactorPair),
     PairOffsets {
         column: usize,
         effects: [usize; 2],
@@ -163,20 +167,85 @@ impl<'a> RawRows<'a> {
 pub(super) struct ProofBudget {
     pub(super) words: usize,
     pub(super) work_cells: usize,
+    sparse_words: usize,
 }
 
 impl ProofBudget {
+    // Upper limit on exploratory work such as elimination and fill-in.
+    pub(super) const MAX_SPARSE_WORK: usize = 64_000_000;
+
+    /// Up to four requested linear passes may run even on a design with more
+    /// than 64M stored coordinates. This lets a lane construct a candidate and
+    /// replay it on the full sample. Searches debit repeated passes, including
+    /// failed candidates. Only a pass over actual row/edge or recipe data may
+    /// use this credit; elimination and combinatorial searches have a fixed cap.
+    pub(super) fn sparse_work(pass_operations: usize, passes: usize) -> usize {
+        if pass_operations == usize::MAX {
+            return 0; // A saturated single-pass cost cannot be metered.
+        }
+        pass_operations
+            .saturating_mul(passes)
+            .min(Self::MAX_SPARSE_WORK.max(pass_operations.saturating_mul(4)))
+    }
+
+    /// The separation preflight takes a maximum over the simplex arena and
+    /// the projection with its detector vectors and certificate scratch.
+    /// A rejected proposal can still own a direction and row IDs while we seek
+    /// its replacement. Keep the concurrent banks outside the reusable words.
+    pub(super) fn for_sparse(
+        model: &PreparedPpmlModelGeneration,
+        method: SeparationMethod,
+        config: SeparationConfig,
+    ) -> Self {
+        Self::new(model, method, config).sparse()
+    }
+
+    fn sparse(mut self) -> Self {
+        self.words = self.sparse_words;
+        self
+    }
+
+    fn sparse_words(
+        n: usize,
+        k: usize,
+        projection: usize,
+        method: SeparationMethod,
+        config: SeparationConfig,
+    ) -> usize {
+        let vectors =
+            crate::ppml_separation::separation_workspace_requirements(config).observation_vectors;
+        let live_vectors = n.saturating_mul(vectors.max(2));
+        let certificate = k
+            .saturating_mul(k)
+            .saturating_mul(2)
+            .saturating_add(k.saturating_mul(3));
+        let from_table = if config.methods.simplex {
+            config
+                .simplex_max_tableau_cells
+                .saturating_sub(live_vectors.saturating_add(certificate))
+        } else {
+            0
+        };
+        // IR/Mu preflight already carries eight detector vectors outside the
+        // projection. With simplex alone, set aside the two live vectors here.
+        let from_projection =
+            projection.saturating_sub(n.saturating_mul(2usize.saturating_sub(vectors)));
+        let words = from_table.max(from_projection);
+        if method == SeparationMethod::Simplex {
+            words.min(config.simplex_max_tableau_cells)
+        } else {
+            words
+        }
+    }
+
     pub(super) fn new(
         model: &PreparedPpmlModelGeneration,
         method: SeparationMethod,
         config: SeparationConfig,
     ) -> Self {
         let k = model.model().columns.len();
-        let projection = model
-            .outcome()
-            .len()
-            .saturating_add(k.saturating_mul(k))
-            .saturating_mul(7);
+        let n = model.outcome().len();
+        let projection = n.saturating_add(k.saturating_mul(k)).saturating_mul(7);
         let words = if config.methods.simplex {
             projection.max(config.simplex_max_tableau_cells)
         } else {
@@ -192,7 +261,11 @@ impl ProofBudget {
                 .simplex_max_tableau_cells
                 .max(projection.min(1_000_000))
         };
-        Self { words, work_cells }
+        Self {
+            words,
+            work_cells,
+            sparse_words: Self::sparse_words(n, k, projection, method, config),
+        }
     }
 }
 
@@ -202,6 +275,8 @@ fn visit(
     mut inspect: impl FnMut(usize, Ordering, f64) -> bool,
 ) -> Result<bool> {
     match witness {
+        Witness::Sparse(coefficients) => sparse::visit(model, coefficients, inspect),
+        Witness::FactorPair(pair) => pair.visit(model, inspect),
         Witness::Factor(f) => f.visit(model, inspect),
         Witness::PairOffsets {
             column,
@@ -442,7 +517,21 @@ pub(super) fn omitted_factor(
     model: &PreparedPpmlModelGeneration,
     budget: ProofBudget,
 ) -> Result<Option<Witness>> {
-    Ok(factor::find(model, budget)?.map(Witness::Factor))
+    Ok(factor::find(model, budget.sparse())?.map(Witness::Factor))
+}
+
+pub(super) fn sparse_interpolant(
+    model: &PreparedPpmlModelGeneration,
+    budget: ProofBudget,
+) -> Result<Option<Witness>> {
+    sparse::find(model, budget)
+}
+
+pub(super) fn factor_pair(
+    model: &PreparedPpmlModelGeneration,
+    budget: ProofBudget,
+) -> Result<Option<Witness>> {
+    Ok(factor_graph::find(model, budget)?.map(Witness::FactorPair))
 }
 
 pub(super) fn find(
@@ -774,5 +863,12 @@ pub(super) fn rounded_span(
         return Ok(None);
     }
     let matches = visit(model, proof, |r, _, score| score == direction[r])?;
-    Ok(matches.then_some(f64::EPSILON))
+    // A factor-pair score is the difference of nonnegative integer potentials
+    // below 2^53. Both the subtraction and its stored result are exact.
+    let bound = if matches!(proof, Witness::FactorPair(_)) {
+        0.
+    } else {
+        f64::EPSILON
+    };
+    Ok(matches.then_some(bound))
 }
