@@ -29,7 +29,7 @@ pub(super) fn resolve(
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-    admission: DetectorAdmission,
+    admission: DetectorAdmission<'_>,
     iteration_limit: usize,
 ) -> Result<Resolution> {
     let (ppml, linear) = admission.unit_projection.unwrap_or((ppml, linear));
@@ -85,7 +85,7 @@ pub(super) fn resolve(
             ppml,
             config,
             linear,
-            admission.full_span_bytes,
+            admission.span_plan,
             &mut design,
         )? {
             return Ok(Resolution::Dual(dual, iteration));
@@ -127,7 +127,7 @@ pub(super) fn resolve(
                 ppml,
                 config,
                 linear,
-                admission.full_span_bytes,
+                admission.span_plan,
                 &mut design,
             )? {
                 return Ok(Resolution::Dual(refined, iteration));
@@ -224,7 +224,7 @@ pub(super) fn certify_dual(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    admission: DetectorAdmission,
+    admission: DetectorAdmission<'_>,
 ) -> Result<bool> {
     if integer_dual::certify(generation, dual, config.certificate_tolerance)? {
         return Ok(true);
@@ -238,7 +238,7 @@ pub(super) fn certify_dual(
             fast_ppml,
             config,
             fast_linear,
-            admission.full_span_bytes,
+            admission.span_plan,
             &mut None,
         ) {
             Ok(true) => return Ok(true),
@@ -255,7 +255,7 @@ pub(super) fn certify_dual(
         ppml,
         config,
         linear,
-        admission.full_span_bytes,
+        admission.span_plan,
         &mut None,
     )
 }
@@ -268,7 +268,7 @@ fn certify_dual_with_weights<'a>(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    full_span_bytes: u128,
+    span_plan: Option<&std::cell::Cell<PpmlMemoryPlan>>,
     design: &mut Option<crate::ols::UnitProjectionDesign<'a>>,
 ) -> Result<bool> {
     let (ppml, linear) = strict_projection_policy(ppml, linear);
@@ -313,7 +313,7 @@ fn certify_dual_with_weights<'a>(
                 .max_iterations
                 .max(ppml.absorb.lsmr.max_iterations),
         ),
-        full_span_bytes,
+        span_plan,
     )? {
         trace_dual_check("local", margin, 0., config.projection_tolerance);
         return Ok(false);
@@ -677,7 +677,7 @@ pub(super) fn probe_dual(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    admission: DetectorAdmission,
+    admission: DetectorAdmission<'_>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<PreparedNumericalProposal>> {
     if let Some(policy) = fast_unit_policy(generation, ppml, linear, admission) {
@@ -718,7 +718,7 @@ fn fast_unit_policy(
     generation: &PreparedPpmlModelGeneration,
     mut ppml: PpmlConfig,
     mut linear: PreparedOlsFitConfig,
-    admission: DetectorAdmission,
+    admission: DetectorAdmission<'_>,
 ) -> Option<(PpmlConfig, PreparedOlsFitConfig)> {
     let effects = generation.prepared().as_ref().effect_specs();
     if admission.unit_projection.is_none()
@@ -769,7 +769,7 @@ pub(super) fn recover(
     linear: PreparedOlsFitConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     original: FeregError,
-    admission: DetectorAdmission,
+    admission: DetectorAdmission<'_>,
     iterations: usize,
 ) -> Result<PreparedNumericalProposal> {
     match resolve(

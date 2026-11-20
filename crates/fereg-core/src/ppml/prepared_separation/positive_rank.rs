@@ -36,14 +36,22 @@ pub(super) fn detect(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<DetectionProposal>> {
+    let limit = primal::ProofBudget::for_sparse(generation, SeparationMethod::Simplex, config)
+        .words
+        .saturating_sub(topology_cells);
+    // Ordinary indicators and shared controls can use compact simplex, then
+    // any requested IR projection, before exploring general dual weights.
+    let search = if topology.effect_specs.iter().all(|e| e.slopes.is_empty()) {
+        sparse_dual::Search::Marginal
+    } else {
+        sparse_dual::Search::Full
+    };
     detect_for(
         SeparationMethod::Simplex,
         generation,
         topology,
         positive,
-        primal::ProofBudget::for_sparse(generation, SeparationMethod::Simplex, config)
-            .words
-            .saturating_sub(topology_cells),
+        (limit, search),
         config,
         interrupt,
     )
@@ -54,7 +62,7 @@ pub(super) fn detect_for(
     generation: &PreparedPpmlModelGeneration,
     topology: &DetectorTopology<'_>,
     positive: usize,
-    limit: usize,
+    (limit, search): (usize, sparse_dual::Search),
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<DetectionProposal>> {
@@ -63,14 +71,28 @@ pub(super) fn detect_for(
     )? {
         return Ok(Some(proof));
     }
-    if sparse_dual::supports(
-        sparse_dual::Search::Full,
+    sparse_proof(
+        method,
         generation,
         topology,
         positive,
-        limit,
+        (limit, search),
         config,
         interrupt,
+    )
+}
+
+fn sparse_proof(
+    method: SeparationMethod,
+    generation: &PreparedPpmlModelGeneration,
+    topology: &DetectorTopology<'_>,
+    positive: usize,
+    (limit, search): (usize, sparse_dual::Search),
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<DetectionProposal>> {
+    if sparse_dual::supports(
+        search, generation, topology, positive, limit, config, interrupt,
     )? {
         return Ok(Some(no_separation(
             method,
@@ -80,6 +102,42 @@ pub(super) fn detect_for(
         )));
     }
     Ok(None)
+}
+
+/// Explicit simplex can still explore raw-coordinate projections once cheap
+/// directions and compact simplex have both failed. With IR requested, its
+/// ordinary solver runs first; its unresolved terminal fallback calls detect_for.
+pub(super) fn deferred_simplex(
+    model: &PreparedPpmlModelGeneration,
+    positive: usize,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<DetectionProposal>> {
+    if config.methods.iterated_rectifier
+        || model
+            .fit_view()
+            .effect_specs()
+            .iter()
+            .any(|e| !e.slopes.is_empty())
+    {
+        return Ok(None);
+    }
+    let method = SeparationMethod::Simplex;
+    let topology = DetectorTopology::new(model.prepared())?;
+    let metadata =
+        topology.sources.len() + topology.effect_specs.len() + topology.effect_to_source.len();
+    let limit = primal::ProofBudget::for_sparse(model, method, config)
+        .words
+        .saturating_sub(metadata);
+    sparse_proof(
+        method,
+        model,
+        &topology,
+        positive,
+        (limit, sparse_dual::Search::Full),
+        config,
+        interrupt,
+    )
 }
 
 /// On a varying-slope IR generation, test global balance and exact small-cell

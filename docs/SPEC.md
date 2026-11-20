@@ -2027,6 +2027,10 @@ cell ceiling. A sparse IR or Mu proof may reuse the released projection
 workspace or the available part of an already admitted simplex arena. The
 memory calculation reserves space for a candidate retained during its
 replacement and uses the same limits during independent proof replay.
+A numerical terminal dual that needs a complete fixed-effect span audit
+must admit that audit on its current generation before allocating the
+scratch arrays. An exact original-coordinate proof can finish within
+its own allowance without reserving the numerical audit's dense workspace.
 
 For a pure pair of categorical intercept effects, the quotient graph of
 positive observations and directed zero rows can expose all strict edges in one
@@ -2084,7 +2088,7 @@ original 0/1 columns and absorbed intercepts. For repeated sparse input it
 can group identical raw supports and outcome classes before projection.
 A terminal proof rechecks original supports and classes, lifts the grouped
 dual to physical rows using their multiplicities and verifies the original
-boundary margin. It can select a small positive-row
+boundary margin. The verifier streams weights in physical row order. It can select a small positive-row
 basis over finite fields, stream the boundary projection to find independent
 contrasts, and coalesce exactly equal projected constraints. Each coalesced
 constraint keeps its original multiplicity. Terminal replay expands the dual
@@ -2119,7 +2123,12 @@ at eight times the admitted proof work allowance and at 32 Mi operations.
 Failure to reconstruct a witness within these limits is inconclusive.
 
 When a requested simplex exceeds its cap, a later comprehensive IR check can
-close the same generation. An unresolved cap returns r(909). Numerical
+close the same generation. If compact simplex finds integer ray coefficients but
+its cap cannot hold the physical-row output, it may hand the coefficients to
+a requested IR step on the same generation. IR checks its own admitted
+workspace and verifies scores on the original rows before committing a drop.
+A failed numerical hint goes through ordinary IR recovery. An unresolved
+cap returns r(909). Numerical
 simplex nonconvergence can also be resolved by an exact support proof or a
 later requested IR check. Once an exact positive-support or raw-design simplex
 no-separation result has been independently replayed, IR can use it on that
@@ -2239,9 +2248,12 @@ and full evaluated span. The final moments are recomputed on that basis;
 reconditioning is not itself a certificate. A verified Gram-inverse residual
 bound accounts for the resulting basis's conditioning before its moments can
 bound the dual's full projection;
-small individual moments alone cannot establish that bound. The audit's extra
-workspace is admitted explicitly, after crediting the released projection
-workspace, and its work is bounded by the configured detector/projection budget.
+small individual moments alone cannot establish that bound. A numerical dual
+that passes the margin and moment checks requests this audit for its current
+generation. Before allocation, the audit credits the released projection
+workspace and checks the additional bytes against the live memory plan.
+An independently verified sparse certificate uses its own admitted storage.
+The configured detector and projection budgets bound the numerical audit's work.
 The work bound includes source evaluations, both reconditioning passes,
 streamed Gram construction and inverse verification, including any structural
 intercept channel. Gram entries retain their compensated row summation order

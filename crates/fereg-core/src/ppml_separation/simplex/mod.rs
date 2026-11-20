@@ -446,6 +446,26 @@ fn verify_indexed_farkas_certificate(
     let inequality_violation = (0..boundary)
         .map(|row| (dual[row] - normalization_dual).max(0.0))
         .fold(0.0_f64, f64::max);
+    Ok(farkas_residual_certificate(
+        boundary,
+        nullity,
+        scale,
+        normalization_dual,
+        stationarity,
+        inequality_violation,
+        tolerance,
+    ))
+}
+
+fn farkas_residual_certificate(
+    boundary: usize,
+    nullity: usize,
+    scale: f64,
+    normalization_dual: f64,
+    stationarity: f64,
+    inequality_violation: f64,
+    tolerance: f64,
+) -> Option<SeparationCertificate> {
     let stationarity_relative = stationarity / scale;
     let inequality_violation_relative = inequality_violation / scale;
     let infeasibility_margin_relative = -normalization_dual / scale;
@@ -464,10 +484,7 @@ fn verify_indexed_farkas_certificate(
             && inequality_violation_relative <= tolerance
             && infeasibility_margin_relative >= tolerance,
     };
-    if !certificate.passed {
-        return Ok(None);
-    }
-    Ok(Some(certificate))
+    certificate.passed.then_some(certificate)
 }
 
 pub(crate) fn no_separation_certificate(

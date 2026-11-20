@@ -2,8 +2,8 @@
 //! A strict dual on representatives lifts by dividing each mass among its copies.
 //! This can use different divisors on different rows, including positive rows.
 use super::{
-    fallible_collect, fallible_filled, projection::BoundaryCone, verify_indexed_farkas_certificate,
-    BinaryDesign, CompactModel, CompactSearch, SeparationCertificate, MAX_WORK,
+    fallible_collect, fallible_filled, projection::BoundaryCone, BinaryDesign, CompactModel,
+    CompactSearch, SeparationCertificate, MAX_WORK,
 };
 use crate::error::Result;
 use crate::ppml_separation::SeparationConfig;
@@ -32,6 +32,16 @@ impl<'a> RawSupport<'a> {
         }
     }
 
+    /// Reading the recipes and visiting their sparse outputs takes one
+    /// bounded pass even when the model has many physical observations.
+    fn scan_work(&self, rows: usize, passes: usize) -> Option<usize> {
+        self.visits
+            .checked_add(self.terms)?
+            .checked_add(1)?
+            .checked_mul(rows)?
+            .checked_mul(passes)
+    }
+
     fn scratch(&self) -> Result<Vec<u32>> {
         let mut row = Vec::new();
         super::reserve(&mut row, self.terms, "unable to reserve binary row support")?;
@@ -51,14 +61,17 @@ impl<'a> RawSupport<'a> {
         limit: usize,
     ) -> Result<Option<BinaryDesign>> {
         let fixed = n.saturating_add(1).saturating_add(self.terms.div_ceil(2));
-        if u32::try_from(self.columns).is_err()
-            || n as u128 > (1u128 << 53)
-            || n.saturating_mul(self.visits.saturating_add(1))
-                .saturating_mul(2)
-                > MAX_WORK
-            || fixed > limit
-        {
+        if u32::try_from(self.columns).is_err() || n as u128 > (1u128 << 53) {
             return Ok(None);
+        }
+        if fixed > limit {
+            return declined("pack", "memory");
+        }
+        if self
+            .scan_work(n, 1 + usize::from(known_ones.is_none()))
+            .is_none()
+        {
+            return declined("pack", "work_overflow");
         }
         let origin = |i| origins.get(i).copied().unwrap_or(i);
         let mut row = self.scratch()?;
@@ -74,13 +87,13 @@ impl<'a> RawSupport<'a> {
                 }
                 total += row.len();
                 if total > max_ones {
-                    return Ok(None);
+                    return declined("pack", "memory");
                 }
             }
             total
         };
         if ones > max_ones {
-            return Ok(None);
+            return declined("pack", "memory");
         }
         let mut offsets = fallible_filled(n + 1, 0, "unable to reserve compact binary rows")?;
         let mut indices = Vec::new();
@@ -109,6 +122,7 @@ pub(super) struct RowGroups {
     index: Vec<u32>,
     counts: Vec<usize>,
     boundary_rows: usize,
+    raw_pass: usize,
 }
 
 pub(crate) enum CompactInput {
@@ -137,7 +151,9 @@ impl BinaryDesign {
         let small = n.saturating_mul(columns) <= limit
             && super::dense_positive_admitted(n, positive, columns, limit);
         if !small {
-            if let Some((index, distinct, ones)) = identify(outcome, &mut raw, limit, interrupt)? {
+            if let Some((index, distinct, ones)) =
+                identify(outcome, &mut raw, limit, MAX_WORK, interrupt)?
+            {
                 if distinct < n {
                     if let Some(proof) = Self::repeated_model(
                         outcome,
@@ -181,7 +197,7 @@ impl BinaryDesign {
     ) -> Result<Option<CompactModel>> {
         let index_cells = index.capacity().div_ceil(2);
         let Some(build_limit) = limit.checked_sub(index_cells + 3 * distinct) else {
-            return Ok(None);
+            return declined("representatives", "memory");
         };
         let mut origins = Vec::new();
         super::reserve(
@@ -214,6 +230,10 @@ impl BinaryDesign {
             index,
             counts,
             boundary_rows,
+            // Identification admitted two passes over these same physical rows.
+            raw_pass: raw
+                .scan_work(outcome.len(), 1)
+                .expect("admitted raw row span"),
         };
         let available = limit - index_cells - groups.counts.capacity() - signs.capacity();
         let proposal = CompactSearch::new(&signs, &design, config, Some(&groups), available)
@@ -230,6 +250,13 @@ impl BinaryDesign {
     }
 }
 
+fn declined<T>(stage: &'static str, reason: &'static str) -> Result<Option<T>> {
+    if crate::diagnostics::solver_trace_enabled() {
+        eprintln!("FEREG_SOLVER_TRACE|phase=compact_raw_refusal|stage={stage}|reason={reason}");
+    }
+    Ok(None)
+}
+
 /// Hashes only locate a candidate. Re-read its sparse coordinates and compare
 /// them exactly before merging. Row IDs point to the first occurrence, so
 /// collision order cannot change the order passed to the solver.
@@ -237,29 +264,27 @@ fn identify(
     outcome: &[f64],
     raw: &mut RawSupport,
     limit: usize,
+    mut collision_work: usize,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<(Vec<u32>, usize, usize)>> {
     let n = outcome.len();
     let width = raw.columns;
-    if width == 0
-        || n < 2
-        || u32::try_from(n).is_err()
-        || u32::try_from(width).is_err()
-        || width.saturating_mul(width) > limit
-    {
+    if width == 0 || n < 2 || u32::try_from(n).is_err() || u32::try_from(width).is_err() {
         return Ok(None);
     }
-    let fixed = n.div_ceil(2).saturating_add(2 * raw.terms.div_ceil(2));
+    let fixed = n
+        .div_ceil(2)
+        .saturating_add(raw.terms.div_ceil(2).saturating_mul(2));
     let slots = limit.saturating_sub(fixed).min(n.saturating_mul(2));
-    let Some(mut work) = MAX_WORK.checked_sub(
-        n.saturating_mul(raw.visits.saturating_add(1))
-            .saturating_mul(2),
-    ) else {
-        return Ok(None);
-    };
-    if slots == 0 {
-        return Ok(None);
+    if width.saturating_mul(width) > limit || slots == 0 {
+        return declined("identify", "memory");
     }
+    // Each physical row may be read and hashed once, and compared with one
+    // exact representative. Only unsuccessful probes spend exploratory work.
+    if raw.scan_work(n, 2).is_none() {
+        return declined("identify", "work_overflow");
+    }
+    let comparison = raw.visits + raw.terms + 1;
     let mut table = fallible_filled(
         slots,
         (0u32, u32::MAX),
@@ -286,10 +311,6 @@ fn identify(
         let fingerprint = (hash >> 32) as u32;
         let mut slot = first;
         loop {
-            let Some(left) = work.checked_sub(1) else {
-                return Ok(None);
-            };
-            work = left;
             let (tag, first_row) = table[slot];
             let origin = first_row as usize;
             if origin == u32::MAX as usize {
@@ -298,12 +319,8 @@ fn identify(
                 distinct += 1;
                 break;
             }
+            let mut collision = 1;
             if tag == fingerprint && (outcome[origin] > 0.) == (y > 0.) {
-                let Some(left) = work.checked_sub(raw.visits.saturating_mul(2).saturating_add(1))
-                else {
-                    return Ok(None);
-                };
-                work = left;
                 if !raw.row(origin, &mut prior)? {
                     return Ok(None);
                 }
@@ -311,11 +328,19 @@ fn identify(
                     index[i] = index[origin];
                     break;
                 }
+                collision += comparison;
             }
+            // A false full-key comparison uses the row's linear credit until
+            // it is charged here. Never read another candidate without paying
+            // for the miss; even a refused search stays within those bounds.
+            let Some(left) = collision_work.checked_sub(collision) else {
+                return declined("identify", "collision_work");
+            };
+            collision_work = left;
             crate::interrupt::checkpoint()?;
             slot = (slot + 1) % slots;
             if slot == first {
-                return Ok(None);
+                return declined("identify", "memory");
             }
         }
     }
@@ -362,10 +387,26 @@ impl RowGroups {
         tolerance: f64,
         available: usize,
     ) -> Result<Option<SeparationCertificate>> {
-        let cells =
-            self.counts.len().div_ceil(2) + self.boundary_rows.div_ceil(2) + self.boundary_rows + 1;
-        if cells > available || self.boundary_rows.saturating_mul(cone.rows[0].len()) > MAX_WORK {
+        let nullity = cone.rows.first().map_or(0, Vec::len);
+        if nullity == 0
+            || boundary.len() != weights.len()
+            || !cone.index.is_empty() && cone.index.len() != boundary.len()
+        {
             return Ok(None);
+        }
+        let cells = self.counts.len().div_ceil(2).saturating_add(nullity);
+        if cells > available {
+            return declined("physical_farkas", "memory");
+        }
+        // Physical order is part of this numerical replay. Allow one scan of
+        // raw recipe and term data; a growing projected dimension beyond that
+        // linear floor still has its own fixed work limit.
+        if self
+            .boundary_rows
+            .checked_mul(nullity)
+            .is_none_or(|work| work > MAX_WORK.max(self.raw_pass))
+        {
+            return declined("physical_farkas", "projected_work");
         }
         let mut positions = fallible_filled(
             self.counts.len(),
@@ -375,37 +416,45 @@ impl RowGroups {
         for (i, &g) in boundary.iter().enumerate() {
             positions[g] = i as u32;
         }
-        let mut index = Vec::new();
-        let mut dual = Vec::new();
-        super::reserve(
-            &mut index,
-            self.boundary_rows,
-            "unable to reserve raw Farkas row map",
-        )?;
-        super::reserve(
-            &mut dual,
-            self.boundary_rows + 1,
-            "unable to reserve raw Farkas weights",
-        )?;
+        let mut moments =
+            fallible_filled(nullity, 0_f64, "unable to reserve physical Farkas moments")?;
         let mut minimum = f64::INFINITY;
+        let mut maximum = 0_f64;
+        let mut count = 0;
         for (i, &group) in self.index.iter().enumerate() {
             crate::interrupt::row_checkpoint(i)?;
             let g = group as usize;
             let position = positions[g];
             if position != u32::MAX {
-                let weight = weights[position as usize] / self.counts[g] as f64;
+                let pos = position as usize;
+                let weight = weights[pos] / self.counts[g] as f64;
+                if !weight.is_finite() || weight <= 0. {
+                    return Ok(None);
+                }
                 minimum = minimum.min(weight);
-                index.push(
-                    cone.index
-                        .get(position as usize)
-                        .copied()
-                        .unwrap_or(position),
-                );
-                dual.push(-weight);
+                maximum = maximum.max(weight);
+                count += 1;
+                let projected = cone.index.get(pos).map_or(pos, |&id| id as usize);
+                let Some(row) = cone.rows.get(projected).filter(|r| r.len() == nullity) else {
+                    return Ok(None);
+                };
+                for (value, &coordinate) in moments.iter_mut().zip(row) {
+                    *value = coordinate.mul_add(-weight, *value);
+                }
             }
         }
-        dual.push(-minimum);
-        verify_indexed_farkas_certificate(&cone.rows, &index, &dual, tolerance)
+        if count != self.boundary_rows
+            || maximum <= f64::MIN_POSITIVE
+            || moments.iter().any(|x| !x.is_finite())
+        {
+            return Ok(None);
+        }
+        let residual = moments.iter().map(|x| x.abs()).fold(0., f64::max);
+        // Every physical inequality has weight at least its observed minimum.
+        // The additions for each moment follow exactly the physical row order.
+        Ok(super::super::farkas_residual_certificate(
+            count, nullity, maximum, -minimum, residual, 0., tolerance,
+        ))
     }
 }
 
@@ -433,6 +482,7 @@ mod tests {
                 index: vec![0, 1, 1, 1],
                 counts: counts.to_vec(),
                 boundary_rows: 3,
+                raw_pass: 0,
             };
             let mut y = outcome;
             if changed_class {
@@ -463,24 +513,84 @@ mod tests {
             &[1., 0.],
             &mut RawSupport::new((200, 2, 2), &mut |_, _| panic!("width square does not fit")),
             39_999,
+            MAX_WORK,
             &mut || Ok(()),
         )
         .unwrap();
         assert!(result.is_none());
         let mut read = |_: usize, _: &mut Vec<u32>| panic!("recipe work exceeds the bound");
-        let mut expensive = RawSupport::new((2, 1, MAX_WORK / 2), &mut read);
-        assert!(identify(&[1., 0.], &mut expensive, 64, &mut || Ok(()))
-            .unwrap()
-            .is_none());
+        let mut expensive = RawSupport::new((2, 1, usize::MAX / 2), &mut read);
+        assert!(
+            identify(&[1., 0.], &mut expensive, 64, MAX_WORK, &mut || Ok(()))
+                .unwrap()
+                .is_none()
+        );
         assert!(expensive.pack(2, &[], None, 64).unwrap().is_none());
         let error = identify(
             &[1., 0.],
             &mut RawSupport::new((2, 2, 2), &mut |_, _| panic!("should poll first")),
             64,
+            MAX_WORK,
             &mut || Err(crate::interrupt::interrupted()),
         )
         .unwrap_err();
         assert_eq!(error.code, crate::error::ErrorCode::Interrupted);
+    }
+
+    #[test]
+    fn physical_reads_and_confirmed_matches_are_linear_even_without_collision_credit() {
+        let y = [0.; 4];
+        let mut calls = 0;
+        let mut read = |_: usize, row: &mut Vec<u32>| {
+            calls += 1;
+            row.push(0);
+            Ok(true)
+        };
+        let mut raw = RawSupport::new((2, 1, MAX_WORK), &mut read);
+        let (index, distinct, ones) = identify(&y, &mut raw, 64, 0, &mut || Ok(()))
+            .unwrap()
+            .unwrap();
+        assert_eq!((distinct, ones), (1, 4));
+        let design = raw.pack(1, &[0], None, 64).unwrap().unwrap();
+        let mut groups = RowGroups {
+            index,
+            counts: vec![4],
+            boundary_rows: 4,
+            raw_pass: raw.scan_work(4, 1).unwrap(),
+        };
+        assert!(groups
+            .verify(&y, &[0.], &design, &mut raw, &mut || Ok(()))
+            .unwrap());
+        assert_eq!(calls, 4 + 3 + 2 + 4);
+    }
+
+    #[test]
+    fn each_unmatched_hash_slot_spends_the_fixed_exploratory_allowance() {
+        // Two distinct supports sharing the first slot of a four-slot table.
+        let mut slots: [Option<Vec<u32>>; 4] = Default::default();
+        let (a, b) = (0..16)
+            .find_map(|bits| {
+                let row: Vec<u32> = (0..4).filter(|j| bits & (1 << j) != 0).collect();
+                let mut hash = DefaultHasher::new();
+                true.hash(&mut hash);
+                row.hash(&mut hash);
+                let s = (hash.finish() % 4) as usize;
+                slots[s].replace(row.clone()).map(|first| (first, row))
+            })
+            .unwrap();
+        for (work, admitted) in [(0, false), (1, true)] {
+            let mut read = |i: usize, row: &mut Vec<u32>| {
+                row.extend_from_slice(if i == 0 { &a } else { &b });
+                Ok(true)
+            };
+            let mut raw = RawSupport::new((4, 4, 4), &mut read);
+            assert_eq!(
+                identify(&[1.; 2], &mut raw, 64, work, &mut || Ok(()))
+                    .unwrap()
+                    .is_some(),
+                admitted
+            );
+        }
     }
     #[test]
     fn numerical_margin_is_checked_after_splitting_unequal_groups() {
@@ -490,17 +600,21 @@ mod tests {
             groups: vec![],
             index: vec![],
         };
-        assert!(
-            verify_indexed_farkas_certificate(&cone.rows, &[], &[-1., -1., -1.], 0.1)
-                .unwrap()
-                .is_some()
-        );
+        assert!(super::super::verify_indexed_farkas_certificate(
+            &cone.rows,
+            &[],
+            &[-1., -1., -1.],
+            0.1
+        )
+        .unwrap()
+        .is_some());
         let mut index = vec![1; 21];
         index[0] = 0;
         let groups = RowGroups {
             index,
             counts: vec![1, 20],
             boundary_rows: 21,
+            raw_pass: 0,
         };
         assert!(groups
             .farkas(&cone, &[0, 1], &[1., 1.], 0.1, 100)
@@ -511,5 +625,37 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(cert.negative_margin_relative, 0.05);
+    }
+    #[test]
+    fn streamed_original_farkas_preserves_expanded_numerical_certificate() {
+        let cone = BoundaryCone {
+            rows: vec![vec![-0.3, -0.03], vec![1., 0.1]],
+            groups: Vec::new(),
+            index: vec![1, 0],
+            live_cells: 0,
+        };
+        let index: Vec<u32> = (0..15).map(|i| u32::from(i % 4 == 0)).collect();
+        let groups = RowGroups {
+            index: index.clone(),
+            counts: vec![11, 4],
+            boundary_rows: 15,
+            raw_pass: 0,
+        };
+        let weights = [3., 10.];
+        let mut expanded: Vec<f64> = index
+            .iter()
+            .map(|&i| -weights[i as usize] / groups.counts[i as usize] as f64)
+            .collect();
+        expanded.push(-3. / 11.);
+        let projected: Vec<_> = index.iter().map(|&i| 1 - i).collect();
+        let expected = super::super::verify_indexed_farkas_certificate(
+            &cone.rows, &projected, &expanded, 1e-8,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            groups.farkas(&cone, &[0, 1], &weights, 1e-8, 3).unwrap(),
+            Some(expected)
+        );
     }
 }

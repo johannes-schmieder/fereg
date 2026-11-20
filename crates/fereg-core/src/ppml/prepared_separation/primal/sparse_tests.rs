@@ -154,3 +154,64 @@ fn sparse_slope_ray_requires_room_to_bind_and_replay_drop_rows() {
         expected
     );
 }
+
+#[test]
+fn sparse_certificates_finish_without_admitting_an_unused_dense_fe_audit() {
+    let mut budget = retry::tests::plan(None);
+    budget.usable_bytes = Some(
+        budget
+            .required_peak_bytes
+            .max(budget.selected_inventory().preparation_peak_bytes),
+    );
+    let (owner, expected) = coupled_model(false, false);
+    let execution = PreparedPpmlSeparationExecution {
+        preliminary_plan: budget,
+        linear: PreparedOlsFitConfig::default(),
+        auto_projection: true,
+    };
+    let (outcome, ()) = fit_with_prepared_ppml_separation(
+        owner,
+        PpmlConfig::default(),
+        rectifier_only(),
+        None,
+        execution,
+        &mut |_| Ok(()),
+        |_, _, _, _| unreachable!("Mu disabled"),
+        |_, plan, _, _| {
+            assert_eq!(
+                plan.separation_projection_bytes,
+                budget.separation_projection_bytes
+            );
+            Ok(())
+        },
+    )
+    .unwrap();
+    assert_eq!(outcome.separation.dropped_observations, expected);
+
+    // On the retained sample each midpoint zero is the average of two
+    // positive endpoint rows in every finite and absorbed coordinate. This
+    // valid dual passes margin and raw moments. The numerical route must
+    // still refuse its unfunded complete-span audit before allocation.
+    let generation = &outcome.prepared;
+    let dual: Vec<_> = generation
+        .outcome()
+        .iter()
+        .map(|&y| if y == 0. { 1. } else { -0.5 })
+        .collect();
+    let memory = std::cell::Cell::new(budget);
+    let error = stable::certify_dual(
+        generation,
+        &dual,
+        PpmlConfig::default(),
+        rectifier_only(),
+        PreparedOlsFitConfig::default(),
+        DetectorAdmission {
+            span_plan: Some(&memory),
+            ..Default::default()
+        },
+    )
+    .unwrap_err();
+    assert_eq!(error.code, ErrorCode::Allocation);
+    assert!(error.message.contains("complete FE span certificate"));
+    assert_eq!(memory.get(), budget);
+}

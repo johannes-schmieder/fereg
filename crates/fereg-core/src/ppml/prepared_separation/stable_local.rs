@@ -4,28 +4,13 @@
 //! distinguish a zero dependence from a small, but nonzero, local direction.
 use super::*;
 
-pub(super) fn workspace_bound(generation: &PreparedPpmlModelGeneration) -> Result<(u128, u128)> {
-    if generation
-        .prepared()
-        .as_ref()
-        .effect_specs()
-        .iter()
-        .all(|s| s.slopes.is_empty())
-    {
-        return Ok((0, 0));
-    }
-    let topology = DetectorTopology::new(generation.prepared())?;
-    let plan = audit_plan(generation, &topology)?;
-    Ok((plan.required, plan.legacy))
-}
-
 pub(super) fn certify(
     generation: &PreparedPpmlModelGeneration,
     dual: &[f64],
     margin: f64,
     tolerance: f64,
     max_iterations: usize,
-    admitted_total_bytes: u128,
+    memory: Option<&std::cell::Cell<PpmlMemoryPlan>>,
 ) -> Result<bool> {
     if generation
         .prepared()
@@ -38,10 +23,16 @@ pub(super) fn certify(
     }
     let topology = DetectorTopology::new(generation.prepared())?;
     let plan = audit_plan(generation, &topology)?;
-    let admitted = plan.legacy.max(admitted_total_bytes);
-    if plan.required > admitted {
-        return Err(allocation("full FE span audit exceeds admitted workspace"));
-    }
+    let admitted = if plan.required <= plan.legacy {
+        plan.legacy
+    } else {
+        let memory =
+            memory.ok_or_else(|| allocation("full FE span audit exceeds admitted workspace"))?;
+        let mut current = memory.get();
+        let bytes = admit_complete_span_workspace(&mut current, plan.required, plan.legacy)?;
+        memory.set(current);
+        bytes
+    };
     if plan.equivalent {
         pooled_certified(
             generation,

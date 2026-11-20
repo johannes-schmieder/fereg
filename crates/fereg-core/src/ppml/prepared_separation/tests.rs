@@ -653,8 +653,8 @@ fn independent_certificate_and_commit_token_are_both_required_atomically() {
         ..PreparedOlsFitConfig::default()
     };
     let mut interrupt = |_| Ok(());
-    let proposal =
-        prepared_simplex_proposal(generation, config, &mut interrupt).expect("simplex proposal");
+    let proposal = prepared_simplex_proposal(generation, config, &mut interrupt, &mut None)
+        .expect("simplex proposal");
     assert!(!proposal.dropped_original_rows.is_empty());
     let validated = validate_numerical_proposal(generation, proposal.clone(), ppml, config, linear)
         .expect("independent certificate");
@@ -3573,28 +3573,31 @@ mod sparse_tests;
 fn grouped_compact_ray_must_fit_its_physical_output_and_exact_sparse_replay() {
     let n = 1024;
     for closed in [false, true] {
-        let (request, clusters, mut loaded, uses) = fixture();
-        let mut x = Vec::new();
-        let mut g = Vec::new();
-        let mut y = Vec::new();
-        for i in 0..n {
-            let (a, b, positive) = match i % 4 {
-                0 => (0., 1., 1.),
-                1 => (1., 2., 1.),
-                3 if closed => (0., 2., 0.),
-                _ => (1., 1., 0.),
-            };
-            x.push(a);
-            g.push(b);
-            y.push(positive);
-        }
-        loaded.candidate = vec![true; n].into();
-        loaded.outcome = column(&y);
-        loaded.numeric_sources[0].1 = column(&x);
-        loaded.numeric_sources[1].1 = column(&g);
-        loaded.numeric_sources[2].1 = column(&g);
-        let numeric = prepare_numeric(&loaded, &uses);
-        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
+        let build = || {
+            let (request, clusters, mut loaded, uses) = fixture();
+            let mut x = Vec::new();
+            let mut g = Vec::new();
+            let mut y = Vec::new();
+            for i in 0..n {
+                let (a, b, positive) = match i % 4 {
+                    0 => (0., 1., 1.),
+                    1 => (1., 2., 1.),
+                    3 if closed => (0., 2., 0.),
+                    _ => (1., 1., 0.),
+                };
+                x.push(a);
+                g.push(b);
+                y.push(positive);
+            }
+            loaded.candidate = vec![true; n].into();
+            loaded.outcome = column(&y);
+            loaded.numeric_sources[0].1 = column(&x);
+            loaded.numeric_sources[1].1 = column(&g);
+            loaded.numeric_sources[2].1 = column(&g);
+            let numeric = prepare_numeric(&loaded, &uses);
+            PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap()
+        };
+        let owner = build();
         let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
         let generation = coordinator.view().prepared;
         let run = |cells| {
@@ -3606,6 +3609,7 @@ fn grouped_compact_ray_must_fit_its_physical_output_and_exact_sparse_replay() {
                     ..SeparationConfig::default()
                 },
                 &mut |_| Ok(()),
+                &mut None,
             )
             .unwrap()
         };
@@ -3626,6 +3630,45 @@ fn grouped_compact_ray_must_fit_its_physical_output_and_exact_sparse_replay() {
             for (i, &z) in proof.direction.unwrap().iter().enumerate() {
                 assert!(if i % 4 >= 2 { z < 0. } else { z == 0. });
             }
+            let config = SeparationConfig {
+                simplex_max_tableau_cells: 2 * n,
+                ..SeparationConfig::default()
+            };
+            let outcome =
+                detect_prepared_ppml_separation(build(), PpmlConfig::default(), config, None, None)
+                    .unwrap();
+            assert_eq!(
+                outcome.separation.dropped_observations,
+                (0..n).filter(|i| i % 4 >= 2).collect::<Vec<_>>()
+            );
+            assert!(outcome
+                .separation
+                .methods
+                .iter()
+                .any(|m| m.method == SeparationMethod::Simplex
+                    && m.status == MethodStatus::SkippedMemory));
+            assert!(outcome
+                .separation
+                .methods
+                .iter()
+                .any(|m| m.method == SeparationMethod::IteratedRectifier
+                    && m.status == MethodStatus::Certified
+                    && m.iterations == 0));
+            let mut restricted = config;
+            restricted.methods.iterated_rectifier = false;
+            assert_eq!(
+                detect_prepared_ppml_separation(
+                    build(),
+                    PpmlConfig::default(),
+                    restricted,
+                    None,
+                    None
+                )
+                .err()
+                .unwrap()
+                .code,
+                ErrorCode::Allocation
+            );
         }
     }
 }

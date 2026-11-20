@@ -386,11 +386,9 @@ where
         admit_detector_projection(coordinator.view().prepared, ppml, config, &mut execution)?;
     let mut admission =
         DetectorAdmission::from(execution.preliminary_plan.separation_projection_bytes > 0);
-    if config.methods.iterated_rectifier && coordinator.view().prepared.outcome().contains(&0.) {
-        let (required, legacy) = stable_local::workspace_bound(coordinator.view().prepared)?;
-        admission.full_span_bytes =
-            admit_complete_span_workspace(&mut execution.preliminary_plan, required, legacy)?;
-    }
+    // Charge the complete FE audit on the generation that actually uses it.
+    // Exact sparse certificates can finish without a global FE factorization.
+    admission.span_plan = Some(plan);
     // A detector re-execution may charge its LSMR workspace mid-chain; the
     // later exploration and publication fits read the charged plan.
     plan.set(execution.preliminary_plan);
@@ -568,17 +566,17 @@ mod trace;
 
 /// Private action-lifetime admission; no public numerical option is changed.
 #[derive(Clone, Copy, Default)]
-struct DetectorAdmission {
+struct DetectorAdmission<'a> {
     graph: bool,
-    full_span_bytes: u128,
+    span_plan: Option<&'a std::cell::Cell<PpmlMemoryPlan>>,
     unit_projection: Option<(PpmlConfig, PreparedOlsFitConfig)>,
 }
 
-impl From<bool> for DetectorAdmission {
+impl From<bool> for DetectorAdmission<'_> {
     fn from(graph: bool) -> Self {
         Self {
             graph,
-            full_span_bytes: 0,
+            span_plan: None,
             unit_projection: None,
         }
     }
@@ -622,12 +620,12 @@ fn prepare_initial_generation(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn coordinate_prepared_ppml_separation<T, E, F>(
+fn coordinate_prepared_ppml_separation<'a, T, E, F>(
     mut coordinator: PreparedSeparationCoordinator<PreparedPpmlModelOwner>,
     policy: &retry::DetectorPolicy<'_>,
     config: SeparationConfig,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
-    graph_admitted: impl Into<DetectorAdmission>,
+    graph_admitted: impl Into<DetectorAdmission<'a>>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mut explore_generation: E,
     mut fit_generation: F,
@@ -941,6 +939,9 @@ where
         // This capability is recreated after every ledger change. It exists
         // only after an independent replay on the same immutable generation.
         let mut exact_support = None;
+        // Coefficients can survive only to the requested IR phase of this
+        // immutable generation. They make no deletion claim until replayed.
+        let mut compact_hint = None;
         let (simplex_unresolved, restart_after_simplex) = measure_separation_phase(
             phase_allocation_probe,
             &mut phase_allocation_peaks,
@@ -958,7 +959,12 @@ where
                     {
                         factor
                     } else {
-                        let proposal = prepared_simplex_proposal(view.prepared, config, interrupt)?;
+                        let proposal = prepared_simplex_proposal(
+                            view.prepared,
+                            config,
+                            interrupt,
+                            &mut compact_hint,
+                        )?;
                         reconcile::candidate(view.prepared, proposal, config, interrupt)?
                     }
                 };
@@ -985,16 +991,37 @@ where
                     )?;
                     return Ok((simplex_unresolved, true));
                 }
-                let replayed_certificate = replay_numerical_no_drop(
-                    coordinator.view().prepared,
-                    &proposal,
-                    ppml,
-                    config,
-                    linear,
-                    graph_admitted,
-                    interrupt,
-                    None,
-                )?;
+                let replayed_certificate = if let Some(coefficients) = &compact_hint {
+                    // Replay the reason for the allocation refusal. This is a
+                    // no-proof report; the IR phase must certify its own rows.
+                    validate_prepared_numerical_metadata(
+                        coordinator.view().prepared,
+                        &proposal,
+                        config,
+                    )?;
+                    if proposal.status != MethodStatus::SkippedMemory
+                        || primal::RawRows::sparse_replay_words(
+                            coordinator.view().prepared,
+                            coefficients.capacity(),
+                        ) <= config.simplex_max_tableau_cells
+                    {
+                        return Err(invalid_argument(
+                            "inconsistent compact simplex output budget",
+                        ));
+                    }
+                    None
+                } else {
+                    replay_numerical_no_drop(
+                        coordinator.view().prepared,
+                        &proposal,
+                        ppml,
+                        config,
+                        linear,
+                        graph_admitted,
+                        interrupt,
+                        None,
+                    )?
+                };
                 exact_support = replayed_certificate.as_ref().and_then(|certificate| {
                     let proof = certificate.proof;
                     let note = proof.positive_support_note().or_else(|| {
@@ -1053,6 +1080,32 @@ where
                     )?;
                     final_generation_replay_mask |= replay_bit(SeparationMethod::IteratedRectifier);
                     return Ok((true, false));
+                }
+                if let Some(coefficients) = compact_hint.take() {
+                    let model = coordinator.view().prepared;
+                    if let Some(certified) =
+                        reconcile::certify_compact_hint(model, coefficients, config, policy)?
+                    {
+                        if crate::diagnostics::solver_trace_enabled() {
+                            crate::diagnostics::emit_solver_trace(&format!(
+                                "FEREG_SOLVER_TRACE|phase=compact_ray_ir|generation={}|rows={}",
+                                model.generation(),
+                                model.outcome().len()
+                            ));
+                        }
+                        commit_numerical(
+                            &mut coordinator,
+                            &mut reports,
+                            &mut generation_hashes,
+                            method_report_capacity,
+                            generation_capacity,
+                            &candidate_original_rows,
+                            certified,
+                            started,
+                            config,
+                        )?;
+                        return Ok((false, true));
+                    }
                 }
                 let mut lap = trace::IrPhase::new(coordinator.view().generation);
                 let (detected, ppml, linear) = {
@@ -2023,6 +2076,7 @@ fn prepared_simplex_proposal(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    compact_hint: &mut Option<Vec<i64>>,
 ) -> Result<PreparedNumericalProposal> {
     // Resolve the enum-backed model exactly once before entering the dense
     // row/column construction loop. The concrete view keeps both this loop
@@ -2108,8 +2162,13 @@ fn prepared_simplex_proposal(
         let effects = topology.effect_specs.len();
         drop(topology);
         if intercept_only {
-            if let Some(proof) = prepared_compact_simplex(generation, effects, config, interrupt)? {
+            if let Some(proof) =
+                prepared_compact_simplex(generation, effects, config, interrupt, compact_hint)?
+            {
                 return Ok(proof);
+            }
+            if compact_hint.is_some() {
+                return skipped();
             }
         }
         if let Some(proof) =
@@ -2120,6 +2179,11 @@ fn prepared_simplex_proposal(
         if let Some(proof) = reconcile::factor_pair(generation, SeparationMethod::Simplex, config)?
         {
             return Ok(proof);
+        }
+        if let Some(proof) =
+            positive_rank::deferred_simplex(generation, positive, config, interrupt)?
+        {
+            return bind_numerical_proposal(generation, proof);
         }
         return skipped();
     }
@@ -2152,6 +2216,7 @@ fn prepared_compact_simplex(
     effects: usize,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    compact_hint: &mut Option<Vec<i64>>,
 ) -> Result<Option<PreparedNumericalProposal>> {
     let rows = generation.outcome().len();
     let raw = primal::RawRows::new(generation, true)?;
@@ -2205,7 +2270,32 @@ fn prepared_compact_simplex(
         Some(CompactModel::Direction {
             coefficients,
             iterations,
-        }) => reconcile::compact_ray(generation, coefficients, iterations, config)?,
+        }) => {
+            let required =
+                primal::RawRows::sparse_replay_words(generation, coefficients.capacity());
+            if required > config.simplex_max_tableau_cells {
+                if config.methods.iterated_rectifier
+                    && required
+                        <= primal::ProofBudget::for_sparse(
+                            generation,
+                            SeparationMethod::IteratedRectifier,
+                            config,
+                        )
+                        .words
+                {
+                    *compact_hint = Some(coefficients);
+                }
+                None
+            } else {
+                reconcile::compact_ray(
+                    generation,
+                    coefficients,
+                    iterations,
+                    SeparationMethod::Simplex,
+                    config,
+                )?
+            }
+        }
         None => None,
     };
     if crate::diagnostics::solver_trace_enabled() {
@@ -2311,6 +2401,9 @@ fn resolve_dense_simplex_result(
     if let Some(proof) = reconcile::raw_candidate(generation, SeparationMethod::Simplex, config)? {
         return Ok(proof);
     }
+    if let Some(proof) = positive_rank::deferred_simplex(generation, positive, config, interrupt)? {
+        return Ok(proof);
+    }
     if result.is_err() && config.methods.iterated_rectifier {
         return Ok(DetectionProposal::empty(
             SeparationMethod::Simplex,
@@ -2323,12 +2416,12 @@ fn resolve_dense_simplex_result(
 
 /// A coefficient-backed submodel proposal is independently reconstructed at
 /// acceptance. No graph result can certify absence of full-model separation.
-fn prepared_bound_iterated_rectifier(
+fn prepared_bound_iterated_rectifier<'a>(
     generation: &PreparedPpmlModelGeneration,
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    graph_admitted: impl Into<DetectorAdmission>,
+    graph_admitted: impl Into<DetectorAdmission<'a>>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedNumericalProposal> {
     if let Some(factor) =
@@ -2465,12 +2558,12 @@ fn bind_graph_direction(
     Ok(proposal)
 }
 
-fn prepared_rectifier_candidate(
+fn prepared_rectifier_candidate<'a>(
     generation: &PreparedPpmlModelGeneration,
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    graph_admitted: impl Into<DetectorAdmission>,
+    graph_admitted: impl Into<DetectorAdmission<'a>>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedNumericalProposal> {
     let graph_admitted = graph_admitted.into();
@@ -2519,7 +2612,7 @@ fn prepared_weighted_rectifier(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    admission: DetectorAdmission,
+    admission: DetectorAdmission<'_>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedNumericalProposal> {
     let trial = prepared_iterated_rectifier(
@@ -3781,13 +3874,13 @@ fn replay_positive_support(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn replay_numerical_no_drop(
+fn replay_numerical_no_drop<'a>(
     generation: &PreparedPpmlModelGeneration,
     observed: &PreparedNumericalProposal,
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    graph_admitted: impl Into<DetectorAdmission>,
+    graph_admitted: impl Into<DetectorAdmission<'a>>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mu_exploration: Option<&PreparedPpmlMuExploration>,
 ) -> Result<Option<SeparationCertificate>> {
@@ -3870,7 +3963,7 @@ fn replay_numerical_no_drop(
             interrupt,
         )?
     } else if observed.method == SeparationMethod::Simplex {
-        let proposal = prepared_simplex_proposal(generation, config, interrupt)?;
+        let proposal = prepared_simplex_proposal(generation, config, interrupt, &mut None)?;
         reconcile::candidate(generation, proposal, config, interrupt)?
     } else {
         let raw = bind_numerical_proposal(

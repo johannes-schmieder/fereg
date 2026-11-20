@@ -23,7 +23,7 @@ pub(super) fn support(
         model,
         &topology,
         count,
-        limit,
+        (limit, positive_rank::sparse_dual::Search::Full),
         config,
         &mut report_break,
     )?;
@@ -214,13 +214,17 @@ pub(super) fn compact_ray(
     model: &PreparedPpmlModelGeneration,
     mut coefficients: Vec<i64>,
     iterations: usize,
+    method: SeparationMethod,
     config: SeparationConfig,
 ) -> Result<Option<PreparedNumericalProposal>> {
-    let method = SeparationMethod::Simplex;
     let finite = model.model().columns.len();
+    let available = if method == SeparationMethod::Simplex {
+        config.simplex_max_tableau_cells
+    } else {
+        primal::ProofBudget::for_sparse(model, method, config).words
+    };
     if finite > coefficients.len()
-        || primal::RawRows::sparse_replay_words(model, coefficients.capacity())
-            > config.simplex_max_tableau_cells
+        || primal::RawRows::sparse_replay_words(model, coefficients.capacity()) > available
     {
         return Ok(None);
     }
@@ -233,6 +237,32 @@ pub(super) fn compact_ray(
         proof.iterations = iterations;
     }
     Ok(proposal)
+}
+
+/// A capped simplex returned only coefficients. Their first original-row
+/// materialization and independent acceptance belong to this IR phase.
+pub(super) fn certify_compact_hint(
+    model: &PreparedPpmlModelGeneration,
+    coefficients: Vec<i64>,
+    config: SeparationConfig,
+    policy: &retry::DetectorPolicy<'_>,
+) -> Result<Option<ValidatedNumericalProposal>> {
+    let proof = compact_ray(
+        model,
+        coefficients,
+        0,
+        SeparationMethod::IteratedRectifier,
+        config,
+    )
+    .and_then(|proposal| {
+        proposal
+            .map(|p| policy.validate(model, p, config))
+            .transpose()
+    });
+    match proof {
+        Err(error) if error.code == ErrorCode::NonConvergence => Ok(None),
+        other => other,
+    }
 }
 
 fn materialize(

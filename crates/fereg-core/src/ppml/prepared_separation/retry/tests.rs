@@ -13,7 +13,7 @@ fn no_schwarz(_: Option<u128>) -> Result<Option<u128>> {
 /// The memory module's minimum headroom (512 MiB) below `available_bytes`.
 const HEADROOM: u128 = 512 * 1024 * 1024;
 
-fn plan(available_bytes: Option<u128>) -> PpmlMemoryPlan {
+pub(in crate::ppml::prepared_separation) fn plan(available_bytes: Option<u128>) -> PpmlMemoryPlan {
     let shape = PpmlMemoryDimensions {
         metadata: Default::default(),
         observations: 10_000,

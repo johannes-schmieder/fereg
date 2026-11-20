@@ -490,7 +490,22 @@ fn sparse_dual_sweeps_balance_asymmetric_boundary_multiplicities() {
             .unwrap()
         };
         assert!(!check(positive_rank::sparse_dual::Search::Direct));
+        assert!(!check(positive_rank::sparse_dual::Search::Marginal));
         assert!(check(positive_rank::sparse_dual::Search::Full));
+        if scale == 1. {
+            // The compact 0/1 model cannot represent these raw values;
+            // explicit simplex must retain its later full-dual search.
+            let fit = simplex_only(panel(&scaled, Terms::TwoFe), 4000).unwrap();
+            assert!(fit.separation.dropped_observations.is_empty());
+            assert!(fit
+                .separation
+                .methods
+                .iter()
+                .any(|m| m.certificate.as_ref().is_some_and(|c| matches!(
+                    c.proof,
+                    Proof::ExactPositiveDual { boundary_rows: 64 }
+                ))));
+        }
     }
 }
 
@@ -584,4 +599,38 @@ fn ir_only_composes_local_duals_across_different_retained_faces() {
             boundary_rows: boundary
         }
     );
+}
+
+#[test]
+fn partition_masses_close_survivor_blocks_on_the_original_axes() {
+    // The first two-by-two block retains only positives. The other fifteen
+    // blocks have a complete cycle and a shared real-valued control. No
+    // nonzero uniform positive weight can cancel the first block's margin.
+    let mut rows = Vec::new();
+    for block in 0..16 {
+        for (a, b) in [(0., 0.), (0., 1.), (1., 0.), (1., 1.)] {
+            if block == 0 && a != b {
+                continue;
+            }
+            rows.push([
+                f64::from(a == b),
+                (block as f64 + 0.5) / 8.,
+                (2 * block) as f64 + a,
+                (2 * block) as f64 + b,
+            ]);
+        }
+    }
+    let owner = PreparedSeparationCoordinator::new(panel(&rows, Terms::TwoFe)).unwrap();
+    let model = owner.view().prepared;
+    let topo = DetectorTopology::new(model.prepared()).unwrap();
+    assert!(positive_rank::sparse_dual::supports(
+        positive_rank::sparse_dual::Search::Marginal,
+        model,
+        &topo,
+        32,
+        4000,
+        SeparationConfig::default(),
+        &mut |_| Ok(())
+    )
+    .unwrap());
 }

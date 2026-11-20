@@ -279,10 +279,67 @@ impl<'a> Design<'a> {
     }
 }
 
+/// Within each level of a single categorical axis, use the smallest integer
+/// weights balancing total positive-outcome and boundary mass. A level with
+/// only positive outcomes receives zero weight. All other axes and numerical
+/// channels still require the independent exact replay.
+fn partition_balance(
+    model: &PreparedPpmlModelGeneration,
+    design: &Design<'_>,
+    axis: Family<'_>,
+    sums: &mut [f64],
+    tolerance: f64,
+) -> Result<bool> {
+    let y = model.outcome();
+    let mut masses = fallible_filled(
+        axis.levels,
+        [0i64; 2],
+        "unable to reserve sparse partition masses",
+    )?;
+    for (r, &value) in y.iter().enumerate() {
+        crate::interrupt::row_checkpoint(r)?;
+        masses[axis.level(r)][usize::from(value > 0.)] += 1;
+    }
+    for (g, w) in masses.iter_mut().enumerate() {
+        crate::interrupt::row_checkpoint(g)?;
+        let [boundary, positive] = *w;
+        if boundary == 0 {
+            *w = [0, 0];
+            continue;
+        }
+        if positive == 0 {
+            return Ok(false);
+        }
+        let (mut a, mut b) = (positive, boundary);
+        while b != 0 {
+            (a, b) = (b, a % b);
+        }
+        *w = [positive / a, -(boundary / a)];
+    }
+    design.certify(
+        model,
+        |r| masses[axis.level(r)][usize::from(y[r] > 0.)],
+        sums,
+        tolerance,
+    )
+}
+
 #[derive(Clone, Copy)]
 pub(in crate::ppml::prepared_separation) enum Search {
+    Marginal,
     Direct,
     Full,
+}
+
+impl Search {
+    fn try_uniform(self, passes: usize, partition_fits: bool) -> bool {
+        // A uniform positive dual on a complete indicator axis implies the
+        // same positive/boundary ratio in every occupied level. Its primitive
+        // weights then equal the partition weights on every row. A four-pass
+        // full search can check both possibilities with that single candidate,
+        // leaving two projection passes and one independent exact replay.
+        !matches!(self, Self::Full) || !partition_fits || passes > 4
+    }
 }
 
 pub(in crate::ppml::prepared_separation) fn supports(
@@ -326,23 +383,57 @@ pub(in crate::ppml::prepared_separation) fn supports(
     }
     interrupt(PpmlInterruptPoint::SeparationSimplex)?;
     let mut sums = fallible_filled(design.levels, 0., "unable to reserve sparse dual moments")?;
-    let mut p = positive;
-    let mut b = boundary;
-    while b != 0 {
-        (p, b) = (b, p % b);
-    }
-    let initial = |r: usize| {
-        if y[r] == 0. {
-            (positive / p) as i64
-        } else {
-            -((boundary / p) as i64)
-        }
+    let axis = if !matches!(search, Search::Direct)
+        && topology
+            .effect_specs
+            .iter()
+            .all(|spec| spec.slopes.is_empty())
+    {
+        design
+            .families
+            .iter()
+            .filter(|f| f.codes.is_some())
+            .max_by_key(|f| f.levels)
+            .filter(|f| f.levels.saturating_mul(2) <= limit - design.levels)
+            .copied()
+    } else {
+        None
     };
-    if design.certify(model, initial, &mut sums, config.certificate_tolerance)? {
-        trace(model, "uniform");
-        return Ok(true);
+    if search.try_uniform(work / design.pass, axis.is_some()) {
+        let mut p = positive;
+        let mut b = boundary;
+        while b != 0 {
+            (p, b) = (b, p % b);
+        }
+        let initial = |r: usize| {
+            if y[r] == 0. {
+                (positive / p) as i64
+            } else {
+                -((boundary / p) as i64)
+            }
+        };
+        if design.certify(model, initial, &mut sums, config.certificate_tolerance)? {
+            trace(model, "uniform");
+            return Ok(true);
+        }
+        work -= design.pass;
     }
-    work -= design.pass;
+    if let Some(axis) = axis.filter(|_| work >= design.pass) {
+        if partition_balance(
+            model,
+            &design,
+            axis,
+            &mut sums,
+            config.certificate_tolerance,
+        )? {
+            trace(model, "partition");
+            return Ok(true);
+        }
+        work -= design.pass;
+    }
+    if matches!(search, Search::Marginal) {
+        return Ok(false);
+    }
     if numeric {
         // Preserve room for a whole projection and its replay. The absolute
         // exploration cap applies to hashing probes and nonlinear local elimination.
@@ -353,7 +444,7 @@ pub(in crate::ppml::prepared_separation) fn supports(
             // The pre-rectifier probe spends at most linear work on local
             // systems; larger cells remain available to the full fallback.
             Search::Direct => budget.min(design.pass.saturating_mul(8)),
-            Search::Full => budget,
+            Search::Full | Search::Marginal => budget,
         };
         let mut local = budget;
         if cells::prove(
@@ -371,9 +462,30 @@ pub(in crate::ppml::prepared_separation) fn supports(
     if matches!(search, Search::Direct) {
         return Ok(false);
     }
+    projected_support(model, &design, &mut sums, limit, work, config, interrupt)
+}
+
+/// Explore the residual cone by alternating projections. Only the exact
+/// original-coordinate replay of a proposed integer multiplier can close it.
+fn projected_support(
+    model: &PreparedPpmlModelGeneration,
+    design: &Design<'_>,
+    sums: &mut [f64],
+    limit: usize,
+    work: usize,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<bool> {
+    let y = model.outcome();
     let mut passes = work / design.pass.max(1);
     if design.levels.saturating_mul(2).saturating_add(y.len()) > limit || passes < 3 {
         return Ok(false);
+    }
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=sparse_dual_projection_start|generation={}|rows={}|passes={passes}",
+            model.generation(), y.len(),
+        ));
     }
     let mut squares = fallible_filled(
         design.levels,
@@ -392,7 +504,7 @@ pub(in crate::ppml::prepared_separation) fn supports(
         interrupt(PpmlInterruptPoint::SeparationSimplex)?;
         passes -= 2;
         for family in &design.families {
-            if !family.project(model, &mut weights, &mut sums, &mut squares)? {
+            if !family.project(model, &mut weights, sums, &mut squares)? {
                 return Ok(false);
             }
         }
@@ -413,7 +525,7 @@ pub(in crate::ppml::prepared_separation) fn supports(
                 passes -= 1;
                 let scale = denominator / margin;
                 let rounded = |r: usize| (weights[r] * scale).round() as i64;
-                if design.certify(model, rounded, &mut sums, config.certificate_tolerance)? {
+                if design.certify(model, rounded, sums, config.certificate_tolerance)? {
                     trace(model, "projected");
                     return Ok(true);
                 }
@@ -435,5 +547,23 @@ fn trace(model: &PreparedPpmlModelGeneration, proposal: &str) {
             "FEREG_SOLVER_TRACE|phase=sparse_positive_dual|generation={}|rows={}|proposal={proposal}",
             model.generation(), model.outcome().len(),
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn four_full_scans_keep_a_projection_and_exact_replay_with_or_without_an_axis() {
+        let pass = primal::ProofBudget::MAX_SPARSE_WORK / 4 + 1;
+        let scans = primal::ProofBudget::sparse_work(pass, 100) / pass;
+        assert_eq!(scans, 4);
+        for partition in [false, true] {
+            let uniform = Search::Full.try_uniform(scans, partition);
+            assert_eq!(scans - usize::from(uniform) - usize::from(partition), 3);
+        }
+        assert!(Search::Marginal.try_uniform(scans, true));
+        assert!(Search::Full.try_uniform(5, true));
     }
 }
