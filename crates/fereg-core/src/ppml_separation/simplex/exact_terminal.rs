@@ -8,6 +8,9 @@ use crate::error::Result;
 use crate::ppml::{exact_dot, ExactNullspace};
 use std::cmp::Ordering;
 
+mod compact;
+pub(super) use compact::{compact_full_positive_rank, compact_no_recession};
+
 struct Work(usize);
 
 impl Work {
@@ -27,6 +30,19 @@ fn positive_basis(
     pivots: &[usize],
 ) -> Result<Option<(ExactNullspace, Vec<usize>)>> {
     let k = design.ncols();
+    positive_basis_with(k, outcome, work, pivots, |i, basis, _| {
+        basis.insert(&design.as_slice()[i * k..(i + 1) * k])?;
+        Ok(true)
+    })
+}
+
+fn positive_basis_with(
+    k: usize,
+    outcome: &[f64],
+    work: &mut Work,
+    pivots: &[usize],
+    mut insert: impl FnMut(usize, &mut ExactNullspace, &mut Work) -> Result<bool>,
+) -> Result<Option<(ExactNullspace, Vec<usize>)>> {
     let mut basis = ExactNullspace::new(k)?;
     let mut representatives = Vec::new();
     reserve(
@@ -45,8 +61,9 @@ fn positive_basis(
             if !work.take(rank + 1, k) {
                 return Ok(None);
             }
-            let row = &design.as_slice()[i * k..(i + 1) * k];
-            basis.insert(row)?;
+            if !insert(i, &mut basis, work)? {
+                return Ok(None);
+            }
             if basis.rank() > rank {
                 representatives.push(i);
                 if basis.rank() >= pivots.len() {

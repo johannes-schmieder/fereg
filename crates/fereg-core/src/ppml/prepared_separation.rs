@@ -21,8 +21,9 @@ use crate::ols::{
     PreparedOlsFitConfig,
 };
 use crate::ppml_separation::{
-    model_simplex_interruptible, separation_generation_capacity, separation_method_count,
-    simplex_workspace_peak_cells, PREFLIGHT_REPORT_GENERATIONS,
+    compact_model, compact_model_admitted, model_simplex_interruptible,
+    separation_generation_capacity, separation_method_count, simplex_workspace_peak_cells,
+    BinaryDesign, CompactModel, PREFLIGHT_REPORT_GENERATIONS,
 };
 use crate::ppml_separation::{
     DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
@@ -957,13 +958,8 @@ where
                     {
                         factor
                     } else {
-                        let raw = prepared_simplex_proposal(view.prepared, config, interrupt)?;
-                        reconcile::candidate(
-                            view.prepared,
-                            bind_numerical_proposal(view.prepared, raw)?,
-                            config,
-                            interrupt,
-                        )?
+                        let proposal = prepared_simplex_proposal(view.prepared, config, interrupt)?;
+                        reconcile::candidate(view.prepared, proposal, config, interrupt)?
                     }
                 };
                 let simplex_unresolved = matches!(
@@ -2026,8 +2022,7 @@ fn prepared_simplex_proposal(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-) -> Result<DetectionProposal> {
-    let categorical = generation.prepared().as_ref();
+) -> Result<PreparedNumericalProposal> {
     // Resolve the enum-backed model exactly once before entering the dense
     // row/column construction loop. The concrete view keeps both this loop
     // and the shared linear-session loops statically dispatched.
@@ -2036,11 +2031,14 @@ fn prepared_simplex_proposal(
     let topology = DetectorTopology::new(generation.prepared())?;
     let columns = simplex_full_model_width(finite_columns, &topology)?;
     if columns == 0 {
-        return Ok(DetectionProposal::empty(
-            SeparationMethod::Simplex,
-            MethodStatus::NoCandidates,
-            "prepared full-model simplex has no finite or absorbed columns",
-        ));
+        return bind_numerical_proposal(
+            generation,
+            DetectionProposal::empty(
+                SeparationMethod::Simplex,
+                MethodStatus::NoCandidates,
+                "prepared full-model simplex has no finite or absorbed columns",
+            ),
+        );
     }
     let rows = generation.outcome().len();
     let cells = rows
@@ -2068,7 +2066,21 @@ fn prepared_simplex_proposal(
         .and_then(|value| value.checked_add(topology_cells))
         .ok_or_else(|| allocation("prepared simplex construction workspace overflowed"))?;
     let peak_cells = kernel_peak_cells.max(construction_peak_cells);
-    if peak_cells > config.simplex_max_tableau_cells {
+    let dense_exceeds_limit = peak_cells > config.simplex_max_tableau_cells;
+    let skipped = || {
+        bind_numerical_proposal(
+            generation,
+            DetectionProposal::empty(
+                SeparationMethod::Simplex,
+                MethodStatus::SkippedMemory,
+                SeparationNote::with_detail(
+                    "prepared full-model simplex exceeded its configured cell limit",
+                    peak_cells,
+                ),
+            ),
+        )
+    };
+    if dense_exceeds_limit {
         if let Some(proposal) = positive_rank::detect(
             generation,
             &topology,
@@ -2077,17 +2089,101 @@ fn prepared_simplex_proposal(
             config,
             interrupt,
         )? {
-            return Ok(proposal);
+            return bind_numerical_proposal(generation, proposal);
         }
-        return Ok(DetectionProposal::empty(
-            SeparationMethod::Simplex,
-            MethodStatus::SkippedMemory,
-            SeparationNote::with_detail(
-                "prepared full-model simplex exceeded its configured cell limit",
-                peak_cells,
-            ),
-        ));
+        let intercept_only = topology
+            .effect_specs
+            .iter()
+            .all(|spec| spec.slopes.is_empty());
+        let effects = topology.effect_specs.len();
+        drop(topology);
+        if intercept_only
+            && compact_model_admitted(rows, positive, columns, config.simplex_max_tableau_cells)
+        {
+            if let Some(proof) = prepared_compact_simplex(generation, effects, config, interrupt)? {
+                return Ok(proof);
+            }
+        }
+        return skipped();
     }
+    let design = prepared_simplex_design(generation, &topology, columns, cells)?;
+    drop(topology);
+    let mut poll_pivot = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
+    let result = model_simplex_interruptible(
+        generation.outcome(),
+        &design,
+        config.projection_tolerance,
+        config.certificate_tolerance,
+        config.simplex_max_iterations,
+        config.simplex_max_tableau_cells,
+        &mut poll_pivot,
+    );
+    drop(design);
+    let raw = resolve_dense_simplex_result(
+        generation,
+        config,
+        interrupt,
+        positive,
+        topology_cells,
+        result,
+    )?;
+    bind_numerical_proposal(generation, raw)
+}
+
+fn prepared_compact_simplex(
+    generation: &PreparedPpmlModelGeneration,
+    effects: usize,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let rows = generation.outcome().len();
+    let raw = primal::RawRows::new(generation, true)?;
+    let columns = raw.width;
+    let input_cells = config
+        .simplex_max_tableau_cells
+        .saturating_sub(effects.saturating_mul(16));
+    let Some(design) =
+        BinaryDesign::from_rows(rows, columns, input_cells, |i, row| raw.write(i, row))?
+    else {
+        return Ok(None);
+    };
+    drop(raw);
+    let compact = compact_model(
+        generation.outcome(),
+        &design,
+        config.projection_tolerance,
+        config.certificate_tolerance,
+        config.simplex_max_iterations,
+        config.simplex_max_tableau_cells,
+        &mut || interrupt(PpmlInterruptPoint::SeparationSimplexPivot),
+    )?;
+    drop(design);
+    if crate::diagnostics::solver_trace_enabled() {
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=compact_simplex|rows={rows}|columns={columns}|certified={}",
+            u8::from(compact.is_some())
+        );
+    }
+    match compact {
+        Some(CompactModel::Terminal(raw)) => Ok(Some(bind_numerical_proposal(generation, raw)?)),
+        Some(CompactModel::Direction {
+            coefficients,
+            iterations,
+        }) => reconcile::compact_ray(generation, coefficients, iterations, config),
+        None => Ok(None),
+    }
+}
+
+fn prepared_simplex_design(
+    generation: &PreparedPpmlModelGeneration,
+    topology: &DetectorTopology<'_>,
+    columns: usize,
+    cells: usize,
+) -> Result<DenseMatrix> {
+    let categorical = generation.prepared().as_ref();
+    let fit_view = generation.fit_view();
+    let finite_columns = fit_view.model().columns.len();
+    let rows = generation.outcome().len();
     let mut values = Vec::new();
     values
         .try_reserve_exact(cells)
@@ -2139,29 +2235,7 @@ fn prepared_simplex_proposal(
             "prepared full-model simplex design is nonfinite or misaligned",
         ));
     }
-    // These topology maps and the final FE-code vector are construction
-    // scratch. Make their non-overlap with the registered kernel explicit.
-    drop(topology);
-    let design = DenseMatrix::from_row_major(rows, columns, values)?;
-    let mut poll_pivot = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
-    let result = model_simplex_interruptible(
-        generation.outcome(),
-        &design,
-        config.projection_tolerance,
-        config.certificate_tolerance,
-        config.simplex_max_iterations,
-        config.simplex_max_tableau_cells,
-        &mut poll_pivot,
-    );
-    drop(design);
-    resolve_dense_simplex_result(
-        generation,
-        config,
-        interrupt,
-        positive,
-        topology_cells,
-        result,
-    )
+    DenseMatrix::from_row_major(rows, columns, values)
 }
 
 fn resolve_dense_simplex_result(
@@ -3672,13 +3746,13 @@ fn replay_numerical_no_drop(
             graph_admitted,
             interrupt,
         )?
+    } else if observed.method == SeparationMethod::Simplex {
+        let proposal = prepared_simplex_proposal(generation, config, interrupt)?;
+        reconcile::candidate(generation, proposal, config, interrupt)?
     } else {
         let raw = bind_numerical_proposal(
             generation,
             match observed.method {
-                SeparationMethod::Simplex => {
-                    prepared_simplex_proposal(generation, config, interrupt)?
-                }
                 SeparationMethod::IteratedRectifier => {
                     prepared_iterated_rectifier(generation, ppml, config, linear, interrupt, false)?
                         .0
@@ -3700,10 +3774,12 @@ fn replay_numerical_no_drop(
                         exploration.certificate().accepted_iterations,
                     )?
                 }
-                SeparationMethod::Singletons | SeparationMethod::FixedEffects => {
+                SeparationMethod::Singletons
+                | SeparationMethod::FixedEffects
+                | SeparationMethod::Simplex => {
                     return Err(FeregError::new(
                         ErrorCode::Internal,
-                        "exact separation method entered the numerical replay path",
+                        "unexpected separation method entered the numerical replay path",
                     ));
                 }
             },

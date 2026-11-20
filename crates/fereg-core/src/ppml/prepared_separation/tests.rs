@@ -653,11 +653,8 @@ fn independent_certificate_and_commit_token_are_both_required_atomically() {
         ..PreparedOlsFitConfig::default()
     };
     let mut interrupt = |_| Ok(());
-    let proposal = bind_numerical_proposal(
-        generation,
-        prepared_simplex_proposal(generation, config, &mut interrupt).expect("simplex proposal"),
-    )
-    .expect("stable proposal");
+    let proposal =
+        prepared_simplex_proposal(generation, config, &mut interrupt).expect("simplex proposal");
     assert!(!proposal.dropped_original_rows.is_empty());
     let validated = validate_numerical_proposal(generation, proposal.clone(), ppml, config, linear)
         .expect("independent certificate");

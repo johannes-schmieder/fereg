@@ -7,7 +7,10 @@ use super::{
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 
+mod compact_model;
+mod compact_tableau;
 mod exact_terminal;
+pub(crate) use compact_model::{compact_model, compact_model_admitted, BinaryDesign, CompactModel};
 pub(crate) use exact_terminal::raw_positive_dual;
 mod nullspace;
 mod tableau;
@@ -215,7 +218,7 @@ pub(crate) fn model_simplex_interruptible(
         boundary_count,
         "unable to reserve model-simplex boundary rows",
     )?;
-    let basis = nullspace_basis(regressors, &mut positive, tolerance)?;
+    let basis = nullspace_basis(regressors, &mut positive, tolerance, interrupt)?;
     // The numerical positive-row factorization above already visits a dense
     // trailing rectangle at every pivot. Give its independent exact check
     // that allowance on modest designs, within a fixed operation ceiling.

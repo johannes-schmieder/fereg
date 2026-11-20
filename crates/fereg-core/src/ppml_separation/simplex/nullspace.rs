@@ -7,6 +7,7 @@ pub(super) fn nullspace_basis(
     regressors: &DenseMatrix,
     rows: &mut [usize],
     tolerance: f64,
+    interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Vec<Vec<f64>>> {
     let ncols = regressors.ncols();
     let nrows = rows.len();
@@ -52,6 +53,7 @@ pub(super) fn nullspace_basis(
     column_permutation.extend(0..ncols);
     let mut rank = 0_usize;
     while rank < nrows.min(ncols) {
+        interrupt()?;
         let mut pivot = None;
         let mut maximum = threshold;
         for row in rank..nrows {

@@ -31,4 +31,35 @@ keep if retained
 quietly feppml y b a, separation(ir) mu(prediction)
 assert e(N)==14 & e(sample)==1
 assert abs(log(prediction)-eta)<1e-10
+
+// Three imbalanced two-by-two tables share the specification. Positive
+// outcomes alone lack three directions, but each pair of off-diagonals
+// closes one direction. The dense simplex does not fit the default cap.
+clear
+set obs 18
+generate byte block = floor((_n-1)/6)
+generate byte cell = mod(_n-1,6)
+generate byte left = 2*block + inlist(cell,1,5)
+generate byte right = 2*block + inrange(cell,1,4)
+generate double y = cell < 2
+expand 96
+
+quietly poisson y i.left i.right
+quietly predict double reference, n
+quietly feppml y i.left i.right, separation(simplex) mu(actual)
+assert e(N)==_N & e(separated)==0
+assert abs(actual-reference)<1e-7
+drop actual reference
+
+// Removing one off-diagonal leaves a one-way separation in just one table.
+drop if block==0 & cell==5
+generate byte retained = !(block==0 & inrange(cell,2,4))
+quietly poisson y i.left i.right if retained
+quietly predict double reference, n
+gsort -right -left -y
+quietly feppml y i.left i.right, separation(simplex) mu(actual)
+assert e(sample)==retained & e(separated)==288
+assert abs(actual-reference)<1e-7 if retained
+assert missing(actual) if !retained
+
 display as result "END_FIXTURE|feppml_separation_recovery|rc=0"

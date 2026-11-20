@@ -111,7 +111,7 @@ fn injected_detector_reservation_failure_is_allocation_error() {
 fn injected_nullspace_reservation_failure_is_allocation_error() {
     let x = DenseMatrix::from_columns(&[vec![1.0, 1.0]]).expect("matrix");
     inject_reservation_failure(0);
-    let error = nullspace::nullspace_basis(&x, &mut [1], 1e-10)
+    let error = nullspace::nullspace_basis(&x, &mut [1], 1e-10, &mut || Ok(()))
         .expect_err("injected null-space allocation failure");
     assert_eq!(error.code, ErrorCode::Allocation);
 }

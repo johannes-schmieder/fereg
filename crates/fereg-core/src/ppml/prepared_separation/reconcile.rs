@@ -85,7 +85,10 @@ fn checked_candidate(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedNumericalProposal> {
-    if proposal.dropped_original_rows.is_empty() || proposal.exact_graph_span.is_some() {
+    if proposal.dropped_original_rows.is_empty()
+        || proposal.exact_graph_span.is_some()
+        || proposal.exact_primal.is_some()
+    {
         return Ok(proposal);
     }
     let (detector_direction, _) = checked_deletion_claim(model, &proposal, config)?;
@@ -151,6 +154,31 @@ pub(super) fn omitted_factor(
         return Ok(None);
     };
     raw.iterations = 0;
+    let mut bound = bind_numerical_proposal(model, raw)?;
+    bound.exact_primal = Some(witness);
+    Ok(Some(bound))
+}
+
+pub(super) fn compact_ray(
+    model: &PreparedPpmlModelGeneration,
+    coefficients: Vec<i64>,
+    iterations: usize,
+    config: SeparationConfig,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let method = SeparationMethod::Simplex;
+    let witness = primal::Witness::Coefficients {
+        units: fallible_filled(
+            coefficients.len(),
+            1.,
+            "unable to reserve compact ray units",
+        )?,
+        values: coefficients,
+        absorbed: true,
+    };
+    let Some(mut raw) = materialize(model, &witness, method, config)? else {
+        return Ok(None);
+    };
+    raw.iterations = iterations;
     let mut bound = bind_numerical_proposal(model, raw)?;
     bound.exact_primal = Some(witness);
     Ok(Some(bound))
