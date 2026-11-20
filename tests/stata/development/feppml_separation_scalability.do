@@ -5,10 +5,11 @@ set more off
 * For every additive model direction, x00+x11=x01+x10. With both off-diagonals
 * present, neither can separate. Removing 10 leaves precisely 01 separable.
 * At 26 blocks and 96 copies the old positive-row scratch alone exceeded the
-* public 1,000,000-cell cap: 2*4,992 positive rows*103 finite columns.
+* public 1,000,000-cell cap. The 64-block repeated design also requires
+* streaming and coalescing before allocating the boundary tableau.
 local copies = 96
 foreach design in repeated unique {
-    local blocks = cond("`design'"=="repeated",40,26)
+    local blocks = cond("`design'"=="repeated",64,26)
     clear
     local slots = cond("`design'"=="repeated",8,4)
     quietly set obs `=`blocks'*`copies'*`slots''

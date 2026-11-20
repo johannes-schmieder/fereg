@@ -1,16 +1,10 @@
 {
   "growth": [
     {
-      "after": 135544,
-      "before": 134750,
+      "after": 135567,
+      "before": 135544,
       "metric": "fereg-core/production_lines",
       "reason": "Bound binary separation by independent positive rows, retained boundary contrasts and distinct projected constraints, with unchanged exact original-design proof."
-    },
-    {
-      "after": 1783,
-      "before": 1768,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Account selection, streaming, rank retries and exact repeated-constraint handling under the registered separation workspace."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -28249,52 +28243,56 @@
         "dispatch_candidates": [
           {
             "condition": "boundary . len ( ) . saturating_mul ( retained + 3 ) . saturating_add ( basis_cells ) . saturating_add ( dual_cells ) > available",
-            "line": 88
+            "line": 89
           }
         ],
         "functions": {
           "build#1": {
-            "line": 49,
-            "lines": 113
+            "line": 50,
+            "lines": 114
           },
           "columns#1": {
-            "line": 311,
+            "line": 337,
             "lines": 15
           },
           "full#1": {
-            "line": 307,
+            "line": 333,
             "lines": 3
           },
           "insert#1": {
-            "line": 273,
+            "line": 299,
             "lines": 33
           },
           "new#1": {
-            "line": 258,
+            "line": 284,
             "lines": 14
           },
           "panel#1": {
-            "line": 201,
+            "line": 227,
             "lines": 23
           },
           "project#1": {
-            "line": 225,
+            "line": 251,
             "lines": 24
           },
           "propose#1": {
-            "line": 18,
+            "line": 19,
             "lines": 29
           },
           "retain_columns#1": {
-            "line": 163,
+            "line": 165,
             "lines": 4
           },
+          "seen_support#1": {
+            "line": 219,
+            "lines": 7
+          },
           "streaming_columns#1": {
-            "line": 170,
-            "lines": 30
+            "line": 172,
+            "lines": 44
           }
         },
-        "production_lines": 303
+        "production_lines": 326
       },
       "crates/fereg-core/src/ppml_separation/simplex/compact_model/projection/streamed.rs": {
         "chunk_candidates": [],
@@ -33388,7 +33386,7 @@
         "dispatch_candidates": 1783,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 135544
+        "production_lines": 135567
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

@@ -4,6 +4,7 @@
 use super::super::compact_tableau;
 use super::{fallible_collect, fallible_filled, reserve, BinaryDesign, MAX_WORK};
 use crate::error::Result;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 mod streamed;
 
@@ -135,7 +136,8 @@ pub(super) fn build(
         }));
     }
 
-    let Some(keep) = streaming_columns(design, boundary, basis, tolerance)? else {
+    let memo_cells = boundary.len().min(available - basis_cells - pivot_cells);
+    let Some(keep) = streaming_columns(design, boundary, basis, tolerance, memo_cells)? else {
         return Ok(None);
     };
     retain_columns(basis, &keep);
@@ -172,6 +174,7 @@ fn streaming_columns(
     boundary: &[usize],
     basis: &[Vec<f64>],
     tolerance: f64,
+    memo_cells: usize,
 ) -> Result<Option<Vec<bool>>> {
     let mut work = MAX_WORK;
     let mut row = fallible_filled(basis.len(), 0., "unable to reserve streamed boundary row")?;
@@ -184,11 +187,24 @@ fn streaming_columns(
         maximum = row.iter().fold(maximum, |m, v| m.max(v.abs()));
     }
     let mut rank = RowRank::new(basis.len(), maximum * tolerance)?;
+    let mut memo = fallible_filled(
+        memo_cells,
+        usize::MAX,
+        "unable to reserve cone rank row memo",
+    )?;
     for (i, &origin) in boundary.iter().enumerate() {
         crate::interrupt::row_checkpoint(i)?;
-        if !project(design.row(origin), basis, tolerance, &mut row, &mut work)
-            || !rank.insert(&row)?
-        {
+        let support = design.row(origin);
+        if !memo.is_empty() {
+            let Some(remaining) = work.checked_sub(2 * support.len() + 1) else {
+                return Ok(None);
+            };
+            work = remaining;
+            if seen_support(design, support, origin, &mut memo) {
+                continue;
+            }
+        }
+        if !project(support, basis, tolerance, &mut row, &mut work) || !rank.insert(&row)? {
             return Ok(None);
         }
         if rank.full() {
@@ -196,6 +212,16 @@ fn streaming_columns(
         }
     }
     Ok(Some(rank.columns()?))
+}
+
+/// Repeated original supports have identical projected rows. A collision
+/// retires the old entry and only exact support equality skips elimination.
+fn seen_support(design: &BinaryDesign, support: &[u32], origin: usize, memo: &mut [usize]) -> bool {
+    let mut hash = DefaultHasher::new();
+    support.hash(&mut hash);
+    let slot = (hash.finish() % memo.len() as u64) as usize;
+    let prior = std::mem::replace(&mut memo[slot], origin);
+    prior != usize::MAX && design.row(prior) == support
 }
 
 fn panel(
