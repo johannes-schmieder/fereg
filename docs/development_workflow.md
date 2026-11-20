@@ -80,6 +80,14 @@ local-policy, escalation, fallback and formulation field remain protected.
 Strict-profile rejection counts and convergence/frozen-rank flags remain exact
 in both repeated runs and cross-worker decisions; they are not process telemetry
 or declarable work leaves.
+For a wire-1.10 PPML baseline, set `FEREG_REPLAY_BASELINE_PPML_REQUEST_WIRE=1.10`
+or pass `--baseline-ppml-request-wire 1.10` directly to `replay_plugins.py`.
+The runner encodes the baseline's PPML request with the historical replay
+limit of 1,000,000 for automatic workspace, preserves explicit numeric limits,
+and records the encoded baseline input's hash. Candidate and repeat runs use
+the current request wire. Pass the same option to
+`replay_solver_routing.py prepare-topology` for frozen wire-1.10 topology
+fixtures.
 Current OLS replay uses result wire 1.7 and two 22-column solver rows. The exact
 view removes only setup/solve time (raw columns 16-17), leaving 20 columns per
 row: work is columns 10 and 14, and numerical diagnostics are columns 15-19.

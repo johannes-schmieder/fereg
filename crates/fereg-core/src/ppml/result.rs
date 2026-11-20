@@ -1741,6 +1741,13 @@ fn validate_memory_sample_axes(
         0
     };
     let workspace = separation_workspace_requirements(separation);
+    let methods = separation.methods;
+    let sparse_peaks_match = memory
+        .plan
+        .sparse_proof_peaks
+        .into_iter()
+        .zip([methods.simplex, methods.iterated_rectifier, methods.mu])
+        .all(|(peak, requested)| peak == 0 || (separation.adaptive_sparse && requested));
     let rebase_enabled = separation.drop_singletons
         || separation.methods.fixed_effects
         || separation.methods.simplex
@@ -1772,6 +1779,7 @@ fn validate_memory_sample_axes(
             .preflight_dimensions
             .retained_raw_preseparation_probability_weight_elements
             != retained_raw_probability_weights
+        || !sparse_peaks_match
         || !policy_matches(dimensions)
         || !policy_matches(memory.plan.preflight_dimensions)
     {

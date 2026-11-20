@@ -40,6 +40,7 @@ pub(crate) use crate::ols::prepared_fit_view::SharedPreparedOlsData as PreparedP
 #[derive(Debug, PartialEq)]
 pub(crate) struct PreparedPpmlModelGeneration {
     generation: usize,
+    pub(super) separation_memory: Option<Arc<super::memory::LiveMemoryPlan>>,
     pub(super) slope_recovery: Option<super::slope_recovery::GenerationRecovery>,
     pub(super) replayed_original_omission: bool,
     prepared: PreparedPpmlModel,
@@ -106,7 +107,14 @@ impl PreparedPpmlModelGeneration {
     pub(super) fn owned_buffer_bytes(&self) -> u128 {
         let prepared = std::mem::size_of::<(usize, usize, PreparedOlsData)>() as u128
             + self.fit_view().owned_buffer_bytes();
+        // Adaptive preflight charged the shared plan in the generation
+        // envelope. Keep those bytes unavailable to optional slope recovery.
+        let plan_bytes = self
+            .separation_memory
+            .as_ref()
+            .map_or(0, |_| super::memory::LiveMemoryPlan::shared_bytes());
         prepared
+            + plan_bytes
             + self.slope_recovery.as_ref().map_or(0, |r| r.owned_bytes())
             + crate::memory::vec_capacity_bytes(&self.offset)
             + self
@@ -266,6 +274,7 @@ pub(crate) struct PreparedPpmlModelOwner {
     load_hint: Option<crate::ols::PreparedOlsLoadHint>,
     membership_scratch: u128,
     generation_memory_bound: Option<u128>,
+    separation_memory: Option<Arc<super::memory::LiveMemoryPlan>>,
     recovery_admission: Option<super::slope_recovery::RecoveryAdmission>,
     request: OlsClusteredRequestV1,
     loaded: LoadedOlsInput,
@@ -304,11 +313,22 @@ impl PreparedPpmlModelOwner {
         self
     }
 
-    pub(super) fn bind_recovery_plan(
+    pub(super) fn bind_separation_plan(
         &mut self,
         plan: super::PpmlMemoryPlan,
-    ) -> Option<std::rc::Rc<std::cell::Cell<super::PpmlMemoryPlan>>> {
-        self.recovery_admission.as_mut().map(|a| a.bind(plan))
+        adaptive_sparse: bool,
+    ) -> Option<Arc<super::memory::LiveMemoryPlan>> {
+        if !adaptive_sparse && self.recovery_admission.is_none() {
+            return None;
+        }
+        let shared = Arc::new(super::memory::LiveMemoryPlan::new(plan));
+        if adaptive_sparse {
+            self.separation_memory = Some(Arc::clone(&shared));
+        }
+        if let Some(recovery) = &mut self.recovery_admission {
+            recovery.bind(Arc::clone(&shared));
+        }
+        Some(shared)
     }
 
     pub(crate) fn with_generation_memory_bound(mut self, bytes: u128) -> Self {
@@ -413,6 +433,7 @@ impl PreparedPpmlModelOwner {
             membership_scratch: 0,
             generation_memory_bound: None,
             recovery_admission: None,
+            separation_memory: None,
             request: OlsClusteredRequestV1 {
                 ols: request,
                 clusters,
@@ -715,6 +736,7 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
         let mut prepared = PreparedPpmlModelGeneration {
             generation,
             slope_recovery: None,
+            separation_memory: self.separation_memory.clone(),
             replayed_original_omission: false,
             prepared,
             offset,

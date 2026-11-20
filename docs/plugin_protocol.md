@@ -14,7 +14,7 @@ request/result layouts are independently versioned:
 | Action protocol | 1.7 |
 | Model wire | 2.1 |
 | OLS result wire | 1.7 |
-| PPML request wire | 1.10 |
+| PPML request wire | 1.11 |
 | PPML result wire | 1.5 |
 
 Estimation requires the exact action and estimator-specific request/result
@@ -320,15 +320,19 @@ request, PPML request/result wire identities, source and output bindings,
 dimensions, nonaliasing destinations, memory/thread controls, and initially
 incomplete receipt before reading observations.
 
-Request wire 1.10 has one closed `solver` field with values `auto`, `map`,
+Request wire 1.11 has one closed `solver` field with values `auto`, `map`,
 `lsmr`, and `cmg` (public `solver(auto|lsmr|cg)`; `map` is the canonical family
 token used by the hidden adapter) and the required `output_route_matrix`
 destination (2x16 since 1.10; 1x12 in 1.9). The optional `preconditioner` field (`auto`, `off`, `diagonal`,
 `schwarz`; default `auto`) is valid only with `solver=lsmr` and carries
 `solver(lsmr, precondition())`; the ado sends it only when it is not `auto`,
-so the largest request has 101 fields. Private solver, mode, policy, trace and
-experiment keys are unsupported. An older exact
-request version is a protocol mismatch; an unknown key on 1.10 is syntax error.
+so the largest request has 101 fields. `simplex_max_tableau_cells` accepts
+`auto` for the default separation workspace policy or a positive integer for
+an explicit hard limit. Wire 1.10 accepted only the integer form. The plugin
+requires an exact request-wire match and reports `r(499)` for a mismatch with
+the installed ado files. Unknown keys in a request with the current wire
+version produce a syntax error. Private solver, mode, policy, trace and
+experiment keys are unsupported.
 A recognized solver request outside its route's envelope (topology, slopes,
 `memory(low)`) or whose checked workspace preflight fails runs the Auto plan
 as the certified fallback (SPEC §1): the 4x22 solver table then reports the
@@ -348,7 +352,7 @@ MAP, fused LSMR, joint LSMR, and prepared CMG. The table binds the requested,
 selected, concrete, effective, and checkpoint routes and per-engine frame,
 retry, fallback, timing, and certificate evidence; the compiled validator
 checks it and the ado posts its counts and evidence as `e(fe_solve)` without the
-identity codes. The separate 2x16 route matrix (request wire 1.10, outside the
+identity codes. The separate 2x16 route matrix (since request wire 1.10, outside the
 compiled validator) holds two route rows: row 1 the route that solved the
 IRLS steps (explicit LSMR or CMG over their certified frames; otherwise the
 final solve's route), with the fit's certified fallback and its reason, and

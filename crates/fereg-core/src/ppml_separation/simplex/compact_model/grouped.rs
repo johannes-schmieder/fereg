@@ -130,11 +130,36 @@ pub(crate) enum CompactInput {
     Proof(CompactModel),
 }
 
+/// The u32 physical index can share the initial compact bank or, on a
+/// concrete shortage, occupy separately admitted sparse scratch. Even after
+/// that extension all representative algebra stays under its original limit.
+struct IndexWorkspace<'a> {
+    live: usize,
+    ceiling: usize,
+    admit: &'a mut dyn FnMut(usize) -> Option<usize>,
+}
+
+impl IndexWorkspace<'_> {
+    fn require(&mut self, required: usize) -> bool {
+        if required <= self.live {
+            return true;
+        }
+        if required > self.ceiling {
+            return false;
+        }
+        let Some(grant) = (self.admit)(required).filter(|&grant| grant >= required) else {
+            return false;
+        };
+        self.live = grant.min(self.ceiling);
+        true
+    }
+}
+
 impl BinaryDesign {
     pub(crate) fn prepare(
         outcome: &[f64],
         shape: (usize, usize, usize),
-        limit: usize,
+        (limit, admit): (usize, &mut dyn FnMut(usize) -> Option<usize>),
         config: SeparationConfig,
         pivots: &mut usize,
         read: &mut ReadRow<'_>,
@@ -151,17 +176,49 @@ impl BinaryDesign {
         let small = n.saturating_mul(columns) <= limit
             && super::dense_positive_admitted(n, positive, columns, limit);
         if !small {
-            if let Some((index, distinct, ones)) =
-                identify(outcome, &mut raw, limit, MAX_WORK, interrupt)?
+            // Only the physical u32 index may extend the original compact
+            // allowance. Hashing, representatives and all tableau/algebra
+            // scratch still share that original allowance.
+            let held = n.div_ceil(2);
+            let mut space = IndexWorkspace {
+                live: limit,
+                ceiling: limit.saturating_add(held),
+                admit,
+            };
+            let mut collision_work = MAX_WORK;
+            // An extension may restart the scan on a larger hash table.
+            // All attempts share four linear row passes plus one fixed
+            // allowance for unsuccessful collision probes.
+            let mut rows_left = n.saturating_mul(4);
+            let groups = loop {
+                let mut shortfall = None;
+                let groups = identify(
+                    outcome,
+                    &mut raw,
+                    space.live,
+                    (&mut collision_work, &mut rows_left),
+                    &mut shortfall,
+                    interrupt,
+                )?;
+                if !shortfall.is_some_and(|need| space.require(need)) {
+                    break groups;
+                }
+            };
+            if let Some(IdentifiedRows {
+                index,
+                distinct,
+                ones,
+                unique_ones,
+            }) = groups
             {
                 if distinct < n {
                     if let Some(proof) = Self::repeated_model(
                         outcome,
                         &mut raw,
-                        limit,
+                        &mut space,
                         config,
                         pivots,
-                        (index, distinct),
+                        (index, distinct, unique_ones),
                         interrupt,
                     )? {
                         return Ok(Some(CompactInput::Proof(proof)));
@@ -189,16 +246,22 @@ impl BinaryDesign {
     fn repeated_model(
         outcome: &[f64],
         raw: &mut RawSupport,
-        limit: usize,
+        space: &mut IndexWorkspace<'_>,
         config: SeparationConfig,
         pivots: &mut usize,
-        (index, distinct): (Vec<u32>, usize),
+        (index, distinct, unique_ones): (Vec<u32>, usize, usize),
         interrupt: &mut dyn FnMut() -> Result<()>,
     ) -> Result<Option<CompactModel>> {
-        let index_cells = index.capacity().div_ceil(2);
-        let Some(build_limit) = limit.checked_sub(index_cells + 3 * distinct) else {
+        let held = index.capacity().div_ceil(2);
+        let bookkeeping = held.saturating_add(3usize.saturating_mul(distinct));
+        let packed = distinct
+            .saturating_add(1)
+            .saturating_add(raw.terms.div_ceil(2))
+            .saturating_add(unique_ones.div_ceil(2));
+        if !space.require(bookkeeping.saturating_add(packed)) {
             return declined("representatives", "memory");
-        };
+        }
+        let build_limit = space.live - bookkeeping;
         let mut origins = Vec::new();
         super::reserve(
             &mut origins,
@@ -222,7 +285,7 @@ impl BinaryDesign {
             distinct,
             "unable to reserve distinct outcome classes",
         )?;
-        let Some(design) = raw.pack(distinct, &origins, None, build_limit)? else {
+        let Some(design) = raw.pack(distinct, &origins, Some(unique_ones), build_limit)? else {
             return Ok(None);
         };
         drop(origins);
@@ -235,9 +298,17 @@ impl BinaryDesign {
                 .scan_work(outcome.len(), 1)
                 .expect("admitted raw row span"),
         };
-        let available = limit - index_cells - groups.counts.capacity() - signs.capacity();
-        let proposal = CompactSearch::new(&signs, &design, config, Some(&groups), available)
-            .run(pivots, interrupt)?;
+        let fixed = held + groups.counts.capacity() + signs.capacity();
+        let available = space.live - fixed;
+        let mut search = CompactSearch::new(&signs, &design, config, Some(&groups), available);
+        let proposal = search.run(pivots, interrupt, &mut |required| {
+            let total = fixed
+                .saturating_add(design.cells())
+                .saturating_add(required);
+            space
+                .require(total)
+                .then(|| space.live - fixed - design.cells())
+        })?;
         if matches!(proposal, Some(CompactModel::Terminal(_)))
             && !groups.verify(outcome, &signs, &design, raw, interrupt)?
         {
@@ -257,6 +328,14 @@ fn declined<T>(stage: &'static str, reason: &'static str) -> Result<Option<T>> {
     Ok(None)
 }
 
+#[derive(Debug)]
+struct IdentifiedRows {
+    index: Vec<u32>,
+    distinct: usize,
+    ones: usize,
+    unique_ones: usize,
+}
+
 /// Hashes only locate a candidate. Re-read its sparse coordinates and compare
 /// them exactly before merging. Row IDs point to the first occurrence, so
 /// collision order cannot change the order passed to the solver.
@@ -264,9 +343,10 @@ fn identify(
     outcome: &[f64],
     raw: &mut RawSupport,
     limit: usize,
-    mut collision_work: usize,
+    (collision_work, rows_left): (&mut usize, &mut usize),
+    index_shortfall: &mut Option<usize>,
     interrupt: &mut dyn FnMut() -> Result<()>,
-) -> Result<Option<(Vec<u32>, usize, usize)>> {
+) -> Result<Option<IdentifiedRows>> {
     let n = outcome.len();
     let width = raw.columns;
     if width == 0 || n < 2 || u32::try_from(n).is_err() || u32::try_from(width).is_err() {
@@ -276,13 +356,17 @@ fn identify(
         .div_ceil(2)
         .saturating_add(raw.terms.div_ceil(2).saturating_mul(2));
     let slots = limit.saturating_sub(fixed).min(n.saturating_mul(2));
-    if width.saturating_mul(width) > limit || slots == 0 {
+    if width.saturating_mul(width) > limit {
         return declined("identify", "memory");
     }
     // Each physical row may be read and hashed once, and compared with one
     // exact representative. Only unsuccessful probes spend exploratory work.
     if raw.scan_work(n, 2).is_none() {
         return declined("identify", "work_overflow");
+    }
+    if slots == 0 {
+        *index_shortfall = fixed.checked_add(1);
+        return declined("identify", "memory");
     }
     let comparison = raw.visits + raw.terms + 1;
     let mut table = fallible_filled(
@@ -295,7 +379,12 @@ fn identify(
     let mut prior = raw.scratch()?;
     let mut distinct = 0;
     let mut ones = 0;
+    let mut unique_ones = 0;
     for (i, &y) in outcome.iter().enumerate() {
+        let Some(left) = rows_left.checked_sub(1) else {
+            return declined("identify", "scan_work");
+        };
+        *rows_left = left;
         if i % crate::interrupt::CHECKPOINT_ROW_STRIDE == 0 {
             interrupt()?;
         }
@@ -317,6 +406,7 @@ fn identify(
                 table[slot] = (fingerprint, i as u32);
                 index[i] = distinct as u32;
                 distinct += 1;
+                unique_ones += row.len();
                 break;
             }
             let mut collision = 1;
@@ -336,15 +426,23 @@ fn identify(
             let Some(left) = collision_work.checked_sub(collision) else {
                 return declined("identify", "collision_work");
             };
-            collision_work = left;
+            *collision_work = left;
             crate::interrupt::checkpoint()?;
             slot = (slot + 1) % slots;
             if slot == first {
+                *index_shortfall = fixed
+                    .checked_add(slots)
+                    .and_then(|used| used.checked_add(1));
                 return declined("identify", "memory");
             }
         }
     }
-    Ok(Some((index, distinct, ones)))
+    Ok(Some(IdentifiedRows {
+        index,
+        distinct,
+        ones,
+        unique_ones,
+    }))
 }
 
 impl RowGroups {
@@ -513,24 +611,31 @@ mod tests {
             &[1., 0.],
             &mut RawSupport::new((200, 2, 2), &mut |_, _| panic!("width square does not fit")),
             39_999,
-            MAX_WORK,
+            (&mut { MAX_WORK }, &mut { usize::MAX }),
+            &mut None,
             &mut || Ok(()),
         )
         .unwrap();
         assert!(result.is_none());
         let mut read = |_: usize, _: &mut Vec<u32>| panic!("recipe work exceeds the bound");
         let mut expensive = RawSupport::new((2, 1, usize::MAX / 2), &mut read);
-        assert!(
-            identify(&[1., 0.], &mut expensive, 64, MAX_WORK, &mut || Ok(()))
-                .unwrap()
-                .is_none()
-        );
+        assert!(identify(
+            &[1., 0.],
+            &mut expensive,
+            64,
+            (&mut { MAX_WORK }, &mut { usize::MAX }),
+            &mut None,
+            &mut || Ok(())
+        )
+        .unwrap()
+        .is_none());
         assert!(expensive.pack(2, &[], None, 64).unwrap().is_none());
         let error = identify(
             &[1., 0.],
             &mut RawSupport::new((2, 2, 2), &mut |_, _| panic!("should poll first")),
             64,
-            MAX_WORK,
+            (&mut { MAX_WORK }, &mut { usize::MAX }),
+            &mut None,
             &mut || Err(crate::interrupt::interrupted()),
         )
         .unwrap_err();
@@ -547,10 +652,22 @@ mod tests {
             Ok(true)
         };
         let mut raw = RawSupport::new((2, 1, MAX_WORK), &mut read);
-        let (index, distinct, ones) = identify(&y, &mut raw, 64, 0, &mut || Ok(()))
-            .unwrap()
-            .unwrap();
-        assert_eq!((distinct, ones), (1, 4));
+        let IdentifiedRows {
+            index,
+            distinct,
+            ones,
+            unique_ones,
+        } = identify(
+            &y,
+            &mut raw,
+            64,
+            (&mut 0, &mut { usize::MAX }),
+            &mut None,
+            &mut || Ok(()),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!((distinct, ones, unique_ones), (1, 4, 1));
         let design = raw.pack(1, &[0], None, 64).unwrap().unwrap();
         let mut groups = RowGroups {
             index,
@@ -585,9 +702,16 @@ mod tests {
             };
             let mut raw = RawSupport::new((4, 4, 4), &mut read);
             assert_eq!(
-                identify(&[1.; 2], &mut raw, 64, work, &mut || Ok(()))
-                    .unwrap()
-                    .is_some(),
+                identify(
+                    &[1.; 2],
+                    &mut raw,
+                    64,
+                    (&mut { work }, &mut { usize::MAX }),
+                    &mut None,
+                    &mut || Ok(())
+                )
+                .unwrap()
+                .is_some(),
                 admitted
             );
         }

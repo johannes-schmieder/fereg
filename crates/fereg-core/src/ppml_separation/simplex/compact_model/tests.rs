@@ -139,7 +139,7 @@ fn grouped_proofs_cover_every_copy_with_unequal_multiplicities() {
         let result = BinaryDesign::prepare(
             &outcome,
             (design.ncols(), 2, 2),
-            limit,
+            (limit, &mut |_| None),
             SeparationConfig {
                 simplex_max_tableau_cells: limit,
                 ..config()
@@ -182,7 +182,7 @@ fn distinct_input_reuses_identification_scan_and_small_input_keeps_the_packed_ro
         let input = BinaryDesign::prepare(
             &outcome,
             (width, width, width),
-            limit,
+            (limit, &mut |_| None),
             SeparationConfig {
                 simplex_max_tableau_cells: limit,
                 ..config()
@@ -216,7 +216,7 @@ fn sparse_grouping_exceeds_dense_scan_limit_and_separates_only_outside_positive_
     let input = BinaryDesign::prepare(
         &outcome,
         (width, 1, 1),
-        limit,
+        (limit, &mut |_| None),
         SeparationConfig {
             simplex_max_tableau_cells: limit,
             ..config()
@@ -235,4 +235,121 @@ fn sparse_grouping_exceeds_dense_scan_limit_and_separates_only_outside_positive_
     };
     assert_eq!(coefficients[0], 0);
     assert!(coefficients[width - 1] < 0);
+}
+
+#[test]
+fn adaptive_physical_group_index_preserves_the_compact_solver_limit() {
+    let n = 1024;
+    let limit = 256;
+    let outcome: Vec<_> = (0..n).map(|i| f64::from(i % 4 < 2)).collect();
+    let run = |(columns, cheap, ceiling), calls: &mut Vec<usize>| {
+        BinaryDesign::prepare(
+            &outcome,
+            (columns, 2, 2),
+            (cheap, &mut |peak| {
+                calls.push(peak);
+                (peak <= ceiling).then_some(ceiling)
+            }),
+            SeparationConfig {
+                simplex_max_tableau_cells: cheap,
+                ..config()
+            },
+            &mut 0,
+            &mut |i, row| {
+                match i % 4 {
+                    0 => row.push(1),
+                    1 => row.extend_from_slice(&[0, 2]),
+                    _ => row.extend_from_slice(&[0, 1]),
+                }
+                Ok(true)
+            },
+            &mut || Ok(()),
+        )
+        .unwrap()
+    };
+    let sufficient = limit + n / 2;
+    let mut calls = Vec::new();
+    let minimum = n / 2 + 3;
+    assert!(run((3, limit, minimum - 1), &mut calls).is_none());
+    assert_eq!(calls, [minimum]);
+    calls.clear();
+    let Some(CompactInput::Proof(CompactModel::Direction { coefficients, .. })) =
+        run((3, limit, sufficient - 32), &mut calls)
+    else {
+        panic!("admitted physical index did not uncover the grouped ray")
+    };
+    assert_eq!(calls, [minimum]);
+    assert_eq!(coefficients[1], 0);
+    assert_eq!(coefficients[0] + coefficients[2], 0);
+    assert!(coefficients[0] + coefficients[1] < 0);
+    calls.clear();
+    assert!(run((32, limit, usize::MAX), &mut calls).is_none());
+    assert!(
+        calls.is_empty(),
+        "the representative width square is still capped"
+    );
+    assert!(run((3, 8192, 8192), &mut calls).is_some());
+    assert!(
+        calls.is_empty(),
+        "ordinary packed input needed no sparse extension"
+    );
+}
+
+#[test]
+fn repeated_dense_support_charges_observed_nonzeros_and_late_solver_scratch() {
+    let n = 1024;
+    let width = 8;
+    let cheap = 840;
+    let y: Vec<_> = (0..n).map(|i| f64::from(i % 64 < 32)).collect();
+    let check = |ceiling, charges: &mut Vec<usize>| {
+        BinaryDesign::prepare(
+            &y,
+            (width, width, width),
+            (cheap, &mut |need| {
+                charges.push(need);
+                (need <= ceiling).then_some(need)
+            }),
+            SeparationConfig {
+                simplex_max_tableau_cells: cheap,
+                ..config()
+            },
+            &mut 0,
+            &mut |i, row| {
+                row.extend((0..5).filter(|j| (i >> j) & 1 != 0).map(|j| j as u32));
+                row.extend_from_slice(&[5, 6]);
+                if y[i] == 0. {
+                    row.push(7);
+                }
+                Ok(true)
+            },
+            &mut || Ok(()),
+        )
+        .unwrap()
+    };
+    let mut charges = Vec::new();
+    // The old estimate held + 4*distinct + 1 + width² = 833 fits.
+    // The packed 320 distinct ones and physical-index overlap need 933.
+    assert!(check(932, &mut charges).is_none());
+    assert_eq!(charges, [933]);
+    charges.clear();
+    let Some(CompactInput::Proof(CompactModel::Direction { coefficients, .. })) =
+        check(cheap + n / 2, &mut charges)
+    else {
+        panic!("the independently admitted physical index leaves the compact solve within its original allowance");
+    };
+    assert_eq!(charges[0], 933);
+    assert!(charges.iter().any(|&p| p > 933));
+    for i in 0..n {
+        let score: i64 = coefficients[..5]
+            .iter()
+            .enumerate()
+            .filter(|(j, _)| (i >> j) & 1 != 0)
+            .map(|(_, v)| v)
+            .sum::<i64>()
+            + coefficients[5]
+            + coefficients[6]
+            + if y[i] == 0. { coefficients[7] } else { 0 };
+        assert_eq!(score < 0, y[i] == 0.);
+        assert!(score <= 0);
+    }
 }

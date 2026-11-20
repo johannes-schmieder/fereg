@@ -9,6 +9,7 @@ import json
 import math
 import os
 from pathlib import Path
+import shutil
 import struct
 import subprocess
 import sys
@@ -208,6 +209,52 @@ def derived_residual_errors(result: dict, expected: dict) -> list[str]:
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def encode_ppml_replay_case(case: Path, destination: Path, request_wire: str) -> Path:
+    """Translate the generated replay default and its wire identity across 1.10/1.11."""
+    legacy_minor, current_minor = b'request_minor=10', b'request_minor=11'
+    legacy_limit = b'simplex_max_tableau_cells=1000000'
+    current_limit = b'simplex_max_tableau_cells=auto'
+    if request_wire == '1.10':
+        source_minor, target_minor = current_minor, legacy_minor
+        source_limit, target_limit = current_limit, legacy_limit
+    elif request_wire == '1.11':
+        # Only used for fixtures generated with the historical replay default.
+        source_minor, target_minor = legacy_minor, current_minor
+        source_limit, target_limit = legacy_limit, current_limit
+    else:
+        raise ValueError(f'unsupported PPML replay request wire {request_wire}')
+    replacements = {source_minor: target_minor, source_limit: target_limit}
+    with case.open('rb') as stream:
+        magic, shape = stream.readline(), stream.readline()
+        if magic != b'FEREG_REPLAY_V1\n' or len(shape.split()) != 5:
+            raise ValueError('invalid replay header for PPML wire conversion')
+        argc = int(shape.split()[2])
+        if not 0 < argc <= 1000:
+            raise ValueError('invalid argument count for PPML wire conversion')
+        arguments = []
+        for _ in range(argc):
+            length = int(stream.readline())
+            if not 0 < length <= 1_000_000:
+                raise ValueError('invalid argument length for PPML wire conversion')
+            value = stream.read(length)
+            if len(value) != length or stream.read(1) != b'\n':
+                raise ValueError('invalid argument frame for PPML wire conversion')
+            arguments.append(value)
+        fields = [arg.partition(b'=')[0] for arg in arguments[1:]]
+        if (arguments[0] != b'estimate-ppml' or b'request_major=1' not in arguments
+                or source_minor not in arguments
+                or any(fields.count(key) != 1 for key in (
+                    b'request_major', b'request_minor', b'simplex_max_tableau_cells'))):
+            raise ValueError('wire conversion requires a complete PPML request on the other wire')
+        with destination.open('wb') as output:
+            output.write(magic + shape)
+            for value in arguments:
+                value = replacements.get(value, value)
+                output.write(str(len(value)).encode() + b'\n' + value + b'\n')
+            shutil.copyfileobj(stream, output)
+    return destination
 
 
 def run_case(harness: Path, binary: Path, case: Path, output: Path) -> dict:
@@ -511,6 +558,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--plugin', type=Path, required=True)
     parser.add_argument('--baseline', type=Path, help='optional prior plugin for exact unaffected-result checks')
+    parser.add_argument('--baseline-ppml-request-wire', choices=['1.10'],
+                        help='send the historical integer workspace limit to a PPML wire-1.10 baseline')
     parser.add_argument('--cases', type=Path, default=ROOT / 'target/replay/cases')
     parser.add_argument('--output', type=Path, default=ROOT / 'target/replay/results')
     parser.add_argument('--harness', type=Path, default=ROOT / 'target/actual-plugin-harness/actual_plugin_loader_test')
@@ -523,6 +572,8 @@ def main() -> int:
     parser.add_argument('--thread-counts', type=int, nargs='*', default=[],
                         help='additional native thread counts: dense science, discrete stability and fixed-thread repeats')
     args = parser.parse_args()
+    if args.baseline_ppml_request_wire and not args.baseline:
+        parser.error('a baseline PPML request wire requires --baseline')
     if len(set(args.thread_counts)) != len(args.thread_counts) or any(t < 2 or t > 1024 for t in args.thread_counts):
         parser.error('thread counts must be unique integers from 2 through 1024')
     scopes = [json.loads(path.read_text()) for path in args.affected_scope]
@@ -569,7 +620,11 @@ def main() -> int:
         if contract is not None:
             replay_cmg_polish.validate_rows(candidate, *contract)
         verify_scope_bindings()
-        baseline = run_case(args.harness, args.baseline.resolve(), case, args.output / (case.stem + '-baseline.json')) if args.baseline else None
+        baseline_case = case
+        if args.baseline_ppml_request_wire and expected['poisson']:
+            baseline_case = encode_ppml_replay_case(
+                case, args.output / (case.stem + '-baseline.case'), args.baseline_ppml_request_wire)
+        baseline = run_case(args.harness, args.baseline.resolve(), baseline_case, args.output / (case.stem + '-baseline.json')) if args.baseline else None
         diagnostic_paths = replay_cmg_polish.validate_pair(case, baseline, candidate) if typed else []
         if scoped:
             validate_scope_targets(scoped, baseline, expected['poisson'])
@@ -602,6 +657,8 @@ def main() -> int:
             discrete = [path for path in differences(current_view, parent_view) if path not in exempt]
         record = {'case': case.stem, 'input_sha256': digest(case), 'exact_differences': changed,
                   'science_errors': science, 'known_defect': candidate_expected.get('known_defect'), 'repaired_defect': candidate_expected.get('repaired_defect'), 'intentional_differences': intentional, 'baseline_science_errors': baseline_science, 'discrete_differences': discrete, 'affected_scope': bool(scoped), 'diagnostic_contract': typed, 'return_code': candidate['return_code']}
+        if baseline_case != case:
+            record['baseline_input_sha256'] = digest(baseline_case)
         record['thread_checks'] = check_threads(args, case, candidate_expected, candidate, contract, verify_scope_bindings) if args.thread_counts else []
         verify_scope_bindings()
         records.append(record)

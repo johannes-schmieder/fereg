@@ -334,6 +334,7 @@ struct EstimatePpmlSpec {
     separation_max_iterations: usize,
     simplex_max_iterations: usize,
     simplex_max_tableau_cells: usize,
+    adaptive_sparse: bool,
     outputs: ObservationOutputs,
     matrices: ResultMatrices,
     injection: PpmlDeveloperInjection,
@@ -841,6 +842,12 @@ impl EstimatePpmlSpec {
                 PPML_REQUEST_WIRE_VERSION.major, PPML_REQUEST_WIRE_VERSION.minor,
             )));
         }
+        let adaptive_sparse = required(&values, "simplex_max_tableau_cells")? == "auto";
+        let simplex_max_tableau_cells = if adaptive_sparse {
+            1_000_000
+        } else {
+            parse_positive_usize(&values, "simplex_max_tableau_cells")?
+        };
         let model_counts = crate::model_metadata::ModelMetadata::counts(&values)?;
         let cluster_term_count = parse_usize(&values, "cluster_term_count")?;
         let cluster_component_count = parse_usize(&values, "cluster_component_count")?;
@@ -901,7 +908,8 @@ impl EstimatePpmlSpec {
             separation_tolerance: parse_positive_f64(&values, "separation_tolerance")?,
             separation_max_iterations: parse_positive_usize(&values, "separation_max_iterations")?,
             simplex_max_iterations: parse_positive_usize(&values, "simplex_max_iterations")?,
-            simplex_max_tableau_cells: parse_positive_usize(&values, "simplex_max_tableau_cells")?,
+            simplex_max_tableau_cells,
+            adaptive_sparse,
             outputs: ObservationOutputs {
                 bias_channels: if bias_request.is_some() {
                     let values = decode_output_position_registry(
@@ -1159,6 +1167,7 @@ impl EstimatePpmlSpec {
             max_ir_iterations: self.separation_max_iterations,
             simplex_max_iterations: self.simplex_max_iterations,
             simplex_max_tableau_cells: self.simplex_max_tableau_cells,
+            adaptive_sparse: self.adaptive_sparse,
             drop_singletons: !self.keep_singletons,
             strict: true,
             ..SeparationConfig::default()

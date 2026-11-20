@@ -142,7 +142,7 @@ mod tests {
             "action_protocol=1.7",
             "model_wire=2.1",
             "ols_result_wire=1.7",
-            "ppml_request_wire=1.10",
+            "ppml_request_wire=1.11",
             "ppml_result_wire=1.5",
             "plugin_filename=mock.plugin",
             "stata_version=18.0",

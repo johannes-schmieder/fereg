@@ -220,8 +220,9 @@ fn take(work: &mut usize, cost: usize) -> bool {
 pub(super) fn prove(
     model: &PreparedPpmlModelGeneration,
     design: &Design<'_>,
-    limit: usize,
+    mut fits: impl FnMut(usize) -> bool,
     work: &mut usize,
+    extend_work: &mut dyn FnMut() -> bool,
     tolerance: f64,
 ) -> Result<bool> {
     let y = model.outcome();
@@ -232,9 +233,10 @@ pub(super) fn prove(
         return Ok(false);
     };
     let groups = n.saturating_add(buckets);
-    if axes == 0 || groups >= limit || !take(work, design.pass) {
+    if axes == 0 || *work < design.pass || !fits(groups.saturating_add(1)) {
         return Ok(false);
     }
+    *work -= design.pass;
     let mut heads = fallible_filled(buckets, usize::MAX, "unable to reserve sparse cell buckets")?;
     let mut next = fallible_filled(n, usize::MAX, "unable to reserve sparse cell row chains")?;
     for (r, link) in next.iter_mut().enumerate() {
@@ -262,26 +264,36 @@ pub(super) fn prove(
         })
     };
     let mut width = 0;
+    let row_cost = |size: usize| {
+        size.saturating_mul(size)
+            .saturating_mul(design.families.len().saturating_add(3))
+    };
     for (slot, &head) in heads.iter().enumerate() {
         crate::interrupt::row_checkpoint(slot)?;
         let mut len = 0;
-        let mut boundary = false;
+        let mut positive = 0;
         for r in rows(head) {
             crate::interrupt::row_checkpoint(len)?;
             len += 1;
-            boundary |= y[r] == 0.;
+            positive += usize::from(y[r] > 0.);
         }
-        if boundary {
+        if positive < len {
+            // A zero-only cell cannot balance its unit column. A single
+            // inseparable work item must also fit one complete local window.
+            if positive == 0 || row_cost(len) > *work {
+                return Ok(false);
+            }
             width = width.max(len);
         }
     }
     let words = width.saturating_mul(width.saturating_mul(2).saturating_add(4));
-    if words > limit - groups || width.saturating_mul(width) > *work {
+    if !fits(groups.saturating_add(words)) {
         return Ok(false);
     }
     let mut scratch = CellScratch::new(width)?;
     let mut norm2 = 0.;
     let mut margin = i64::MAX;
+    let mut progress = VerifiedCells::new(*work);
     for (slot, &head) in heads.iter().enumerate() {
         crate::interrupt::row_checkpoint(slot)?;
         if head == usize::MAX {
@@ -297,10 +309,8 @@ pub(super) fn prove(
         if positive == m {
             continue;
         }
-        let cost = m
-            .saturating_mul(m)
-            .saturating_mul(design.families.len().saturating_add(3));
-        if positive == 0 || !take(work, cost) {
+        let cost = row_cost(m);
+        if !progress.charge(work, cost, m, extend_work) {
             return Ok(false);
         }
         let (mut p, mut z) = (0, positive);
@@ -319,6 +329,93 @@ pub(super) fn prove(
         )? {
             return Ok(false);
         }
+        progress.verified(m, cost);
     }
     Ok(margin as f64 > tolerance * norm2.sqrt())
+}
+
+// Each successful cell is disjoint and its exact moments have already been
+// verified. Another bounded window is useful only when cost per verified row
+// stays comparable. The traversal visits each cell at most once.
+struct VerifiedCells {
+    window: usize,
+    remaining: usize,
+    rows: usize,
+    cost: usize,
+    previous_rate: Option<usize>,
+}
+
+impl VerifiedCells {
+    fn new(initial: usize) -> Self {
+        Self {
+            window: initial,
+            remaining: initial,
+            rows: 0,
+            cost: 0,
+            previous_rate: None,
+        }
+    }
+
+    fn verified(&mut self, rows: usize, cost: usize) {
+        self.rows += rows;
+        self.cost += cost;
+    }
+
+    fn charge(
+        &mut self,
+        initial_left: &mut usize,
+        cost: usize,
+        rows: usize,
+        extend_work: &mut dyn FnMut() -> bool,
+    ) -> bool {
+        if self.remaining < cost {
+            if self.window < cost || self.rows == 0 {
+                return false;
+            }
+            let rate = self.cost.div_ceil(self.rows);
+            let previous = self.previous_rate.unwrap_or(rate);
+            if rate > previous.saturating_mul(4) || cost.div_ceil(rows) > rate.saturating_mul(4) {
+                return false;
+            }
+            if !extend_work() {
+                return false;
+            }
+            self.previous_rate = Some(rate);
+            self.rows = 0;
+            self.cost = 0;
+            self.remaining = self.window;
+            if crate::diagnostics::solver_trace_enabled() {
+                crate::diagnostics::emit_solver_trace(
+                    "FEREG_SOLVER_TRACE|phase=sparse_dual_cell_work_extended",
+                );
+            }
+        }
+        self.remaining -= cost;
+        *initial_left = initial_left.saturating_sub(cost);
+        true
+    }
+}
+
+#[cfg(test)]
+mod work_tests {
+    use super::*;
+
+    #[test]
+    fn verified_cells_earn_more_work_only_at_comparable_cost() {
+        let mut left = 100;
+        let mut meter = VerifiedCells::new(left);
+        assert!(meter.charge(&mut left, 90, 30, &mut || true));
+        assert!(!meter.charge(&mut left, 20, 8, &mut || true)); // no completed cell
+        meter.verified(30, 90);
+        assert!(!meter.charge(&mut left, 90, 2, &mut || true)); // abrupt fill
+        assert!(meter.charge(&mut left, 60, 20, &mut || true));
+        meter.verified(20, 60);
+        assert!(meter.charge(&mut left, 60, 20, &mut || true));
+        assert_eq!(left, 0);
+        let mut left = 100;
+        let mut strict = VerifiedCells::new(left);
+        assert!(strict.charge(&mut left, 90, 30, &mut || false));
+        strict.verified(30, 90);
+        assert!(!strict.charge(&mut left, 20, 8, &mut || false));
+    }
 }

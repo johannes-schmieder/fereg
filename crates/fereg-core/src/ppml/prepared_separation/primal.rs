@@ -4,6 +4,8 @@ use super::exact_arithmetic::{exact_score, ExactNullspace};
 use super::*;
 use std::cmp::Ordering;
 
+mod admission;
+pub(super) use admission::SparseProofAdmission;
 mod factor;
 mod factor_graph;
 mod fe_pair;
@@ -522,16 +524,17 @@ pub(super) fn omitted_factor(
 
 pub(super) fn sparse_interpolant(
     model: &PreparedPpmlModelGeneration,
-    budget: ProofBudget,
+    admission: SparseProofAdmission<'_>,
+    initial_work: usize,
 ) -> Result<Option<Witness>> {
-    sparse::find(model, budget)
+    sparse::find(model, admission, initial_work)
 }
 
 pub(super) fn factor_pair(
     model: &PreparedPpmlModelGeneration,
-    budget: ProofBudget,
+    admission: &mut SparseProofAdmission<'_>,
 ) -> Result<Option<Witness>> {
-    Ok(factor_graph::find(model, budget)?.map(Witness::FactorPair))
+    Ok(factor_graph::find(model, admission)?.map(Witness::FactorPair))
 }
 
 pub(super) fn find(

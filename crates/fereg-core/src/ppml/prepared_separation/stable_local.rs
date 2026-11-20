@@ -10,7 +10,7 @@ pub(super) fn certify(
     margin: f64,
     tolerance: f64,
     max_iterations: usize,
-    memory: Option<&std::cell::Cell<PpmlMemoryPlan>>,
+    memory: Option<&LiveMemoryPlan>,
 ) -> Result<bool> {
     if generation
         .prepared()

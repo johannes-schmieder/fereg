@@ -484,7 +484,7 @@ fn result_layout(request: &mut Request, design: &Design, poisson: bool) {
             "separation_tolerance=1e-9",
             "separation_max_iterations=1000",
             "simplex_max_iterations=10000",
-            "simplex_max_tableau_cells=1000000",
+            "simplex_max_tableau_cells=auto",
         ] {
             request.args.push(field.into());
         }
@@ -530,7 +530,7 @@ mod request_layout_tests {
     use fereg_oracle::designs::{generate, DesignSpec};
 
     #[test]
-    fn ppml_request_binds_current_wire_and_both_route_rows() {
+    fn ppml_request_binds_current_wire_automatic_workspace_and_both_route_rows() {
         let design = generate(19, &DesignSpec::default()).unwrap();
         let request = make(&design, true, "robust", "auto", false);
         for (key, value) in [
@@ -553,6 +553,14 @@ mod request_layout_tests {
                 .filter(|arg| arg.starts_with("output_route_matrix="))
                 .collect::<Vec<_>>(),
             [&"output_route_matrix=RROUTE".to_owned()]
+        );
+        assert_eq!(
+            request
+                .args
+                .iter()
+                .filter(|arg| arg.starts_with("simplex_max_tableau_cells="))
+                .collect::<Vec<_>>(),
+            [&"simplex_max_tableau_cells=auto".to_owned()]
         );
         let routes: Vec<_> = request
             .matrices

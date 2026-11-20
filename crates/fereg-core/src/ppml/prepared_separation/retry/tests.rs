@@ -62,7 +62,7 @@ pub(in crate::ppml::prepared_separation) fn plan(available_bytes: Option<u128>) 
 }
 
 /// An admitted retained-CG detector policy on `plan`, with its LSMR charge.
-fn retained_cg(plan: &Cell<PpmlMemoryPlan>) -> (DetectorPolicy<'_>, LsmrAdmission) {
+fn retained_cg(plan: &LiveMemoryPlan) -> (DetectorPolicy<'_>, LsmrAdmission) {
     let estimate = estimate_fe_solver_memory(10_000, 4, &[2_000, 1_000], 1).unwrap();
     let mut linear = PreparedOlsFitConfig::default();
     linear.absorb.solver = FeSolverKind::Cg;
@@ -94,7 +94,7 @@ fn failure(code: ErrorCode, message: &'static str) -> FeregError {
 
 #[test]
 fn certified_first_attempt_is_never_reexecuted_or_charged() {
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let before = cell.get();
     let (policy, _) = retained_cg(&cell);
     let mut solvers = Vec::new();
@@ -114,7 +114,7 @@ fn certified_first_attempt_is_never_reexecuted_or_charged() {
 #[test]
 fn numerical_failure_reexecutes_once_with_charged_lsmr() {
     for code in [ErrorCode::NonConvergence, ErrorCode::InvalidData] {
-        let cell = Cell::new(plan(None));
+        let cell = LiveMemoryPlan::new(plan(None));
         let (policy, admission) = retained_cg(&cell);
         let mut calls = Vec::new();
         let (value, ppml, linear) = policy
@@ -165,7 +165,7 @@ fn lsmr_reexecution_charges_its_schwarz_bound() {
         (Diagonal, Some(1_000), Some(0)),
         (Off, Some(1_000), Some(0)),
     ] {
-        let cell = Cell::new(plan(None));
+        let cell = LiveMemoryPlan::new(plan(None));
         let (policy, admission) = retained_cg(&cell);
         let mut linear = policy.admitted().1;
         linear.absorb.lsmr.preconditioner = preconditioner;
@@ -216,7 +216,7 @@ fn lsmr_reexecution_charges_its_schwarz_bound() {
 
 #[test]
 fn failed_reexecution_reports_the_first_error_but_propagates_break_and_memory() {
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let (policy, _) = retained_cg(&cell);
     let first = "retained CG direction failed certification";
     let error = policy
@@ -252,7 +252,7 @@ fn failed_reexecution_reports_the_first_error_but_propagates_break_and_memory() 
 
 #[test]
 fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let (policy, _) = retained_cg(&cell);
     for code in [
         ErrorCode::Interrupted,
@@ -317,7 +317,7 @@ fn reexecution_that_does_not_fit_the_plan_reports_the_first_error() {
     let usable = unlimited.required_peak_bytes + admission.bytes - 1;
     let tight = plan(Some(usable + HEADROOM.max((usable - 1) / 4)));
     assert_eq!(tight.usable_bytes, Some(usable));
-    let cell = Cell::new(tight);
+    let cell = LiveMemoryPlan::new(tight);
     let mut linear = PreparedOlsFitConfig::default();
     linear.absorb.solver = FeSolverKind::Cg;
     let policy = DetectorPolicy::new(
@@ -339,7 +339,7 @@ fn reexecution_that_does_not_fit_the_plan_reports_the_first_error() {
 
 /// An admitted Auto detector policy on `plan`: its retained-CG re-execution
 /// under the same budget and the retained-CG LSMR charge.
-fn auto_routed(plan: &Cell<PpmlMemoryPlan>) -> (DetectorPolicy<'_>, LsmrAdmission) {
+fn auto_routed(plan: &LiveMemoryPlan) -> (DetectorPolicy<'_>, LsmrAdmission) {
     let (cg, admission) = retained_cg(plan);
     let (cg_ppml, cg_linear) = cg.admitted();
     let mut linear = cg_linear;
@@ -371,7 +371,7 @@ fn auto_routed(plan: &Cell<PpmlMemoryPlan>) -> (DetectorPolicy<'_>, LsmrAdmissio
 
 #[test]
 fn certified_auto_attempt_is_never_reexecuted_or_charged() {
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let before = cell.get();
     let (policy, _) = auto_routed(&cell);
     let mut solvers = Vec::new();
@@ -390,7 +390,7 @@ fn certified_auto_attempt_is_never_reexecuted_or_charged() {
 #[test]
 fn failed_auto_step_reexecutes_as_retained_cg_under_the_same_budget() {
     for code in [ErrorCode::NonConvergence, ErrorCode::InvalidData] {
-        let cell = Cell::new(plan(None));
+        let cell = LiveMemoryPlan::new(plan(None));
         let before = cell.get();
         let (policy, _) = auto_routed(&cell);
         let admitted = policy.admitted().1;
@@ -420,7 +420,7 @@ fn failed_auto_step_reexecutes_as_retained_cg_under_the_same_budget() {
 
 #[test]
 fn failed_auto_and_cg_steps_continue_with_lsmr_and_report_the_cg_error() {
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let (policy, admission) = auto_routed(&cell);
     let mut calls = Vec::new();
     let (value, ppml, linear) = policy
@@ -448,7 +448,7 @@ fn failed_auto_and_cg_steps_continue_with_lsmr_and_report_the_cg_error() {
     assert_eq!(ppml.absorb, linear.absorb);
     assert_eq!(cell.get().separation_projection_bytes, admission.bytes);
 
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let (policy, _) = auto_routed(&cell);
     let cg = "retained CG direction failed certification";
     let error = policy
@@ -474,7 +474,7 @@ fn auto_step_stops_on_break_memory_or_internal_errors() {
         ErrorCode::Internal,
     ] {
         // Of the Auto attempt itself.
-        let cell = Cell::new(plan(None));
+        let cell = LiveMemoryPlan::new(plan(None));
         let (policy, _) = auto_routed(&cell);
         let mut calls = 0;
         let error = policy
@@ -515,7 +515,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
     use FeSolverKind::{Auto, Cg, Lsmr};
     // An earlier success never arms the re-check.
     for success in [Auto, Cg, Lsmr] {
-        let cell = Cell::new(plan(None));
+        let cell = LiveMemoryPlan::new(plan(None));
         let (policy, _) = auto_routed(&cell);
         let mut calls = Vec::new();
         let (_, ppml, linear) = policy
@@ -535,7 +535,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
     }
     // Every attempt failed: the Auto step once more, re-check armed, under
     // the admitted Auto policy; its result and policy are returned.
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let (policy, _) = auto_routed(&cell);
     let mut calls = Vec::new();
     let (value, ppml, linear) = policy
@@ -565,7 +565,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
         (ErrorCode::Interrupted, ErrorCode::Interrupted),
         (ErrorCode::Allocation, ErrorCode::Allocation),
     ] {
-        let cell = Cell::new(plan(None));
+        let cell = LiveMemoryPlan::new(plan(None));
         let (policy, _) = auto_routed(&cell);
         let error = policy
             .run(0, &no_schwarz, |_, linear| {
@@ -582,7 +582,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
         }
     }
     // Without an admitted LSMR re-execution the re-check follows retained CG.
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let (policy, _) = auto_routed(&cell);
     let unadmitted = DetectorPolicy::new(policy.ppml, policy.linear, policy.retained_cg, None);
     let mut calls = Vec::new();
@@ -595,7 +595,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
     assert_eq!(calls, [(Auto, false), (Cg, false), (Auto, true)]);
     // An admitted retained-CG detector (the developer comparison arm) never
     // re-checks.
-    let cell = Cell::new(plan(None));
+    let cell = LiveMemoryPlan::new(plan(None));
     let (policy, _) = retained_cg(&cell);
     let mut calls = Vec::new();
     policy

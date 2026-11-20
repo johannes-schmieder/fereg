@@ -10,12 +10,38 @@ from unittest.mock import patch
 import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes, numerical_scope_indices, work_scope_indices, validate_scope_targets, RowColumns, scoped_prefixes, scoped_decision_paths
+from replay_plugins import encode_ppml_replay_case
 from replay_psd import eigensystem
 from replay_bias_reference import enrich_expected, REFERENCE, NAMES
 from replay_ols_reference import dense_targets, derive_ols, enrich_expected as enrich_ols_expected
 
 
 class ReplayChecks(unittest.TestCase):
+    def test_ppml_baseline_conversion_preserves_request_and_payload_except_two_fields(self):
+        def case_bytes(arguments):
+            header = f'FEREG_REPLAY_V1\n1 1 {len(arguments)} 1 0\n'.encode()
+            frames = b''.join(str(len(arg)).encode() + b'\n' + arg + b'\n' for arg in arguments)
+            return header + frames + b'0\n0000000000000000\n'
+
+        request = [b'estimate-ppml', b'request_major=1', b'request_minor=11',
+                   b'threads=1', b'model_minor=1']
+        field = b'simplex_max_tableau_cells='
+        with tempfile.TemporaryDirectory() as directory:
+            candidate = Path(directory) / 'candidate.case'
+            baseline = Path(directory) / 'baseline.case'
+            for current, previous in ((b'auto', b'1000000'), (b'7000', b'7000')):
+                original = case_bytes([*request, field + current])
+                candidate.write_bytes(original)
+                self.assertEqual(encode_ppml_replay_case(candidate, baseline, '1.10'), baseline)
+                old_request = [b'request_minor=10' if arg == b'request_minor=11' else arg
+                               for arg in request]
+                self.assertEqual(baseline.read_bytes(), case_bytes([*old_request, field + previous]))
+                self.assertEqual(candidate.read_bytes(), original)
+                with self.assertRaisesRegex(ValueError, 'other wire'):
+                    encode_ppml_replay_case(baseline, candidate, '1.10')
+                encode_ppml_replay_case(baseline, candidate, '1.11')
+                self.assertEqual(candidate.read_bytes(), original)
+
     def fixture(self):
         return {'return_code': 0, 'columns': [['3ff0000000000000']], 'matrices': {
             'RB': {'bits': ['3ff0000000000000']},

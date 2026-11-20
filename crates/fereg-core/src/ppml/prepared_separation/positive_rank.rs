@@ -93,7 +93,13 @@ fn sparse_proof(
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<DetectionProposal>> {
     if sparse_dual::supports(
-        search, generation, topology, positive, limit, config, interrupt,
+        (method, search),
+        generation,
+        topology,
+        positive,
+        limit,
+        config,
+        interrupt,
     )? {
         return Ok(Some(no_separation(
             method,
@@ -167,7 +173,7 @@ pub(super) fn direct_slope_support(
     let positive = model.outcome().iter().filter(|&&y| y > 0.).count();
     let mut poll = |_| interrupt(PpmlInterruptPoint::SeparationIrIteration);
     if sparse_dual::supports(
-        sparse_dual::Search::Direct,
+        (method, sparse_dual::Search::Direct),
         model,
         &topology,
         positive,
@@ -218,9 +224,7 @@ fn rank_or_coverage(
             },
         )));
     }
-    if boundary > 0
-        && circulation::certified(generation, topology, limit, config.certificate_tolerance)?
-    {
+    if boundary > 0 && circulation::certified(generation, topology, method, config, limit)? {
         return Ok(Some(no_separation(
             method,
             SeparationCertificateProof::ExactPositiveDual {

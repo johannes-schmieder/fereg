@@ -117,6 +117,7 @@ pub(crate) struct PpmlNumericClassification {
 #[derive(Debug)]
 pub(crate) struct ClassifiedPpmlNumericInput<'a> {
     input: &'a PpmlNumericPreparationInput<'a>,
+    pub(super) has_retained_zero: bool,
     classification: PpmlNumericClassification,
 }
 
@@ -189,6 +190,7 @@ pub(crate) fn classify_ppml_numeric_data<'a>(
     let classification = scan.finish(input, generic)?;
     Ok(ClassifiedPpmlNumericInput {
         input,
+        has_retained_zero: scan.zero,
         classification,
     })
 }
@@ -198,6 +200,7 @@ pub(crate) fn classify_ppml_numeric_data<'a>(
 #[derive(Debug, Clone, Copy)]
 struct PpmlRowScan {
     positive: bool,
+    zero: bool,
     domain: Option<(usize, DropReason)>,
     weight: Option<usize>,
 }
@@ -205,6 +208,7 @@ struct PpmlRowScan {
 impl PpmlRowScan {
     const EMPTY: Self = Self {
         positive: false,
+        zero: false,
         domain: None,
         weight: None,
     };
@@ -214,8 +218,10 @@ impl PpmlRowScan {
         if self.domain.is_none() && is_unmasked_nonfinite_ppml_domain_row(input, row, reason) {
             self.domain = Some((row, reason));
         }
-        if reason == DropReason::Retained && input.outcome.values[row] > 0.0 {
-            self.positive = true;
+        if reason == DropReason::Retained {
+            let y = input.outcome.values[row];
+            self.positive |= y > 0.0;
+            self.zero |= y == 0.0;
         }
         if self.weight.is_none()
             && reason == DropReason::InvalidOrMissingWeight
@@ -234,6 +240,7 @@ impl PpmlRowScan {
     fn merge(earlier: Self, later: Self) -> Self {
         Self {
             positive: earlier.positive || later.positive,
+            zero: earlier.zero || later.zero,
             domain: earlier.domain.or(later.domain),
             weight: earlier.weight.or(later.weight),
         }
@@ -354,6 +361,7 @@ pub(crate) fn select_ppml_numeric_data(
     let ClassifiedPpmlNumericInput {
         input,
         classification: admitted,
+        ..
     } = classified;
     let mut original_row_by_active = Vec::new();
     original_row_by_active

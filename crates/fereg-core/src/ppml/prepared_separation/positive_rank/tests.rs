@@ -423,7 +423,10 @@ fn sparse_raw_dual_replays_joint_cells_and_global_leverage_margin() {
             ..SeparationConfig::default()
         };
         positive_rank::sparse_dual::supports(
-            positive_rank::sparse_dual::Search::Full,
+            (
+                SeparationMethod::Simplex,
+                positive_rank::sparse_dual::Search::Full,
+            ),
             model,
             &topology,
             2 * groups,
@@ -479,7 +482,7 @@ fn sparse_dual_sweeps_balance_asymmetric_boundary_multiplicities() {
         let topology = DetectorTopology::new(model.prepared()).unwrap();
         let check = |search| {
             positive_rank::sparse_dual::supports(
-                search,
+                (SeparationMethod::Simplex, search),
                 model,
                 &topology,
                 32,
@@ -624,7 +627,10 @@ fn partition_masses_close_survivor_blocks_on_the_original_axes() {
     let model = owner.view().prepared;
     let topo = DetectorTopology::new(model.prepared()).unwrap();
     assert!(positive_rank::sparse_dual::supports(
-        positive_rank::sparse_dual::Search::Marginal,
+        (
+            SeparationMethod::Simplex,
+            positive_rank::sparse_dual::Search::Marginal
+        ),
         model,
         &topo,
         32,
@@ -754,4 +760,51 @@ fn finite_minor_checks_the_structural_constant_when_requested() {
         // full rank. Adding the constant permits x-1 to separate the zeros.
         assert_eq!(outcome.is_none(), intercept);
     }
+}
+
+#[test]
+fn scarce_dual_workspace_can_only_expand_for_a_verified_full_fallback() {
+    let check = |adaptive: bool, headroom: bool, opposite: f64| {
+        let mut rows = Vec::new();
+        for group in 0..64 {
+            let g = group as f64;
+            rows.extend([
+                [1., -1., g, 1.],
+                [0., 0., g, -1.],
+                [2., 1., g, -1.],
+                [0., 0., g, opposite],
+            ]);
+        }
+        let mut owner = panel(&rows, Terms::AbsorbedSlope);
+        let mut plan = retry::tests::plan(Some(2 << 30));
+        if !headroom {
+            plan.usable_bytes = Some(0);
+        }
+        owner.bind_separation_plan(plan, adaptive);
+        let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+        let model = coordinator.view().prepared;
+        let topology = DetectorTopology::new(model.prepared()).unwrap();
+        let config = SeparationConfig {
+            adaptive_sparse: adaptive,
+            ..SeparationConfig::default()
+        };
+        positive_rank::sparse_dual::supports(
+            (
+                SeparationMethod::IteratedRectifier,
+                positive_rank::sparse_dual::Search::Full,
+            ),
+            model,
+            &topology,
+            rows.len() / 2,
+            20,
+            config,
+            &mut |_| Ok(()),
+        )
+        .unwrap()
+    };
+    let opposite = 2f64.powi(-12);
+    assert!(!check(false, true, opposite));
+    assert!(!check(true, false, opposite));
+    assert!(check(true, true, opposite));
+    assert!(!check(true, true, -opposite)); // both boundary directions have the same sign
 }

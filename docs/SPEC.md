@@ -1580,7 +1580,7 @@ Required PPML information includes:
   explicit request served by the Auto plan is validated as Auto there, and
   the canonical frames after an explicit LSMR fallback count as MAP-engine
   ordinary frames without its fallback count). The route matrix (2x16,
-  request wire 1.10) carries both routes and the formulation counts in plain
+  request wire 1.10 and later) carries both routes and the formulation counts in plain
   ado validation. The compiled scalar poster still posts `feppml_linear_route` (a route code) and
   `feppml_solver_fallback_count` until the next Stata 15 Mata rebuild;
 - `cmd=feppml`, `model=poisson`, command line, depvar, indepvars, vce, absvars,
@@ -2017,16 +2017,34 @@ budgeting operations for a raw proof. That credit is capped at one million cells
 adds no allocation to the existing phase memory envelope. A small simplex table
 can therefore skip simplex while IR still verifies a recession direction.
 
-Sparse original-design proofs account for work and storage separately. A pass
-reads the actual row incidences, level memberships or coefficient recipes.
-Each linear scan stage may spend up to 64 million charged operations, or the cost of four
-complete linear passes when the design is larger. A smaller requested pass
-count still binds. Elimination, fill-in and combinatorial exploration retain
-their own fixed work limits. Each sparse simplex proof fits the requested
-cell ceiling. A sparse IR or Mu proof may reuse the released projection
-workspace or the available part of an already admitted simplex arena. The
-memory calculation reserves space for a candidate retained during its
-replacement and uses the same limits during independent proof replay.
+Sparse original-design proofs account for work and storage separately.
+The public simplex first tries its usual one-million-cell workspace. Dense
+simplex and the dense algebra inside the compact search keep this limit.
+An automatic sparse proof can request the measured size of an original-row
+index, graph, elimination or verification buffer after exhausting its initial
+allowance. For incremental storage the planner can grant a bounded tranche.
+It admits a larger indivisible buffer at its checked size. Admission accounts
+for live arrays and the whole fit's safety reserve before allocation. A
+refused request leaves the other requested separation methods available.
+A numeric developer simplex cell limit keeps the fixed policy, including
+when it equals the public first-pass limit. Independent original-coordinate
+verification and cancellation apply on both policies.
+
+Linear scans debit the actual incidences or coefficient recipes they visit.
+A large design can use the cost of four full scans even above 64 million
+charged operations. Sparse elimination starts with a 64-million-operation
+allowance. A completed window with affordable independent pivots and bounded
+growth in nonzeros can earn another window. Stalled rank growth or sharply
+rising work per pivot triggers a handoff. If a positive-row elimination stalls,
+the partial basis may first try up to 64 boundary rows within a further one
+million entry visits, then backsolve once if it gained a pivot. A resulting
+direction must satisfy every original positive equality and boundary sign,
+including rows omitted from that basis. For disjoint
+categorical cells, a completed exact cell verification is evidence of progress.
+The full dual fallback can extend its local elimination only while the cost
+per verified row remains comparable and there are unexamined cells. Hash
+collisions, failed numerical certificates, and expensive dense or combinatorial
+searches do not by themselves justify additional work.
 A numerical terminal dual that needs a complete fixed-effect span audit
 must admit that audit on its current generation before allocating the
 scratch arrays. An exact original-coordinate proof can finish within
@@ -2630,7 +2648,7 @@ e(), named/null estimates, data, order and output names. No correction or
 postestimation path makes an extra substantive estimation call.
 
 Retain independently versioned exact estimation handshakes. Current
-versions are action 1.7, model 2.1, OLS result 1.7, PPML request 1.10, PPML
+versions are action 1.7, model 2.1, OLS result 1.7, PPML request 1.11, PPML
 result 1.5, ado identity 0.6.6 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
 no-absorbed-metadata shape;

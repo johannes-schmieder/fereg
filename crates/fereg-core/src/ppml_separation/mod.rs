@@ -64,6 +64,9 @@ pub struct SeparationConfig {
     pub max_ir_iterations: usize,
     pub simplex_max_iterations: usize,
     pub simplex_max_tableau_cells: usize,
+    /// The implicit policy may extend a sparse proof under fit-lifetime admission.
+    /// An explicit numeric tableau ceiling retains the legacy bounded policy.
+    pub adaptive_sparse: bool,
     pub mu_tolerance: f64,
     pub drop_singletons: bool,
     pub strict: bool,
@@ -79,6 +82,7 @@ impl Default for SeparationConfig {
             max_ir_iterations: 100,
             simplex_max_iterations: 10_000,
             simplex_max_tableau_cells: 8_000_000,
+            adaptive_sparse: false,
             mu_tolerance: 1e-8,
             drop_singletons: true,
             strict: true,

@@ -157,7 +157,7 @@ def enrich_expected(case: Path, expected: dict, reference: Path = REFERENCE) -> 
     if pinned['schema'] != 1 or pinned['sources'] != {name: digest(ROOT / name) for name in SOURCES}:
         raise RuntimeError('bias replay reference derivation source changed; regenerate independently')
     entry = pinned['cases'][case.stem]
-    if digest(case) != entry['input_sha256']:
+    if digest(case) not in [entry['input_sha256'], *entry.get('historical_input_sha256', [])]:
         raise RuntimeError('bias replay input differs from its independently derived reference')
     result = copy.deepcopy(expected)
     result['bias'] = entry['bias']

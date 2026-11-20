@@ -259,3 +259,51 @@ fn omitted_factor_publication_fits_its_memory_limit() {
     assert!(budget.words > peak);
     assert!(primal::omitted_factor(g, budget).unwrap().is_none());
 }
+
+#[test]
+fn pure_graph_uses_only_admitted_extra_workspace_before_replaying_the_original_rows() {
+    let rows = [
+        [1., 0., 0., 0.],
+        [1., 1., 1., 1.],
+        [0., 0., 0., 1.],
+        [1., 0., 0., 0.],
+    ];
+    let cells = 8;
+    let metadata = 6;
+    let required = graph::categorical_peak_bytes(rows.len(), 1, 4).div_ceil(8) + metadata as u128;
+    let extension = 8 * (required - cells as u128);
+    let mut plan = retry::tests::plan(Some(2 << 30));
+    // Let the registered separation phase determine the fit peak so the
+    // next byte is genuinely unavailable to the graph.
+    let base = plan.selected_bytes();
+    plan.estimate.fast.separation_peak_bytes = base;
+    for (extra, certified) in [(extension - 1, false), (extension, true)] {
+        plan.usable_bytes = Some(base + extra);
+        let mut owner = model(&rows, 2, Encoding::PureAbsorbed);
+        let live = owner.bind_separation_plan(plan, true).unwrap();
+        let coord = PreparedSeparationCoordinator::new(owner).unwrap();
+        let g = coord.view().prepared;
+        let config = SeparationConfig {
+            simplex_max_tableau_cells: cells,
+            adaptive_sparse: true,
+            ..Default::default()
+        };
+        let proposal = pure_pair_simplex(g, 1, (8192, metadata), config, &mut |_| Ok(())).unwrap();
+        assert_eq!(proposal.is_some(), certified);
+        if let Some(proposal) = proposal {
+            assert_eq!(proposal.dropped_original_rows, [2]);
+            let validated = validate_numerical_proposal(
+                g,
+                proposal,
+                PpmlConfig::default(),
+                config,
+                PreparedOlsFitConfig::default(),
+            )
+            .unwrap();
+            assert_eq!(validated.certificate.span_residual_relative, 0.);
+            assert_eq!(live.get().sparse_proof_peaks[0], base + extension);
+        } else {
+            assert_eq!(live.get(), plan);
+        }
+    }
+}

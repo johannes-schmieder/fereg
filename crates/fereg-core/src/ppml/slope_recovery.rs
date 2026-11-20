@@ -337,7 +337,7 @@ pub(super) struct RecoveryAdmission {
     columns: usize,
     config: super::PpmlMemoryConfig,
     charged: bool,
-    plan: Option<std::rc::Rc<std::cell::Cell<super::PpmlMemoryPlan>>>,
+    plan: Option<std::sync::Arc<super::memory::LiveMemoryPlan>>,
 }
 
 impl RecoveryAdmission {
@@ -349,13 +349,8 @@ impl RecoveryAdmission {
             plan: None,
         }
     }
-    pub(super) fn bind(
-        &mut self,
-        plan: super::PpmlMemoryPlan,
-    ) -> std::rc::Rc<std::cell::Cell<super::PpmlMemoryPlan>> {
-        let shared = std::rc::Rc::new(std::cell::Cell::new(plan));
-        self.plan = Some(shared.clone());
-        shared
+    pub(super) fn bind(&mut self, plan: std::sync::Arc<super::memory::LiveMemoryPlan>) {
+        self.plan = Some(plan);
     }
     fn upgrade(&self, base: super::PpmlMemoryPlan) -> Result<super::PpmlMemoryPlan> {
         let mut dimensions = base.preflight_dimensions;
@@ -404,6 +399,7 @@ impl RecoveryAdmission {
             || !candidate.admit_reusable_projection(base.reusable_projection_bytes)
             || !candidate.admit_reusable_certificate(base.reusable_certificate_bytes)
             || !candidate.admit_reusable_slope(base.reusable_slope_bytes)
+            || !candidate.restore_sparse_peaks(base.sparse_proof_peaks)
         {
             return Err(crate::error::allocation(
                 "PPML memory limit cannot admit the recovered slopes beside the selected solver",

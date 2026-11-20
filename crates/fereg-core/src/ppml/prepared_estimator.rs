@@ -308,6 +308,18 @@ pub fn fit_prepared_ppml_interruptible(
         requested_saved_channel_count,
     )?;
     let recovery_columns = super::slope_recovery::preflight(&request);
+    let methods = request.separation.methods;
+    let adaptive_sparse = request.separation.adaptive_sparse
+        && (methods.simplex || methods.iterated_rectifier || methods.mu)
+        && classified.has_retained_zero;
+    if adaptive_sparse {
+        // The coordinator and all rebuilt generations share one heap plan.
+        preflight_dimensions.metadata.generation_fixed_bytes = preflight_dimensions
+            .metadata
+            .generation_fixed_bytes
+            .checked_add(super::memory::LiveMemoryPlan::shared_bytes())
+            .ok_or_else(|| allocation("PPML shared separation plan size overflows"))?;
+    }
     preflight_dimensions.metadata.input_owner_bytes = raw_input_owner_bytes(&request, &loaded);
     load_hint = admit_load_hint(
         load_hint,
@@ -388,6 +400,7 @@ pub fn fit_prepared_ppml_interruptible(
     resolved_linear.execution.poolsize = request.memory.poolsize;
     let separation_execution = PreparedPpmlSeparationExecution {
         preliminary_plan,
+        adaptive_sparse,
         linear: resolved_linear,
         auto_projection: !request.inject_separation_cg,
     };

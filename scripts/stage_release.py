@@ -343,7 +343,7 @@ def write_manifest(
         "action_protocol": "1.7",
         "memory_result_schema": 2,
         "ols_result_wire": "1.7",
-        "ppml_request_wire": "1.10",
+        "ppml_request_wire": "1.11",
         "ppml_result_wire": "1.5",
         "model_wire": "2.1",
         "plugins": [

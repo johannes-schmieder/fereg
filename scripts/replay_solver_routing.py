@@ -53,12 +53,14 @@ def body_digest(path):
         return hashlib.sha256(stream.read()).hexdigest()
 
 
-def prepare_injected_case(source, destination, stage):
+def prepare_injected_case(source, destination, stage, *, threads=None):
     """Add one sanctioned injection to the maintained length-framed wire."""
     from native_io import case_header
 
     if stage not in {'it_coefficients', 'ppml_topology'}:
         raise ValueError('unsupported supplemental injection')
+    if threads is not None and not 1 <= threads <= 1024:
+        raise ValueError('threads must be 1..1024')
     with source.open('rb') as stream, destination.open('xb') as output:
         shape, arguments = case_header(stream)
         if any(arg.startswith((b'inject=', b'break_marker_token=')) for arg in arguments):
@@ -68,6 +70,9 @@ def prepare_injected_case(source, destination, stage):
             raise ValueError('coefficient IT witness requires explicit OLS IT')
         if stage == 'ppml_topology' and arguments[0] != b'estimate-ppml':
             raise ValueError('topology witness requires PPML')
+        if threads is not None:
+            arguments = [f'threads={threads}'.encode() if arg.startswith(b'threads=') else arg
+                         for arg in arguments]
         arguments.append(f'inject={stage}'.encode())
         shape[2] = len(arguments)
         output.write(('FEREG_REPLAY_V1\n' + ' '.join(map(str, shape)) + '\n').encode())
@@ -246,7 +251,7 @@ def direct_trace_errors(log, expected):
     return []
 
 
-def prepare_topology(generated, baseline, output):
+def prepare_topology(generated, baseline, output, baseline_ppml_request_wire=None):
     import routing
     from native_io import prepare_case
 
@@ -275,11 +280,24 @@ def prepare_topology(generated, baseline, output):
         local.write_bytes(original.read_bytes())
         local_target = inputs / target.name
         local_target.write_bytes(target.read_bytes())
+        candidate_source = reference_source = original
+        if baseline_ppml_request_wire == '1.10':
+            # Additive cases come from the current generator. Frozen cases
+            # keep their historical input for the baseline and bias reference.
+            if additive:
+                reference_source = replay.encode_ppml_replay_case(
+                    original, inputs / f'{source}-wire-1.10.case', '1.10')
+                translated = reference_source
+            else:
+                candidate_source = replay.encode_ppml_replay_case(
+                    original, inputs / f'{source}-wire-1.11.case', '1.11')
+                translated = candidate_source
+            files[str(translated.relative_to(output))] = replay.digest(translated)
         for workers in (1, 4):
             reference = inputs / f'{source}-parent-t{workers}.case'
             candidate = inputs / f'{source}-t{workers}.case'
-            prepare_case(original, reference, workers)
-            prepare_injected_case(reference, candidate, 'ppml_topology')
+            prepare_case(reference_source, reference, workers)
+            prepare_injected_case(candidate_source, candidate, 'ppml_topology', threads=workers)
             if not body_digest(original) == body_digest(reference) == body_digest(candidate):
                 raise ValueError('topology preparation changed model/data bytes')
             for path in (reference, candidate):
@@ -507,6 +525,7 @@ def main():
     topology.add_argument('--generated', type=Path, required=True)
     topology.add_argument('--baseline', type=Path, required=True)
     topology.add_argument('--output', type=Path, required=True)
+    topology.add_argument('--baseline-ppml-request-wire', choices=['1.10'])
     execution = commands.add_parser('run')
     execution.add_argument('--manifest', type=Path, required=True)
     execution.add_argument('--plugin', type=Path, required=True)
@@ -519,7 +538,7 @@ def main():
         prepare_direct(args.generated, args.baseline, args.output)
         return 0
     if args.command == 'prepare-topology':
-        prepare_topology(args.generated, args.baseline, args.output)
+        prepare_topology(args.generated, args.baseline, args.output, args.baseline_ppml_request_wire)
         return 0
     return run(args.manifest, args.plugin, args.plugin_sha256)
 

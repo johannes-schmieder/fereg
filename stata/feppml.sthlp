@@ -235,8 +235,13 @@ shares its entire design row with a positive outcome cannot be separated.
 A second check uses within-level variation among positive outcomes and
 can cover several categorical fixed effects. The default reuses a verified
 proof while the estimation sample is unchanged. If the bounded simplex
-cannot resolve a case, a requested IR check can continue. An unresolved
-simplex workspace limit returns {cmd:r(909)}.
+cannot resolve a case, a requested IR check can continue. Dense simplex uses an initial
+workspace of 8 MB. When a sparse method can identify the extra storage it
+needs, {cmd:feppml} checks that it fits alongside the rest of the regression
+before allocating it. Sparse elimination can also continue while it finds
+independent equations at a comparable cost. If progress stalls, the command
+can try the next requested method. An unresolved workspace shortage can
+return {cmd:r(909)}.
 
 {pstd}
 {cmd:dropreason(}{it:newvar}{cmd:)} creates a long integer variable on the

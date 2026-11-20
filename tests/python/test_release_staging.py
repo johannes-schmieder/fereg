@@ -164,7 +164,7 @@ class ReleaseStagingTests(unittest.TestCase):
                 self.assertIsNotNone(found, constant)
                 self.assertEqual(manifest[field], f"{found.group(1)}.{found.group(2)}", field)
             self.assertEqual(manifest["ols_result_wire"], "1.7")
-            self.assertEqual(manifest["ppml_request_wire"], "1.10")
+            self.assertEqual(manifest["ppml_request_wire"], "1.11")
             caveats = " ".join(manifest["support_caveats"]).lower()
             self.assertNotRegex(caveats, r"r\(498\)|fail[- ]closed|ols[- ]only")
 

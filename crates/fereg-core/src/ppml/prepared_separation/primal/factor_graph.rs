@@ -96,7 +96,7 @@ impl FactorPair {
 
 pub(super) fn find(
     model: &PreparedPpmlModelGeneration,
-    budget: ProofBudget,
+    admission: &mut SparseProofAdmission<'_>,
 ) -> Result<Option<FactorPair>> {
     let data = model.fit_view();
     let sources = data.categorical_sources().len();
@@ -125,12 +125,21 @@ pub(super) fn find(
     // A pair has at most two observed vertices per row. Debit each construction
     // at its actual size; a factor's encoded dummy width never multiplies N.
     let mut work = ProofBudget::sparse_work(n.saturating_mul(72), axes);
+    let partition = |axis: Axis, admission: &mut SparseProofAdmission<'_>| -> Result<_> {
+        if let Axis::Ordinary(source) = axis {
+            let levels = data.categorical_sources()[source].n_levels(data.fe_topology())?;
+            if !admission.admit(levels) {
+                return Ok(None);
+            }
+        }
+        axis.partition(model, admission.words())
+    };
     let mut anchor = None;
     let mut largest = 0;
     for index in 0..sources {
         crate::interrupt::checkpoint()?;
         let axis = Axis::Ordinary(index);
-        if let Some((codes, levels)) = axis.partition(model, budget.words)? {
+        if let Some((codes, levels)) = partition(axis, admission)? {
             if levels > largest {
                 largest = levels;
                 anchor = Some((axis, codes));
@@ -145,13 +154,15 @@ pub(super) fn find(
         .chain((0..data.effect_specs().len()).map(Axis::Absorbed));
     for axis in others.filter(|&axis| axis != anchor) {
         crate::interrupt::checkpoint()?;
-        let Some((right, levels)) = axis.partition(model, budget.words)? else {
+        let Some((right, levels)) = partition(axis, admission)? else {
             continue;
         };
         let vertices = largest.saturating_add(levels);
         let peak = graph::categorical_peak_bytes(n, n, vertices);
         let charge = n.saturating_add(vertices).saturating_mul(24);
-        if peak > budget.words as u128 * 8 || charge > work {
+        if charge > work
+            || !usize::try_from(peak.div_ceil(8)).is_ok_and(|required| admission.admit(required))
+        {
             continue;
         }
         work -= charge;

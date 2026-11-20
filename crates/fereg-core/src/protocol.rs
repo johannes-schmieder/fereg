@@ -45,7 +45,7 @@ pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 7);
 /// Minor 6 adds the shared Stata memory baseline/result contract.
 /// Minor 5 replaced the private solver-development cross-product with the
 /// single public `solver(auto|map|lsmr|cmg)` family field.
-pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 10);
+pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 11);
 /// Version of the separately versioned PPML shadow-result layout.
 /// Minor 5 adds the separate per-FE independent-unit support matrix.
 /// Minor 4 adds optional bias coefficient, numerical-variation and diagnostic matrices.
@@ -579,7 +579,7 @@ mod tests {
         assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 7));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
         assert_eq!(OLS_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 7));
-        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 10));
+        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 11));
         assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 5));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
     }

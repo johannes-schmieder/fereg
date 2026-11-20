@@ -268,7 +268,7 @@ fn certify_dual_with_weights<'a>(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    span_plan: Option<&std::cell::Cell<PpmlMemoryPlan>>,
+    span_plan: Option<&LiveMemoryPlan>,
     design: &mut Option<crate::ols::UnitProjectionDesign<'a>>,
 ) -> Result<bool> {
     let (ppml, linear) = strict_projection_policy(ppml, linear);

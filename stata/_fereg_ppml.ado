@@ -107,7 +107,7 @@ program define _fereg_ppml, eclass
         poolsize(`poolsize') threads(`threads') ///
         tolerance(`tolerance') iterate(`iterate') ///
         septolerance(1e-8) sepiterate(10000) ///
-        simplexiterate(100000) simplexcells(1000000) ///
+        simplexiterate(100000) ///
         `deterministic' publicmode publiccmdline(`"`public_cmdline'"') ///
         `public_wexp_option' `timeit_option' `display_option'
 end

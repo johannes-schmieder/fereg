@@ -435,6 +435,7 @@
         "tests/stata/development/deterministic_four_fe_oracle.do",
         "tests/stata/development/equivalent_units_oracle.do",
         "tests/stata/development/factor_single_level_original_axis.do",
+        "tests/stata/development/feppml_adaptive_sparse_support.do",
         "tests/stata/development/feppml_auto_route.do",
         "tests/stata/development/feppml_canonical_products_oracle.do",
         "tests/stata/development/feppml_categorical_final_oracle.do",

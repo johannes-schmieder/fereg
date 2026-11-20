@@ -84,6 +84,66 @@ pub const PPML_STEADY_STATE_AUDIT_ITERATIONS: usize = 16;
 /// report types must prove they fit this slot in a focused test.
 pub(super) const DIAGNOSTIC_RECORD_BYTES: u128 = 288;
 
+/// One fit's live memory decision shared by its coordinator and its immutable
+/// generations. No lock survives a detector, an interrupt, or a host call.
+#[derive(Debug)]
+pub(super) struct LiveMemoryPlan {
+    current: std::sync::Mutex<PpmlMemoryPlan>,
+    report_capacity: std::sync::atomic::AtomicUsize,
+}
+
+impl PartialEq for LiveMemoryPlan {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+
+impl LiveMemoryPlan {
+    /// Arc's two reference counters, padding to the plan alignment, and payload.
+    pub(super) const fn shared_bytes() -> u128 {
+        let header = size_of::<[usize; 2]>().next_multiple_of(std::mem::align_of::<Self>());
+        (header + size_of::<Self>()) as u128
+    }
+
+    pub(super) fn new(plan: PpmlMemoryPlan) -> Self {
+        Self {
+            current: std::sync::Mutex::new(plan),
+            report_capacity: std::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+
+    pub(super) fn get(&self) -> PpmlMemoryPlan {
+        *self.current.lock().expect("PPML coordinator plan")
+    }
+
+    pub(super) fn set(&self, plan: PpmlMemoryPlan) {
+        *self.current.lock().expect("PPML coordinator plan") = plan;
+    }
+
+    pub(super) fn observe_report_capacity(&self, capacity: usize) {
+        self.report_capacity
+            .store(capacity, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub(super) fn admit_sparse(
+        &self,
+        phase: PpmlPhase,
+        required_extra: usize,
+        preferred_extra: usize,
+    ) -> Option<usize> {
+        let mut plan = self.current.lock().expect("PPML coordinator plan");
+        let records = self
+            .report_capacity
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let report_bytes = (records as u128 * size_of::<SeparationMethodReport>() as u128)
+            .saturating_sub(
+                plan.selected_inventory()
+                    .separation_method_report_record_bytes,
+            );
+        plan.admit_sparse(phase, required_extra, preferred_extra, report_bytes)
+    }
+}
+
 /// User request and bounded-workspace policy for one PPML fit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PpmlMemoryConfig {
@@ -691,6 +751,9 @@ pub struct PpmlMemoryPlan {
     pub solver_workspace_bytes: u128,
     /// Separately admitted graph/CG detector state, released before IRLS.
     pub(crate) separation_projection_bytes: u128,
+    /// Absolute peaks for extended sparse simplex, IR and Mu proofs. A
+    /// previous proof is gone before a new detector or generation executes.
+    pub(super) sparse_proof_peaks: [u128; 3],
     /// Optional generic MAP projection bank, retained from preparation through
     /// the final Hessian solve and released with the linear session.
     pub reusable_projection_bytes: u128,
@@ -698,6 +761,14 @@ pub struct PpmlMemoryPlan {
     pub reusable_certificate_bytes: u128,
     /// Optional coefficient-space slope workspace, sharing the linear-session lifetime.
     pub reusable_slope_bytes: u128,
+}
+
+const fn const_max(left: u128, right: u128) -> u128 {
+    if left > right {
+        left
+    } else {
+        right
+    }
 }
 
 impl PpmlMemoryPlan {
@@ -761,12 +832,72 @@ impl PpmlMemoryPlan {
             } else {
                 separate
             });
+        let later = const_max(later, self.sparse_peak());
         let preparation = self.selected_inventory().preparation_peak_bytes;
         if later > preparation {
             later
         } else {
             preparation
         }
+    }
+
+    const fn sparse_peak(self) -> u128 {
+        let [simplex, ir, mu] = self.sparse_proof_peaks;
+        const_max(simplex, const_max(ir, mu))
+    }
+
+    /// Admit only the extension to an already registered sparse workspace.
+    /// The phase base includes the complete generation-zero detector model,
+    /// the embedding's live bytes and the already admitted optional detector
+    /// projection. Report capacity beyond the initial bank is live as well.
+    fn admit_sparse(
+        &mut self,
+        phase: PpmlPhase,
+        required_words: usize,
+        preferred_words: usize,
+        extra_report_bytes: u128,
+    ) -> Option<usize> {
+        let (index, phase_base) = match phase {
+            PpmlPhase::SeparationSimplex => (0, self.selected_inventory().separation_peak_bytes),
+            PpmlPhase::SeparationIr => (1, self.selected_inventory().separation_peak_bytes),
+            PpmlPhase::SeparationMu => {
+                let inventory = self.selected_inventory();
+                // A Mu sparse proof can reuse the full released simplex arena
+                // while the exploratory mean and certificate are still live.
+                (
+                    2,
+                    inventory.separation_mu_peak_bytes.max(
+                        inventory
+                            .separation_peak_bytes
+                            .checked_add(inventory.mu_exploration_retained_bytes)?,
+                    ),
+                )
+            }
+            _ => return None,
+        };
+        let usable = self.usable_bytes?;
+        let base = phase_base
+            .checked_add(self.separation_projection_bytes)?
+            .checked_add(extra_report_bytes)?;
+        let headroom = usable.checked_sub(base)? / size_of::<f64>() as u128;
+        let granted = (preferred_words as u128).min(headroom);
+        if required_words > preferred_words
+            || required_words as u128 > granted
+            || self.selected_bytes() > usable
+        {
+            return None;
+        }
+        let peak = base + granted * size_of::<f64>() as u128;
+        self.sparse_proof_peaks[index] = self.sparse_proof_peaks[index].max(peak);
+        Some(granted as usize)
+    }
+
+    pub(super) fn restore_sparse_peaks(&mut self, peaks: [u128; 3]) -> bool {
+        if peaks.iter().any(|&p| p > self.usable_bytes.unwrap_or(0)) {
+            return false;
+        }
+        self.sparse_proof_peaks = peaks;
+        true
     }
 
     // Charges contain the other two optional buffers and the proposed replacement.
@@ -926,10 +1057,19 @@ impl PpmlMemoryPlan {
                     base
                 }
             }
-            PpmlPhase::SeparationFe
-            | PpmlPhase::SeparationSimplex
-            | PpmlPhase::SeparationIr
-            | PpmlPhase::SeparationMu => base.saturating_add(self.separation_projection_bytes),
+            PpmlPhase::SeparationFe => base.saturating_add(self.separation_projection_bytes),
+            PpmlPhase::SeparationSimplex => const_max(
+                base.saturating_add(self.separation_projection_bytes),
+                self.sparse_proof_peaks[0],
+            ),
+            PpmlPhase::SeparationIr => const_max(
+                base.saturating_add(self.separation_projection_bytes),
+                self.sparse_proof_peaks[1],
+            ),
+            PpmlPhase::SeparationMu => const_max(
+                base.saturating_add(self.separation_projection_bytes),
+                self.sparse_proof_peaks[2],
+            ),
             PpmlPhase::Inference | PpmlPhase::FeRecovery | PpmlPhase::Publication => base,
         }
     }
@@ -1062,6 +1202,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         required_peak_bytes,
         solver_workspace_bytes: 0,
         separation_projection_bytes: 0,
+        sparse_proof_peaks: [0; 3],
         reusable_projection_bytes: 0,
         reusable_certificate_bytes: 0,
         reusable_slope_bytes: 0,
@@ -4095,6 +4236,7 @@ impl PpmlMemoryTelemetry {
             || !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
             || !reconstructed.admit_reusable_certificate(self.plan.reusable_certificate_bytes)
             || !reconstructed.admit_reusable_slope(self.plan.reusable_slope_bytes)
+            || !reconstructed.restore_sparse_peaks(self.plan.sparse_proof_peaks)
             || reconstructed != self.plan
         {
             return Err(invalid_argument(

@@ -1,12 +1,16 @@
 {
   "schema": 1,
   "sources": {
-    "scripts/replay_bias_reference.py": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+    "scripts/replay_bias_reference.py": "5ad7cfce6513ee50264b7819caa389924bf50f74ef8d54c775b43ef86bf7e431",
     "scripts/ppml_bias_oracle.py": "fd469b678b25c6152315ab8e79cfd7e394554f4c48686c40987dc66d557a2f01"
   },
   "cases": {
     "ppml-bias-exact": {
-      "input_sha256": "df11112c73b671680039fbf021877cd7fcc4d0be90725d0509a096be510daa01",
+      "input_sha256": "16c0fb24ac4cfdb0780b9854fd867042ce85e425cce2db619c4cab73a87fca47",
+      "historical_input_sha256": [
+        "e826410d9e54d98cb5fdc87a5ec78999d3e356ea0b8eb303f44cb4d1e9e773e3",
+        "df11112c73b671680039fbf021877cd7fcc4d0be90725d0509a096be510daa01"
+      ],
       "bias": {
         "method": "exact",
         "coefficient_columns": 3,
@@ -91,7 +95,11 @@
       }
     },
     "ppml-bias-randomized": {
-      "input_sha256": "4e737dc412cefc1ab72995b19b80b99cf34fa7b6d11b974cf8322da2c792d953",
+      "input_sha256": "b0429f72ab3f101d33ceffd43e9a0099a0fbde13b87a2c5f8ef19d039f01a9dc",
+      "historical_input_sha256": [
+        "40f10b4514aecc1d2aaa6f2c1ee28f1ea0d6b5041f3442617d2e953e2f1750e3",
+        "4e737dc412cefc1ab72995b19b80b99cf34fa7b6d11b974cf8322da2c792d953"
+      ],
       "bias": {
         "method": "randomized",
         "coefficient_columns": 3,

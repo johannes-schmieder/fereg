@@ -1356,6 +1356,29 @@ fn hidden_ppml_action_commits_a_distinct_receipt_last() {
 }
 
 #[test]
+fn sparse_admission_distinguishes_implicit_policy_from_identical_explicit_cells() {
+    let (mut args, mut spi) = fixture();
+    let key = "simplex_max_tableau_cells";
+    for (token, cells, adaptive) in [
+        ("auto", 1_000_000, true),
+        ("1000000", 1_000_000, false),
+        ("1", 1, false),
+    ] {
+        replace_argument(&mut args, key, format!("{key}={token}"));
+        let action = EstimatePpmlSpec::parse(&args)
+            .unwrap()
+            .decode_and_validate(&mut spi)
+            .unwrap();
+        assert_eq!(action.separation.simplex_max_tableau_cells, cells);
+        assert_eq!(action.separation.adaptive_sparse, adaptive);
+    }
+    for token in ["0", "adaptive", "-1"] {
+        replace_argument(&mut args, key, format!("{key}={token}"));
+        assert!(EstimatePpmlSpec::parse(&args).is_err());
+    }
+}
+
+#[test]
 fn default_request_binds_separation_and_fit_to_one_linear_policy() {
     let (args, mut spi) = fixture();
     let specification = EstimatePpmlSpec::parse(&args).expect("default PPML specification");
@@ -2530,6 +2553,20 @@ fn saved_fe_recovery_uses_the_accepted_hessian_for_nonexact_counts() {
         let saved = spi.output(14, observation).expect("saved fixed effect");
         assert!((saved - absorbed).abs() < 1e-9);
     }
+}
+
+#[test]
+fn previous_ppml_request_wire_fails_before_reading_or_storing() {
+    let (mut args, mut spi) = fixture();
+    replace_argument(&mut args, "request_minor", "request_minor=10".to_owned());
+    let error = estimate_ppml(&args, &mut spi).expect_err("must reject PPML request wire 1.10");
+    assert_eq!(error.code, ErrorCode::ProtocolMismatch);
+    assert!(error
+        .message
+        .contains("PPML request wire 1.10 is incompatible with 1.11"));
+    assert_eq!(spi.reads, 0);
+    assert_eq!(spi.store_calls, 0);
+    assert_eq!(spi.receipt_complete(), 0.0);
 }
 
 #[test]

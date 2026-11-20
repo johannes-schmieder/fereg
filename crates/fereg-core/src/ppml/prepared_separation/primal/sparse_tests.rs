@@ -165,6 +165,7 @@ fn sparse_certificates_finish_without_admitting_an_unused_dense_fe_audit() {
     );
     let (owner, expected) = coupled_model(false, false);
     let execution = PreparedPpmlSeparationExecution {
+        adaptive_sparse: false,
         preliminary_plan: budget,
         linear: PreparedOlsFitConfig::default(),
         auto_projection: true,
@@ -198,7 +199,7 @@ fn sparse_certificates_finish_without_admitting_an_unused_dense_fe_audit() {
         .iter()
         .map(|&y| if y == 0. { 1. } else { -0.5 })
         .collect();
-    let memory = std::cell::Cell::new(budget);
+    let memory = super::LiveMemoryPlan::new(budget);
     let error = stable::certify_dual(
         generation,
         &dual,
@@ -214,4 +215,143 @@ fn sparse_certificates_finish_without_admitting_an_unused_dense_fe_audit() {
     assert_eq!(error.code, ErrorCode::Allocation);
     assert!(error.message.contains("complete FE span certificate"));
     assert_eq!(memory.get(), budget);
+}
+
+/// Within each group the positive rows span the intercept and 64 slopes:
+/// subtracting successive rows of min(i,j) gives an upper triangular matrix
+/// with ones on its diagonal. Only the last slope is free on positives and
+/// equals one on the group's single zero. Its coefficient -1 is an exact ray.
+/// These repeated independent blocks require over 64M sparse entry touches,
+/// while their local marginal costs and fill stay constant.
+#[test]
+fn productive_slope_elimination_crosses_the_production_work_window() {
+    const SLOPES: usize = 64;
+    const GROUPS: usize = 360;
+    let group_size = SLOPES + 2;
+    let n = GROUPS * group_size;
+    let (mut request, _, mut loaded, _) = fixture();
+    request.model.terms.clear();
+    request.model.sources.truncate(2);
+    request.bindings.truncate(4);
+    loaded.numeric_sources.truncate(2);
+    let variable = |f: &dyn Fn(usize) -> f64| column(&(0..n).map(f).collect::<Vec<_>>());
+    loaded.candidate = vec![true; n].into();
+    loaded.outcome = variable(&|r| f64::from(r % group_size != group_size - 1));
+    loaded.numeric_sources[1].1 = variable(&|r| (r / group_size) as f64);
+    let free = loaded.numeric_sources[0].0;
+    loaded.numeric_sources[0].1 = variable(&|r| f64::from(r % group_size == group_size - 1));
+    for j in 1..=SLOPES {
+        let id = SourceId::new((j + 2) as u32).unwrap();
+        request.model.sources.push(source(id, &format!("s{j}")));
+        request.bindings.push(OlsInputBinding {
+            stata_var_position: (request.bindings.len() + 1) as u32,
+            role: OlsInputRole::NumericSource(id),
+        });
+        loaded
+            .numeric_sources
+            .push((id, variable(&|r| (r % group_size).min(j) as f64)));
+        request.absorbed_terms[0].slope_sources.push(id);
+    }
+    request.absorbed_terms[0].slope_sources.push(free);
+    let uses = vec![NumericSourceUse::fixed_effect(); loaded.numeric_sources.len()];
+    let numeric = prepare_numeric(&loaded, &uses);
+    let mut owner = PreparedPpmlModelOwner::new(request, vec![], loaded, numeric).unwrap();
+    owner.bind_separation_plan(retry::tests::plan(Some(2 << 30)), true);
+    let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+    let model = coordinator.view().prepared;
+    let method = SeparationMethod::Simplex;
+    let config = SeparationConfig::default();
+    // Both calls have the same >7M words, enough to hold this basis. Only
+    // the adaptive work windows allow construction of the verified witness.
+    assert!(primal::ProofBudget::for_sparse(model, method, config).words > 7_000_000);
+    assert!(reconcile::sparse_slope_ray(model, method, config)
+        .unwrap()
+        .is_none());
+    let adaptive = SeparationConfig {
+        adaptive_sparse: true,
+        ..config
+    };
+    let proposal = reconcile::sparse_slope_ray(model, method, adaptive)
+        .unwrap()
+        .expect("productive sparse elimination must continue");
+    let expected: Vec<_> = (group_size - 1..n).step_by(group_size).collect();
+    assert_eq!(proposal.dropped_original_rows, expected);
+    let scores = proposal.direction.as_ref().unwrap();
+    for (r, &z) in scores.iter().enumerate() {
+        assert_eq!(
+            z,
+            if r % group_size == group_size - 1 {
+                -1.
+            } else {
+                0.
+            }
+        );
+    }
+    certify_numerical_proposal(
+        model,
+        &proposal,
+        PpmlConfig::default(),
+        adaptive,
+        PreparedOlsFitConfig::default(),
+        false,
+    )
+    .unwrap();
+}
+
+#[test]
+fn plateau_seed_replays_late_positive_equalities_and_dyadic_zero_blockers() {
+    let n = 2_000;
+    for (late_positive, last_zero) in [(0., 0.), (1., 0.), (0., -2f64.powi(-40))] {
+        let (mut request, _, mut loaded, mut uses) = fixture();
+        request.model.terms.clear();
+        request.model.sources.truncate(2);
+        request.bindings.truncate(4);
+        loaded.numeric_sources.truncate(2);
+        uses.truncate(2);
+        let x = loaded.numeric_sources[0].0;
+        request.absorbed_terms[0].slope_sources.push(x);
+        uses.fill(NumericSourceUse::fixed_effect());
+        let mut values = vec![0.; n];
+        values[n - 3..].copy_from_slice(&[late_positive, 1., last_zero]);
+        let mut outcome = vec![1.; n];
+        outcome[n - 2..].fill(0.);
+        loaded.candidate = vec![true; n].into();
+        loaded.outcome = column(&outcome);
+        loaded.numeric_sources[0].1 = column(&values);
+        for (_, source) in &mut loaded.numeric_sources[1..] {
+            *source = column(&vec![1.; n]);
+        }
+        let numeric = prepare_numeric(&loaded, &uses);
+        let mut owner = PreparedPpmlModelOwner::new(request, vec![], loaded, numeric).unwrap();
+        owner.bind_separation_plan(retry::tests::plan(Some(2 << 30)), true);
+        let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+        let model = coordinator.view().prepared;
+        let run = |adaptive_sparse| {
+            let config = SeparationConfig {
+                adaptive_sparse,
+                ..rectifier_only()
+            };
+            let space = primal::SparseProofAdmission::new(
+                model,
+                SeparationMethod::IteratedRectifier,
+                config,
+            );
+            primal::sparse_interpolant(model, space, 1_024).unwrap()
+        };
+        assert!(run(false).is_none());
+        let proof = run(true);
+        if late_positive == 0. && last_zero == 0. {
+            let scores = primal::direction(model, &proof.expect("partial coefficient witness"))
+                .unwrap()
+                .unwrap();
+            assert_eq!(scores[n - 2], -1.);
+            assert!(scores[..n - 2].iter().all(|&z| z == 0.));
+            assert_eq!(scores[n - 1], 0.);
+        } else {
+            assert!(
+                proof.is_none(),
+                "partial raw replay must reject every violated equality or sign"
+            );
+        }
+    }
 }

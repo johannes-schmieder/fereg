@@ -6,8 +6,9 @@ use super::*;
 pub(super) fn certified(
     model: &PreparedPpmlModelGeneration,
     topology: &DetectorTopology<'_>,
+    method: SeparationMethod,
+    config: SeparationConfig,
     cells: usize,
-    tolerance: f64,
 ) -> Result<bool> {
     if !pure_pair(model, topology) {
         return Ok(false);
@@ -15,22 +16,43 @@ pub(super) fn certified(
     let [left, right] = [topology.effect_to_source[0], topology.effect_to_source[1]];
     let indexes = [topology.sources[left], topology.sources[right]];
     let codes = [codes(model, left)?, codes(model, right)?];
-    balanced(indexes, codes, model.outcome(), cells, tolerance)
+    let metadata =
+        topology.sources.len() + topology.effect_specs.len() + topology.effect_to_source.len();
+    let mut admission = primal::SparseProofAdmission::new_with_initial(
+        model,
+        method,
+        config,
+        cells.saturating_add(metadata),
+    );
+    balanced(
+        indexes,
+        codes,
+        model.outcome(),
+        |words| {
+            words
+                .checked_add(metadata)
+                .is_some_and(|peak| admission.admit(peak))
+        },
+        config.certificate_tolerance,
+    )
 }
 
 fn balanced(
     indexes: [&LevelIndex; 2],
     codes: [&[u32]; 2],
     y: &[f64],
-    cells: usize,
+    mut admit: impl FnMut(usize) -> bool,
     tolerance: f64,
 ) -> Result<bool> {
     let split = indexes[0].n_levels();
     let vertices = split + indexes[1].n_levels();
     // One weight per physical observation and three reusable words per vertex.
     // A tree edge carries at most one unit per boundary row per traversal.
-    if y.len().saturating_add(3usize.saturating_mul(vertices)) > cells
-        || y.len() as u128 > (i64::MAX as u128 - 1) / 2
+    if y.len() as u128 > (i64::MAX as u128 - 1) / 2
+        || !vertices
+            .checked_mul(3)
+            .and_then(|v| v.checked_add(y.len()))
+            .is_some_and(&mut admit)
     {
         return Ok(false);
     }
@@ -150,7 +172,14 @@ mod tests {
                 let g = LevelIndex::from_codes(&left[..n], levels).unwrap();
                 let h = LevelIndex::from_codes(&right[..n], levels).unwrap();
                 let check = |limit| {
-                    balanced([&g, &h], [&left[..n], &right[..n]], &y[..n], limit, 1e-10).unwrap()
+                    balanced(
+                        [&g, &h],
+                        [&left[..n], &right[..n]],
+                        &y[..n],
+                        |words| words <= limit,
+                        1e-10,
+                    )
+                    .unwrap()
                 };
                 assert!(!check(n + 6 * levels - 1));
                 assert_eq!(check(n + 6 * levels), n == 2 * levels);
@@ -160,7 +189,7 @@ mod tests {
                             [&g, &h],
                             [&left[..n], &right[..n]],
                             &y[..n],
-                            n + 6 * levels,
+                            |words| words <= n + 6 * levels,
                             t,
                         )
                         .unwrap()

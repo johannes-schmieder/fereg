@@ -36,14 +36,14 @@
 //! does not fit the memory plan, or the re-execution fails a numerical
 //! certificate as well, the first error is reported unchanged; Break and
 //! allocation failures of the re-execution propagate.
-use std::cell::Cell;
+use super::LiveMemoryPlan;
 
 use crate::error::{allocation, ErrorCode, FeregError, Result};
 use crate::fe::{FeSolverKind, LsmrPreconditioner};
 use crate::memory::{FeSolverMemoryBudget, FeSolverMemoryEstimate};
 use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::ols::PreparedOlsFitConfig;
-use crate::ppml::{PpmlConfig, PpmlMemoryPlan};
+use crate::ppml::PpmlConfig;
 use crate::ppml_separation::{MethodStatus, SeparationConfig};
 
 use super::super::prepared_estimator::PpmlInterruptPoint;
@@ -147,7 +147,7 @@ pub(super) struct DetectorPolicy<'a> {
     /// admitted budget; `None` when the admitted policy is retained CG.
     retained_cg: Option<(PpmlConfig, PreparedOlsFitConfig)>,
     /// The LSMR charge and the fit's live plan it is admitted into.
-    lsmr: Option<(LsmrAdmission, &'a Cell<PpmlMemoryPlan>)>,
+    lsmr: Option<(LsmrAdmission, &'a LiveMemoryPlan)>,
 }
 
 impl<'a> DetectorPolicy<'a> {
@@ -155,7 +155,7 @@ impl<'a> DetectorPolicy<'a> {
         ppml: PpmlConfig,
         linear: PreparedOlsFitConfig,
         retained_cg: Option<(PpmlConfig, PreparedOlsFitConfig)>,
-        lsmr: Option<(LsmrAdmission, &'a Cell<PpmlMemoryPlan>)>,
+        lsmr: Option<(LsmrAdmission, &'a LiveMemoryPlan)>,
     ) -> Self {
         Self {
             ppml,

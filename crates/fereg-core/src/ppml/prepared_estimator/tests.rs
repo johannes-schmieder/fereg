@@ -994,6 +994,55 @@ fn public_lsmr_workspace_beyond_the_limit_runs_the_auto_plan() {
 }
 
 #[test]
+fn ineligible_sparse_proofs_preserve_exact_low_memory_admission() {
+    let none = SeparationMethods {
+        fixed_effects: false,
+        simplex: false,
+        iterated_rectifier: false,
+        mu: false,
+    };
+    // Both a physical all-positive frame and one whose only zero is outside
+    // the active sample are ineligible even when numerical methods are on.
+    for (methods, zero, excluded) in [
+        (SeparationMethods::default(), false, false),
+        (SeparationMethods::default(), true, true),
+        (none, true, false),
+        (
+            SeparationMethods {
+                fixed_effects: true,
+                ..none
+            },
+            true,
+            false,
+        ),
+    ] {
+        let (mut request, mut loaded) = fixture(1, false, false, false, false, false);
+        request.separation.methods = methods;
+        request.memory.requested = MemoryMode::Low;
+        if zero {
+            loaded.ols.outcome.values[0] = 0.;
+        }
+        if excluded {
+            let mut retained = vec![true; loaded.ols.outcome.values.len()];
+            retained[0] = false;
+            loaded.ols.candidate = retained.into();
+        }
+        let baseline = fit_prepared_ppml(request.clone(), loaded.clone()).unwrap();
+        let required = baseline.memory().plan.required_peak_bytes;
+        request.memory.available_bytes = Some(required + 512 * 1024 * 1024);
+        let explicit = fit_prepared_ppml(request.clone(), loaded.clone()).unwrap();
+        request.separation.adaptive_sparse = true;
+        // Vec::clone may shrink the fixture builder's spare capacity. Use
+        // identical transferred owners on both sides of the exact boundary.
+        let implicit = fit_prepared_ppml(request.clone(), loaded.clone()).unwrap();
+        assert_eq!(explicit.memory().plan, implicit.memory().plan);
+        assert_eq!(implicit.memory().plan.sparse_proof_peaks, [0; 3]);
+        assert_eq!(explicit.sample(), implicit.sample());
+        assert_eq!(explicit.output(), implicit.output());
+    }
+}
+
+#[test]
 fn automatic_structural_map_uses_admitted_shared_operations() {
     let (mut request, loaded) = fixture(3, false, false, false, false, false);
     request.solver = PpmlSolverFamily::Lsmr;
@@ -2222,6 +2271,7 @@ fn accepted_mu_drop_then_publication_fit_failure_returns_no_composite() {
     };
     resolved_linear.execution.poolsize = request.memory.poolsize;
     let execution = PreparedPpmlSeparationExecution {
+        adaptive_sparse: false,
         preliminary_plan: plan,
         linear: resolved_linear,
         auto_projection: true,

@@ -142,7 +142,7 @@ impl<'a> Design<'a> {
     fn new(
         model: &'a PreparedPpmlModelGeneration,
         topology: &DetectorTopology<'a>,
-        limit: usize,
+        fits: &mut impl FnMut(usize) -> bool,
     ) -> Result<Option<(Self, usize)>> {
         let fit = model.fit_view();
         let columns = &model.model().columns;
@@ -168,7 +168,7 @@ impl<'a> Design<'a> {
             },
         );
         let metadata = capacity.saturating_mul(std::mem::size_of::<Family>().div_ceil(8));
-        if capacity == 0 || metadata >= limit {
+        if capacity == 0 || !fits(metadata.saturating_add(1)) {
             return Ok(None);
         }
         let mut families = Vec::new();
@@ -241,7 +241,7 @@ impl<'a> Design<'a> {
                 levels,
                 pass,
             },
-            limit - metadata,
+            metadata,
         )))
     }
 
@@ -343,7 +343,7 @@ impl Search {
 }
 
 pub(in crate::ppml::prepared_separation) fn supports(
-    search: Search,
+    (method, search): (SeparationMethod, Search),
     model: &PreparedPpmlModelGeneration,
     topology: &DetectorTopology<'_>,
     positive: usize,
@@ -351,12 +351,82 @@ pub(in crate::ppml::prepared_separation) fn supports(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<bool> {
+    let mut shortage = None;
+    let mut productive = false;
+    let ordinary = SearchAllowance {
+        search,
+        fits: &mut |required: usize| {
+            if required <= limit {
+                return true;
+            }
+            shortage = Some(shortage.map_or(required, |previous: usize| previous.min(required)));
+            false
+        },
+        extend_work: &mut || {
+            productive = true;
+            false
+        },
+    };
+    if search_support(model, topology, positive, config, ordinary, interrupt)? {
+        return Ok(true);
+    }
+    // Preserve any certified incumbent result, including the final projection
+    // passes a speculative larger search might otherwise consume. A hard or
+    // unaffordable retry cannot improve on the completed ordinary attempt.
+    if (shortage.is_none() && !productive)
+        || !matches!(search, Search::Full)
+        || (method == SeparationMethod::Simplex && config.methods.iterated_rectifier)
+    {
+        return Ok(false);
+    }
+    let mut workspace = primal::SparseProofAdmission::new(model, method, config);
+    let outside = workspace.words().saturating_sub(limit);
+    if !workspace.adaptive()
+        || (!productive
+            && !shortage
+                .and_then(|n| n.checked_add(outside))
+                .is_some_and(|n| workspace.admit(n)))
+    {
+        return Ok(false);
+    }
+    let retry = SearchAllowance {
+        search,
+        fits: &mut |words: usize| {
+            words <= limit
+                || words
+                    .checked_add(outside)
+                    .is_some_and(|total| workspace.admit(total))
+        },
+        extend_work: &mut || true,
+    };
+    search_support(model, topology, positive, config, retry, interrupt)
+}
+
+struct SearchAllowance<'a> {
+    search: Search,
+    fits: &'a mut dyn FnMut(usize) -> bool,
+    extend_work: &'a mut dyn FnMut() -> bool,
+}
+
+fn search_support(
+    model: &PreparedPpmlModelGeneration,
+    topology: &DetectorTopology<'_>,
+    positive: usize,
+    config: SeparationConfig,
+    allowance: SearchAllowance,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<bool> {
+    let SearchAllowance {
+        search,
+        mut fits,
+        extend_work,
+    } = allowance;
     let y = model.outcome();
     let boundary = y.len() - positive;
     if positive == 0 || boundary == 0 {
         return Ok(false);
     }
-    let Some((design, limit)) = Design::new(model, topology, limit)? else {
+    let Some((design, metadata)) = Design::new(model, topology, &mut fits)? else {
         return Ok(false);
     };
     // Charge the bounded multiword stack accumulator as well as the heap
@@ -370,15 +440,14 @@ pub(in crate::ppml::prepared_separation) fn supports(
     } else {
         0
     };
-    let Some(limit) = limit.checked_sub(exact) else {
-        return Ok(false);
-    };
+    let fixed = metadata.saturating_add(exact);
+    let mut fits = |words: usize| words.checked_add(fixed).is_some_and(&mut fits);
     let attempts = config
         .simplex_max_iterations
         .saturating_mul(10)
         .saturating_add(2);
     let mut work = primal::ProofBudget::sparse_work(design.pass, attempts);
-    if design.levels > limit || work < design.pass {
+    if work < design.pass || !fits(design.levels) {
         return Ok(false);
     }
     interrupt(PpmlInterruptPoint::SeparationSimplex)?;
@@ -394,11 +463,11 @@ pub(in crate::ppml::prepared_separation) fn supports(
             .iter()
             .filter(|f| f.codes.is_some())
             .max_by_key(|f| f.levels)
-            .filter(|f| f.levels.saturating_mul(2) <= limit - design.levels)
             .copied()
     } else {
         None
     };
+    let axis = axis.filter(|f| fits(design.levels.saturating_add(f.levels.saturating_mul(2))));
     if search.try_uniform(work / design.pass, axis.is_some()) {
         let mut p = positive;
         let mut b = boundary;
@@ -450,8 +519,9 @@ pub(in crate::ppml::prepared_separation) fn supports(
         if cells::prove(
             model,
             &design,
-            limit - design.levels,
+            |words| fits(design.levels.saturating_add(words)),
             &mut local,
+            extend_work,
             config.certificate_tolerance,
         )? {
             trace(model, "categorical_cells");
@@ -462,7 +532,7 @@ pub(in crate::ppml::prepared_separation) fn supports(
     if matches!(search, Search::Direct) {
         return Ok(false);
     }
-    projected_support(model, &design, &mut sums, limit, work, config, interrupt)
+    projected_support(model, &design, &mut sums, fits, work, config, interrupt)
 }
 
 /// Explore the residual cone by alternating projections. Only the exact
@@ -471,14 +541,14 @@ fn projected_support(
     model: &PreparedPpmlModelGeneration,
     design: &Design<'_>,
     sums: &mut [f64],
-    limit: usize,
+    mut fits: impl FnMut(usize) -> bool,
     work: usize,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<bool> {
     let y = model.outcome();
     let mut passes = work / design.pass.max(1);
-    if design.levels.saturating_mul(2).saturating_add(y.len()) > limit || passes < 3 {
+    if passes < 3 || !fits(design.levels.saturating_mul(2).saturating_add(y.len())) {
         return Ok(false);
     }
     if crate::diagnostics::solver_trace_enabled() {

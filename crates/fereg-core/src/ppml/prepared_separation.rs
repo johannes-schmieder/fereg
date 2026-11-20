@@ -32,7 +32,7 @@ use crate::ppml_separation::{
     SeparationNote, SeparationReport,
 };
 
-use super::memory::{begin_phase_allocation, end_phase_allocation};
+use super::memory::{begin_phase_allocation, end_phase_allocation, LiveMemoryPlan};
 use super::prepared_estimator::PpmlInterruptPoint;
 use super::prepared_irls::PreparedPpmlMuExploration;
 use super::prepared_model::{
@@ -284,6 +284,8 @@ impl FinalGenerationReplayToken {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct PreparedPpmlSeparationExecution {
     pub(crate) preliminary_plan: PpmlMemoryPlan,
+    /// Exact retained boundary and requested numerical method at preflight.
+    pub(crate) adaptive_sparse: bool,
     pub(crate) linear: PreparedOlsFitConfig,
     /// Default two-FE Auto detector route; `inject=ppml_separation_cg` turns
     /// it off. See [`routing`].
@@ -376,8 +378,9 @@ where
     ) -> Result<T>,
 {
     validate_config(config)?;
-    let ordinary_plan = std::cell::Cell::new(execution.preliminary_plan);
-    let shared_plan = owner.bind_recovery_plan(execution.preliminary_plan);
+    let ordinary_plan = LiveMemoryPlan::new(execution.preliminary_plan);
+    let shared_plan =
+        owner.bind_separation_plan(execution.preliminary_plan, execution.adaptive_sparse);
     let plan = shared_plan.as_deref().unwrap_or(&ordinary_plan);
     let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
         prepare_initial_generation(owner, phase_allocation_probe)?;
@@ -416,6 +419,7 @@ where
             fit_generation(generation, &plan.get(), execution.linear, interrupt)
         },
     )?;
+    outcome.prepared.separation_memory = None;
     outcome.initial_preparation_elapsed = initial_preparation_elapsed;
     outcome.initial_preparation_peak = initial_preparation_peak;
     Ok((outcome, fit))
@@ -568,7 +572,7 @@ mod trace;
 #[derive(Clone, Copy, Default)]
 struct DetectorAdmission<'a> {
     graph: bool,
-    span_plan: Option<&'a std::cell::Cell<PpmlMemoryPlan>>,
+    span_plan: Option<&'a LiveMemoryPlan>,
     unit_projection: Option<(PpmlConfig, PreparedOlsFitConfig)>,
 }
 
@@ -691,6 +695,9 @@ where
         reports
             .try_reserve(reports_this_generation.min(method_report_capacity - reports.len()))
             .map_err(|_| allocation("unable to grow prepared separation method reports"))?;
+        if let Some(live) = &coordinator.view().prepared.separation_memory {
+            live.observe_report_capacity(reports.capacity());
+        }
         require_positive_outcome(coordinator.view().prepared.outcome())?;
         // Reinitialized after every committed deletion.  Consequently only
         // detector replays performed on the eventual stable generation can
@@ -2078,11 +2085,7 @@ fn prepared_simplex_proposal(
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     compact_hint: &mut Option<Vec<i64>>,
 ) -> Result<PreparedNumericalProposal> {
-    // Resolve the enum-backed model exactly once before entering the dense
-    // row/column construction loop. The concrete view keeps both this loop
-    // and the shared linear-session loops statically dispatched.
-    let fit_view = generation.fit_view();
-    let finite_columns = fit_view.model().columns.len();
+    let finite_columns = generation.model().columns.len();
     let topology = DetectorTopology::new(generation.prepared())?;
     let columns = simplex_full_model_width(finite_columns, &topology)?;
     if columns == 0 {
@@ -2122,15 +2125,16 @@ fn prepared_simplex_proposal(
         .ok_or_else(|| allocation("prepared simplex construction workspace overflowed"))?;
     let peak_cells = kernel_peak_cells.max(construction_peak_cells);
     if positive_rank::pure_pair(generation, &topology) {
-        let available = peak_cells
-            .min(config.simplex_max_tableau_cells)
-            .saturating_sub(topology_cells);
-        if let Some(proof) = pure_pair_simplex(generation, boundary, available, config, interrupt)?
-        {
+        if let Some(proof) = pure_pair_simplex(
+            generation,
+            boundary,
+            (peak_cells, topology_cells),
+            config,
+            interrupt,
+        )? {
             return Ok(proof);
         }
     }
-    let dense_exceeds_limit = peak_cells > config.simplex_max_tableau_cells;
     let skipped = || {
         bind_numerical_proposal(
             generation,
@@ -2144,7 +2148,7 @@ fn prepared_simplex_proposal(
             ),
         )
     };
-    if dense_exceeds_limit {
+    if peak_cells > config.simplex_max_tableau_cells {
         if topology.effect_specs.is_empty() && boundary != 0 {
             let limit =
                 primal::ProofBudget::for_sparse(generation, SeparationMethod::Simplex, config)
@@ -2232,9 +2236,14 @@ fn prepared_compact_simplex(
     let rows = generation.outcome().len();
     let raw = primal::RawRows::new(generation, true)?;
     let columns = raw.width;
-    let input_cells = config
-        .simplex_max_tableau_cells
-        .saturating_sub(effects.saturating_mul(16));
+    let metadata = effects.saturating_mul(16);
+    let input_cells = config.simplex_max_tableau_cells.saturating_sub(metadata);
+    let mut admission = primal::SparseProofAdmission::new_with_initial(
+        generation,
+        SeparationMethod::Simplex,
+        config,
+        config.simplex_max_tableau_cells,
+    );
     let mut pivots = 0;
     let mut poll = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
     let outcome = generation.outcome();
@@ -2243,7 +2252,10 @@ fn prepared_compact_simplex(
     let input = BinaryDesign::prepare(
         outcome,
         (columns, finite + effects, raw.sparse_row_visits()),
-        input_cells,
+        (input_cells, &mut |words| {
+            let peak = words.checked_add(metadata)?;
+            admission.admit(peak).then(|| admission.words() - metadata)
+        }),
         config,
         &mut pivots,
         &mut |i, row| {
@@ -2284,7 +2296,12 @@ fn prepared_compact_simplex(
         }) => {
             let required =
                 primal::RawRows::sparse_replay_words(generation, coefficients.capacity());
-            if required > config.simplex_max_tableau_cells {
+            if !reconcile::admits_compact_replay(
+                generation,
+                SeparationMethod::Simplex,
+                config,
+                coefficients.capacity(),
+            ) {
                 if config.methods.iterated_rectifier
                     && required
                         <= primal::ProofBudget::for_sparse(
@@ -2492,7 +2509,7 @@ fn prepared_bound_iterated_rectifier<'a>(
 fn pure_pair_simplex(
     generation: &PreparedPpmlModelGeneration,
     boundary: usize,
-    cells: usize,
+    (dense_peak, metadata): (usize, usize),
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<PreparedNumericalProposal>> {
@@ -2500,8 +2517,26 @@ fn pure_pair_simplex(
         return Ok(None);
     };
     let vertices = design.effects().iter().map(|e| e.n_levels()).sum();
-    if graph::categorical_peak_bytes(design.nobs(), boundary, vertices) > cells as u128 * 8 {
-        return Ok(None);
+    let required = graph::categorical_peak_bytes(design.nobs(), boundary, vertices).div_ceil(8)
+        + metadata as u128;
+    let cheap = dense_peak.min(config.simplex_max_tableau_cells);
+    if required > cheap as u128 {
+        // If dense simplex fits, preserve its existing place after the cheap
+        // graph. Otherwise the two borrowed partitions give an exact bound.
+        let Ok(words) = usize::try_from(required) else {
+            return Ok(None);
+        };
+        if dense_peak <= cheap
+            || !primal::SparseProofAdmission::new_with_initial(
+                generation,
+                SeparationMethod::Simplex,
+                config,
+                cheap,
+            )
+            .admit(words)
+        {
+            return Ok(None);
+        }
     }
     let Some(graph::GraphDirection { direction, span }) =
         graph::direction(&design, generation.outcome(), &mut || {
@@ -4269,6 +4304,18 @@ fn certify_numerical_proposal(
     linear: PreparedOlsFitConfig,
     defer_many_fe_fallback: bool,
 ) -> Result<SeparationCertificate> {
+    if let Some(primal::Witness::Sparse(coefficients)) = &proposal.exact_primal {
+        if !reconcile::admits_compact_replay(
+            generation,
+            proposal.method,
+            config,
+            coefficients.capacity(),
+        ) {
+            return Err(allocation(
+                "unable to admit sparse separation certificate replay",
+            ));
+        }
+    }
     let (direction, mut certificate) = checked_deletion_claim(generation, proposal, config)?;
     let span_residual_relative = if let Some(proof) = &proposal.exact_graph_span {
         let design = generation

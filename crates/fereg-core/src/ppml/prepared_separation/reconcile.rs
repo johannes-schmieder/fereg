@@ -158,8 +158,10 @@ pub(super) fn sparse_slope_ray(
     method: SeparationMethod,
     config: SeparationConfig,
 ) -> Result<Option<PreparedNumericalProposal>> {
-    let budget = primal::ProofBudget::for_sparse(model, method, config);
-    let Some(witness) = primal::sparse_interpolant(model, budget)? else {
+    let admission = primal::SparseProofAdmission::new(model, method, config);
+    let Some(witness) =
+        primal::sparse_interpolant(model, admission, primal::ProofBudget::MAX_SPARSE_WORK)?
+    else {
         return Ok(None);
     };
     let proposal = bind_witness(model, method, config, witness)?;
@@ -179,8 +181,8 @@ pub(super) fn factor_pair(
     method: SeparationMethod,
     config: SeparationConfig,
 ) -> Result<Option<PreparedNumericalProposal>> {
-    let budget = primal::ProofBudget::for_sparse(model, method, config);
-    let Some(witness) = primal::factor_pair(model, budget)? else {
+    let mut admission = primal::SparseProofAdmission::new(model, method, config);
+    let Some(witness) = primal::factor_pair(model, &mut admission)? else {
         return Ok(None);
     };
     let proposal = bind_witness(model, method, config, witness)?;
@@ -210,6 +212,21 @@ fn bind_witness(
     Ok(Some(bound))
 }
 
+pub(super) fn admits_compact_replay(
+    model: &PreparedPpmlModelGeneration,
+    method: SeparationMethod,
+    config: SeparationConfig,
+    capacity: usize,
+) -> bool {
+    let initial = if method == SeparationMethod::Simplex {
+        config.simplex_max_tableau_cells
+    } else {
+        primal::ProofBudget::for_sparse(model, method, config).words
+    };
+    let required = primal::RawRows::sparse_replay_words(model, capacity);
+    primal::SparseProofAdmission::new_with_initial(model, method, config, initial).admit(required)
+}
+
 pub(super) fn compact_ray(
     model: &PreparedPpmlModelGeneration,
     mut coefficients: Vec<i64>,
@@ -218,14 +235,7 @@ pub(super) fn compact_ray(
     config: SeparationConfig,
 ) -> Result<Option<PreparedNumericalProposal>> {
     let finite = model.model().columns.len();
-    let available = if method == SeparationMethod::Simplex {
-        config.simplex_max_tableau_cells
-    } else {
-        primal::ProofBudget::for_sparse(model, method, config).words
-    };
-    if finite > coefficients.len()
-        || primal::RawRows::sparse_replay_words(model, coefficients.capacity()) > available
-    {
+    if finite > coefficients.len() {
         return Ok(None);
     }
     // The simplex has finite columns first. The sparse witness visits each
@@ -247,6 +257,14 @@ pub(super) fn certify_compact_hint(
     config: SeparationConfig,
     policy: &retry::DetectorPolicy<'_>,
 ) -> Result<Option<ValidatedNumericalProposal>> {
+    if !admits_compact_replay(
+        model,
+        SeparationMethod::IteratedRectifier,
+        config,
+        coefficients.capacity(),
+    ) {
+        return Ok(None);
+    }
     let proof = compact_ray(
         model,
         coefficients,

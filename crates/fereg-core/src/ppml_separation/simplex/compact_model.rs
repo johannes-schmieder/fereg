@@ -89,11 +89,15 @@ pub(crate) fn compact_model_admitted(
 fn dense_positive_admitted(rows: usize, positive: usize, width: usize, limit: usize) -> bool {
     let positive_cells = positive.saturating_mul(width);
     let elimination = positive_cells.saturating_mul(positive.min(width));
-    let scratch = positive_cells
+    elimination <= MAX_WORK && dense_positive_cells(rows, positive, width) <= limit
+}
+
+fn dense_positive_cells(rows: usize, positive: usize, width: usize) -> usize {
+    positive
+        .saturating_mul(width)
         .saturating_mul(2)
         .saturating_add(width.saturating_mul(width.saturating_add(8)))
-        .saturating_add(rows.saturating_mul(3));
-    elimination <= MAX_WORK && scratch <= limit
+        .saturating_add(rows.saturating_mul(3))
 }
 
 pub(crate) fn compact_model(
@@ -110,7 +114,7 @@ pub(crate) fn compact_model(
         None,
         config.simplex_max_tableau_cells,
     )
-    .run(pivots, interrupt)
+    .run(pivots, interrupt, &mut |_| None)
 }
 
 struct CompactSearch<'a> {
@@ -142,15 +146,33 @@ impl<'a> CompactSearch<'a> {
         }
     }
 
+    fn require(&mut self, needed: usize, grow: &mut dyn FnMut(usize) -> Option<usize>) -> bool {
+        if needed > self.available {
+            let Some(granted) = grow(needed).filter(|&grant| grant >= needed) else {
+                return false;
+            };
+            self.available = granted;
+        }
+        true
+    }
+
     fn run(
-        &self,
+        &mut self,
         pivots: &mut usize,
         interrupt: &mut dyn FnMut() -> Result<()>,
+        grow: &mut dyn FnMut(usize) -> Option<usize>,
     ) -> Result<Option<CompactModel>> {
         let width = self.design.ncols();
         let outcome = self.outcome;
         let positive_count = outcome.iter().filter(|&&y| y > 0.).count();
-        if !compact_model_admitted(outcome.len(), positive_count, width, self.available) {
+        if width == 0
+            || positive_count == 0
+            || positive_count == outcome.len()
+            || !self.require(
+                width.saturating_mul(width).saturating_add(outcome.len()),
+                grow,
+            )
+        {
             return Ok(None);
         }
         if dense_positive_admitted(outcome.len(), positive_count, width, self.available) {
@@ -162,7 +184,7 @@ impl<'a> CompactSearch<'a> {
                 positive_count,
                 "unable to reserve compact simplex positive rows",
             )?;
-            return self.solve(positive, pivots, interrupt);
+            return self.solve(positive, pivots, interrupt, grow);
         }
         let Some(selected) =
             positive_rows::select(self.design, outcome, self.available, interrupt)?
@@ -170,7 +192,7 @@ impl<'a> CompactSearch<'a> {
             return Ok(None);
         };
         let rank = selected.len();
-        let proposal = self.solve(selected, pivots, interrupt)?;
+        let proposal = self.solve(selected, pivots, interrupt, grow)?;
         if proposal.is_some() || rank == width {
             return Ok(proposal);
         }
@@ -179,7 +201,7 @@ impl<'a> CompactSearch<'a> {
             return Ok(None);
         };
         if odd.len() > rank {
-            self.solve(odd, pivots, interrupt)
+            self.solve(odd, pivots, interrupt, grow)
         } else {
             Ok(None)
         }
@@ -188,21 +210,25 @@ impl<'a> CompactSearch<'a> {
 
 impl CompactSearch<'_> {
     fn solve(
-        &self,
+        &mut self,
         mut positive: Vec<usize>,
         pivots: &mut usize,
         interrupt: &mut dyn FnMut() -> Result<()>,
+        grow: &mut dyn FnMut(usize) -> Option<usize>,
     ) -> Result<Option<CompactModel>> {
         let Self {
             outcome,
             design,
             tolerance,
-            max_iterations,
-            available,
             ..
         } = *self;
         let width = design.ncols();
-        if !dense_positive_admitted(outcome.len(), positive.len(), width, available) {
+        if !dense_positive_admitted(outcome.len(), positive.len(), width, usize::MAX)
+            || !self.require(
+                dense_positive_cells(outcome.len(), positive.len(), width),
+                grow,
+            )
+        {
             return Ok(None);
         }
         // The pivot subset only reduces proposal work. A numerical direction or
@@ -240,26 +266,20 @@ impl CompactSearch<'_> {
             .capacity()
             .saturating_add(positive.capacity())
             .saturating_add(width);
-        let Some(cone_budget) = available.checked_sub(fixed_cells) else {
+        let basis_workspace = projection::minimum_basis_cells(dimension, width);
+        if !self.require(fixed_cells.saturating_add(basis_workspace), grow) {
             return Ok(None);
-        };
+        }
+        let cone_budget = self.available - fixed_cells;
         let Some(projected) =
             projection::build(design, &boundary, &mut basis, tolerance, cone_budget)?
         else {
             return Ok(None);
         };
         let retained = basis.len();
-        let remaining = cone_budget - projected.live_cells;
-        if remaining <= boundary_count.saturating_mul(2) {
-            return Ok(None); // The numerical dual and its Farkas replay coexist.
-        }
-        let proposal = projected.propose(
-            boundary_count,
-            (tolerance, max_iterations),
-            pivots,
-            remaining,
-            interrupt,
-        )?;
+        let live = fixed_cells.saturating_add(projected.live_cells);
+        let proposal = self.propose(&projected, (boundary_count, live), pivots, interrupt, grow)?;
+        let remaining = self.available.saturating_sub(live);
         if crate::diagnostics::solver_trace_enabled() {
             let branch = match &proposal {
                 Some(compact_tableau::Proposal::Direction { .. }) => "direction",
@@ -276,7 +296,7 @@ impl CompactSearch<'_> {
                 drop(projected);
                 let coefficients = combine_basis(&basis, &coordinates)?;
                 drop(basis);
-                let scratch = available.saturating_sub(fixed_cells + retained);
+                let scratch = self.available.saturating_sub(fixed_cells + retained);
                 Ok(lift_ray(
                     design,
                     outcome,
@@ -310,7 +330,7 @@ impl CompactSearch<'_> {
                     }
                     return Ok(None);
                 };
-                let scratch = available.saturating_sub(fixed_cells + weights.len());
+                let scratch = self.available.saturating_sub(fixed_cells + weights.len());
                 Ok(exact_terminal::compact_no_recession(
                     design, outcome, &boundary, &weights, &positive, MAX_WORK, scratch,
                 )?
@@ -325,6 +345,36 @@ impl CompactSearch<'_> {
             None => Ok(None),
         }
     }
+    /// Try the already funded cone first. Extend only when its exact direct
+    /// tableau size was refused and the caller can admit the physical index.
+    fn propose(
+        &mut self,
+        projected: &projection::BoundaryCone,
+        (boundary, live): (usize, usize),
+        pivots: &mut usize,
+        interrupt: &mut dyn FnMut() -> Result<()>,
+        grow: &mut dyn FnMut(usize) -> Option<usize>,
+    ) -> Result<Option<compact_tableau::Proposal>> {
+        let dual_cells = boundary.saturating_mul(2).saturating_add(1);
+        if !self.require(live.saturating_add(dual_cells), grow) {
+            return Ok(None);
+        }
+        let policy = (self.tolerance, self.max_iterations);
+        let remaining = self.available - live;
+        let initial = projected.propose(boundary, policy, pivots, remaining, interrupt)?;
+        if initial.is_some() || *pivots >= self.max_iterations {
+            return Ok(initial);
+        }
+        let dimension = projected.rows.first().map_or(0, Vec::len);
+        let needed = compact_tableau::workspace_cells(projected.rows.len(), dimension);
+        if needed.is_some_and(|words| {
+            words > remaining && self.require(live.saturating_add(words), grow)
+        }) {
+            return projected.propose(boundary, policy, pivots, self.available - live, interrupt);
+        }
+        Ok(None)
+    }
+
     fn farkas(
         &self,
         cone: &projection::BoundaryCone,

@@ -47,6 +47,12 @@ impl BoundaryCone {
     }
 }
 
+pub(super) fn minimum_basis_cells(dimension: usize, width: usize) -> usize {
+    dimension
+        .saturating_mul(width.saturating_add(3))
+        .saturating_add(dimension.saturating_mul(dimension.saturating_add(8)))
+}
+
 pub(super) fn build(
     design: &BinaryDesign,
     boundary: &[usize],
@@ -59,7 +65,7 @@ pub(super) fn build(
     let basis_cells = dimension.saturating_mul(width + 3);
     let pivot_cells = dimension.saturating_mul(dimension + 8);
     let row_cells = boundary.len().saturating_mul(dimension + 3);
-    if basis_cells.saturating_add(pivot_cells) > available {
+    if minimum_basis_cells(dimension, width) > available {
         return Ok(None);
     }
     if basis_cells

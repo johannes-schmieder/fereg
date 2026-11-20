@@ -79,6 +79,62 @@ fn plan_with_diagnostic_capacity(capacity: usize) -> PpmlMemoryPlan {
 }
 
 #[test]
+fn sparse_proofs_charge_only_the_active_phase_and_reuse_released_capacity() {
+    let mut shape = dimensions();
+    shape.separation_mu_enabled = true;
+    let mut plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+    let phase = PpmlPhase::SeparationSimplex;
+    assert_eq!(plan.admit_sparse(phase, 1, 100, 0), None);
+    let usable = plan.selected_bytes() + 16_000_000;
+    plan.usable_bytes = Some(usable);
+    assert!(plan.admit_separation_projection(4_096));
+
+    let live = LiveMemoryPlan::new(plan);
+    let registered = plan
+        .selected_inventory()
+        .separation_method_report_record_bytes;
+    let record_size = size_of::<SeparationMethodReport>() as u128;
+    live.observe_report_capacity((registered / record_size + 3) as usize);
+    let phase_base = plan.modeled_phase_peak_bytes(phase) + 3 * record_size;
+    let remaining = ((usable - phase_base) / 8) as usize;
+    let untouched = live.get();
+    assert_eq!(live.admit_sparse(phase, remaining + 1, remaining + 1), None);
+    assert_eq!(live.get(), untouched);
+    assert_eq!(
+        live.admit_sparse(phase, remaining, remaining + 1),
+        Some(remaining)
+    );
+    let granted = live.get();
+    let expected = phase_base + 8 * remaining as u128;
+    assert_eq!(granted.modeled_phase_peak_bytes(phase), expected);
+    assert_eq!(granted.selected_bytes(), expected);
+    assert_eq!(
+        granted.modeled_phase_peak_bytes(PpmlPhase::SeparationIr),
+        untouched.modeled_phase_peak_bytes(PpmlPhase::SeparationIr)
+    );
+
+    // A later replay sees the whole available capacity again. Its small
+    // workspace cannot erase a previous phase peak or borrow the report bank.
+    assert_eq!(live.admit_sparse(phase, 1, 32), Some(32));
+    assert_eq!(live.get(), granted);
+    assert_eq!(live.admit_sparse(phase, remaining + 1, remaining + 1), None);
+
+    // Mu keeps its fitted mean while the simplex workspace can be reused.
+    let mu = PpmlPhase::SeparationMu;
+    assert_eq!(live.admit_sparse(mu, 100, 100), Some(100));
+    assert!(
+        live.get().modeled_phase_peak_bytes(mu)
+            >= phase_base + plan.selected_inventory().mu_exploration_retained_bytes + 800
+    );
+
+    let mut recovered = untouched;
+    assert!(recovered.restore_sparse_peaks(live.get().sparse_proof_peaks));
+    let history = recovered;
+    assert!(!recovered.restore_sparse_peaks([usable + 1, 0, 0]));
+    assert_eq!(recovered, history);
+}
+
+#[test]
 fn membership_scratch_preserves_required_routes_and_later_workspace_admission() {
     let mut shape = dimensions();
     // Force preparation to determine the required peak. This makes any
