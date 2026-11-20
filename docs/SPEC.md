@@ -2032,6 +2032,12 @@ must admit that audit on its current generation before allocating the
 scratch arrays. An exact original-coordinate proof can finish within
 its own allowance without reserving the numerical audit's dense workspace.
 
+When a model has only finite regressors and the dense simplex exceeds its
+allowance, a nonzero modular minor on positive-outcome rows can certify
+that every recession direction is zero. Include the structural intercept
+when present and recompute the proof on terminal replay. An inconclusive
+minor leaves subsequent separation checks available.
+
 For a pure pair of categorical intercept effects, the quotient graph of
 positive observations and directed zero rows can expose all strict edges in one
 pass through its strongly connected components. A terminal proof can instead

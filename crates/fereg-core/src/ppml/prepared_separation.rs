@@ -2145,6 +2145,17 @@ fn prepared_simplex_proposal(
         )
     };
     if dense_exceeds_limit {
+        if topology.effect_specs.is_empty() && boundary != 0 {
+            let limit =
+                primal::ProofBudget::for_sparse(generation, SeparationMethod::Simplex, config)
+                    .words
+                    .saturating_sub(topology_cells);
+            if let Some(proof) =
+                positive_rank::finite::detect(generation, positive, limit, interrupt)?
+            {
+                return bind_numerical_proposal(generation, proof);
+            }
+        }
         if let Some(proposal) = positive_rank::detect(
             generation,
             &topology,

@@ -239,20 +239,7 @@ pub(crate) fn model_simplex_interruptible(
                 "positive-outcome rank lacks an exact full-rank minor",
             ));
         }
-        return Ok(DetectionProposal {
-            method: SeparationMethod::Simplex,
-            dropped: Vec::new(),
-            iterations: 0,
-            status: MethodStatus::NoSeparation,
-            certificate: Some(no_separation_certificate(
-                SeparationCertificateProof::SimplexFullPositiveRank {
-                    columns: regressors.ncols(),
-                },
-            )),
-            exact_fe_certificate: None,
-            direction: None,
-            note: "finite regressors have full column rank on the positive-outcome sample".into(),
-        });
+        return Ok(full_positive_rank_proposal(regressors.ncols()));
     }
     // Each retained pivot row ID replaces at least one full row omitted from
     // the worst-case square nullspace basis already charged to the kernel.
@@ -485,6 +472,18 @@ fn farkas_residual_certificate(
             && infeasibility_margin_relative >= tolerance,
     };
     certificate.passed.then_some(certificate)
+}
+
+pub(crate) fn full_positive_rank_proposal(columns: usize) -> DetectionProposal {
+    let mut result = DetectionProposal::empty(
+        SeparationMethod::Simplex,
+        MethodStatus::NoSeparation,
+        "finite regressors have full column rank on the positive-outcome sample",
+    );
+    result.certificate = Some(no_separation_certificate(
+        SeparationCertificateProof::SimplexFullPositiveRank { columns },
+    ));
+    result
 }
 
 pub(crate) fn no_separation_certificate(

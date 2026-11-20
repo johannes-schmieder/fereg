@@ -634,3 +634,124 @@ fn partition_masses_close_survivor_blocks_on_the_original_axes() {
     )
     .unwrap());
 }
+
+#[test]
+fn finite_minor_replay_retains_one_ulp_positive_contrast_and_rejects_substitution() {
+    let owner = |late: f64| {
+        let (mut request, clusters, mut loaded, mut uses) = fixture();
+        request.absorbed_terms.clear();
+        let mut other = request.model.terms[0].clone();
+        other.id = TermId::new(2).unwrap();
+        other.order = TermOrder::new(2).unwrap();
+        other.coefficient_slot = CoefficientSlot::new(2).unwrap();
+        other.components[0].source = SourceId::new(2).unwrap();
+        request.model.terms.push(other);
+        uses[1] = NumericSourceUse::ordinary();
+        loaded.outcome = column(&[1., 0., 2., 0., 1., 0.]);
+        loaded.numeric_sources[0].1 = column(&[0., 1., 1., -2., 2., -1.]);
+        loaded.numeric_sources[1].1 = column(&[0., 2., 1., 1., late, 1.]);
+        loaded.numeric_sources[2].1 = column(&[10., 20., 30., 10., 20., 30.]);
+        let numeric = prepare_numeric(&loaded, &uses);
+        PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap()
+    };
+    let perturbed = f64::from_bits(2f64.to_bits() + 1);
+    let config = SeparationConfig {
+        methods: SeparationMethods {
+            fixed_effects: false,
+            simplex: true,
+            iterated_rectifier: true,
+            mu: false,
+        },
+        drop_singletons: false,
+        simplex_max_tableau_cells: 24,
+        ..SeparationConfig::default()
+    };
+    let a = PreparedSeparationCoordinator::new(owner(perturbed)).unwrap();
+    let model = a.view().prepared;
+    let proposal = prepared_simplex_proposal(model, config, &mut |_| Ok(()), &mut None).unwrap();
+    assert_eq!(
+        proposal.certificate.as_ref().unwrap().proof,
+        Proof::SimplexFullPositiveRank { columns: 3 }
+    );
+    let replay = |model| {
+        replay_numerical_no_drop(
+            model,
+            &proposal,
+            PpmlConfig::default(),
+            config,
+            PreparedOlsFitConfig::default(),
+            false,
+            &mut |_| Ok(()),
+            None,
+        )
+    };
+    assert_eq!(replay(model).unwrap(), proposal.certificate);
+    assert!(positive_rank::finite::detect(model, 3, 11, &mut |_| Ok(()))
+        .unwrap()
+        .is_none());
+    assert_eq!(
+        positive_rank::finite::detect(model, 3, 24, &mut |_| Err(FeregError::new(
+            ErrorCode::Interrupted,
+            "Break"
+        )))
+        .unwrap_err()
+        .code,
+        ErrorCode::Interrupted
+    );
+    // Removing the last one-ulp departure makes x1-x2 vanish on every
+    // positive row and strictly negative on all three zeros. A certificate
+    // from the other model cannot be substituted, despite identical y and IDs.
+    let b = PreparedSeparationCoordinator::new(owner(2.)).unwrap();
+    assert!(
+        positive_rank::finite::detect(b.view().prepared, 3, 24, &mut |_| Ok(()))
+            .unwrap()
+            .is_none()
+    );
+    assert!(replay(b.view().prepared).is_err());
+    let full = detect_prepared_ppml_separation(
+        owner(perturbed),
+        PpmlConfig::default(),
+        config,
+        None,
+        None,
+    )
+    .unwrap();
+    assert!(full.separation.dropped_observations.is_empty());
+    assert_eq!(
+        full.separation.retained_observations,
+        (0..6).collect::<Vec<_>>()
+    );
+    let separated = simplex_only(owner(2.), 4000).unwrap();
+    assert_eq!(separated.separation.dropped_observations, [1, 3, 5]);
+}
+
+#[test]
+fn finite_minor_checks_the_structural_constant_when_requested() {
+    let owner = |intercept| {
+        let (mut request, mut clusters, mut loaded, mut uses) = fixture();
+        clusters.push(OlsClusterTermV1 {
+            label: "g".into(),
+            sources: vec![SourceId::new(2).unwrap()],
+        });
+        uses[1] = NumericSourceUse {
+            ordinary: false,
+            fixed_effect: false,
+            cluster: true,
+        };
+        request.absorbed_terms.clear();
+        request.include_intercept = intercept;
+        loaded.outcome = column(&[1., 0., 1., 0., 1., 0.]);
+        loaded.numeric_sources[0].1 = column(&[1., 0., 1., 0., 1., 0.]);
+        let numeric = prepare_numeric(&loaded, &uses);
+        PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap()
+    };
+    for intercept in [true, false] {
+        let coordinator = PreparedSeparationCoordinator::new(owner(intercept)).unwrap();
+        let outcome =
+            positive_rank::finite::detect(coordinator.view().prepared, 3, 32, &mut |_| Ok(()))
+                .unwrap();
+        // Without an intercept, a column taking value one on positives has
+        // full rank. Adding the constant permits x-1 to separate the zeros.
+        assert_eq!(outcome.is_none(), intercept);
+    }
+}

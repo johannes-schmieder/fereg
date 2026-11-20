@@ -7,6 +7,7 @@ use crate::ppml_separation::SeparationCertificateProof;
 mod circulation;
 mod coverage;
 mod dual;
+pub(super) mod finite;
 pub(super) use dual::exact_dual;
 mod packed;
 pub(super) mod sparse_dual;

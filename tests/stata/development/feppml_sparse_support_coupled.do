@@ -83,4 +83,20 @@ assert e(separated) == 16383
 assert abs(fit-1)<1e-9 if e(sample)
 assert missing(fit) if !e(sample)
 
+* Both outcomes occur at each distinct finite design row. The mean is one.
+clear
+set seed 185476
+quietly set obs 32768
+forvalues column = 1/4 {
+    generate double x`column' = rnormal()
+}
+expand 2
+bysort x1 x2 x3 x4: generate byte y = 2*(_n==1)
+quietly feppml y x1-x4, threads(1) mu(fit)
+assert e(N) == 65536 & e(separated)==0
+assert e(sample) & abs(fit-1)<1e-9
+forvalues column = 1/4 {
+    assert abs(_b[x`column'])<1e-9
+}
+
 display "END_FIXTURE|feppml_sparse_support_coupled|rc=0"
