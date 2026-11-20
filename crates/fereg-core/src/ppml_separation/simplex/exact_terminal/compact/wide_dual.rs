@@ -201,22 +201,24 @@ mod tests {
             let k = m + 1;
             let design = BinaryDesign::from_rows(m + 1, k, 100_000, |i, row| {
                 row.fill(0.);
-                if i < n {
-                    row[i] = 1.;
-                    if i >= 1 {
-                        row[i - 1] = 1.;
+                match i.cmp(&n) {
+                    std::cmp::Ordering::Less => {
+                        row[i] = 1.;
+                        if i >= 1 {
+                            row[i - 1] = 1.;
+                        }
+                        if i >= 3 {
+                            row[i - 3] = 1.;
+                        }
+                        if i == 0 {
+                            row[n] = 1.;
+                        }
                     }
-                    if i >= 3 {
-                        row[i - 3] = 1.;
-                    }
-                    if i == 0 {
+                    std::cmp::Ordering::Equal => row[n - 1] = 1.,
+                    std::cmp::Ordering::Greater => {
                         row[n] = 1.;
+                        row[m] = f64::from(inconsistent);
                     }
-                } else if i == n {
-                    row[n - 1] = 1.;
-                } else {
-                    row[n] = 1.;
-                    row[m] = f64::from(inconsistent);
                 }
                 Ok(())
             })
