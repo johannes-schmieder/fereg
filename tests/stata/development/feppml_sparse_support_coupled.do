@@ -69,4 +69,18 @@ foreach family in coupled near near_blocker near_tiny {
     }
 }
 
+* Publish a single certified graph direction spanning many distinct FE levels.
+clear
+quietly set obs 81919
+generate long block = floor((_n-1)/5)
+generate byte j = mod(_n-1,5)
+generate long left = 2*block + (j>=2 & j<=3)
+generate long right = 2*block + mod(j,2) + 2*(j==4)
+generate byte y = j!=4
+quietly feppml y, absorb(left right) threads(1) mu(fit)
+assert e(sample) == (j!=4)
+assert e(separated) == 16383
+assert abs(fit-1)<1e-9 if e(sample)
+assert missing(fit) if !e(sample)
+
 display "END_FIXTURE|feppml_sparse_support_coupled|rc=0"

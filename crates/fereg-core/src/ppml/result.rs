@@ -3536,7 +3536,7 @@ fn separation_note_compatible(
         | (
             SeparationMethod::Simplex | SeparationMethod::IteratedRectifier | SeparationMethod::Mu,
             MethodStatus::Certified,
-            "exact raw-design recession direction",
+            crate::ppml_separation::EXACT_RAW_RAY_NOTE,
         )
         | (
             SeparationMethod::IteratedRectifier,

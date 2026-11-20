@@ -269,7 +269,7 @@ fn materialize(
         certificate: Some(certificate),
         exact_fe_certificate: None,
         direction: Some(direction),
-        note: "exact raw-design recession direction".into(),
+        note: crate::ppml_separation::EXACT_RAW_RAY_NOTE.into(),
     }))
 }
 

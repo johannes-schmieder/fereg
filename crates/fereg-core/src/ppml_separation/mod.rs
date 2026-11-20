@@ -247,6 +247,8 @@ impl SeparationCertificateProof {
     }
 }
 
+pub(crate) const EXACT_RAW_RAY_NOTE: &str = "exact raw-design recession direction";
+
 pub(crate) const DENSE_SIMPLEX_REUSED_BY_IR: &str =
     "iterated rectifier reused an independently replayed exact simplex proof";
 

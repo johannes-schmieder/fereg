@@ -1,28 +1,10 @@
 {
   "growth": [
     {
-      "after": 137650,
-      "before": 135567,
+      "after": 137651,
+      "before": 137650,
       "metric": "fereg-core/production_lines",
       "reason": "Add sparse, original-coordinate graph, interpolation and dual certificates plus early grouping with raw replay and measured workspace."
-    },
-    {
-      "after": 1808,
-      "before": 1783,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Admit sparse graph and moment proof attempts using checked shape, bounded arithmetic, exact witnesses and separation memory limits."
-    },
-    {
-      "after": 14,
-      "before": 13,
-      "metric": "fereg-core/chunk_candidates",
-      "reason": "Check the factor graph workspace before constructing a categorical partition for a candidate axis."
-    },
-    {
-      "after": 4607,
-      "before": 4482,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Integrate certified sparse proposals and reusable two-effect graph binding with generation-scoped replay and cascade cleanup."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -28355,7 +28337,7 @@
             "lines": 14
           },
           "empty#1": {
-            "line": 409,
+            "line": 411,
             "lines": 16
           },
           "exact_dense_simplex#1": {
@@ -28383,19 +28365,19 @@
             "lines": 13
           },
           "prepared_simplex_request_registers_its_bounded_tableau#1": {
-            "line": 439,
+            "line": 441,
             "lines": 37
           },
           "separation_generation_capacity#1": {
-            "line": 341,
+            "line": 343,
             "lines": 16
           },
           "separation_method_count#1": {
-            "line": 368,
+            "line": 370,
             "lines": 7
           },
           "separation_workspace_requirements#1": {
-            "line": 311,
+            "line": 313,
             "lines": 25
           },
           "with_detail#1": {
@@ -28403,7 +28385,7 @@
             "lines": 3
           }
         },
-        "production_lines": 344
+        "production_lines": 345
       },
       "crates/fereg-core/src/ppml_separation/prepared_coordinator.rs": {
         "chunk_candidates": [],
@@ -33813,7 +33795,7 @@
         "dispatch_candidates": 1808,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 137650
+        "production_lines": 137651
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

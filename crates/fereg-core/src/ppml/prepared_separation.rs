@@ -2455,7 +2455,7 @@ fn bind_graph_direction(
             exact_fe_certificate: None,
             direction: Some(direction),
             note: if method == SeparationMethod::Simplex {
-                "exact two-intercept separation direction".into()
+                crate::ppml_separation::EXACT_RAW_RAY_NOTE.into()
             } else {
                 "prepared iterated-rectifier candidate direction".into()
             },
