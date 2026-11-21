@@ -568,7 +568,8 @@ mod stable;
 mod stable_alias;
 mod stable_local;
 mod streamed;
-use streamed::{bind_compact_result, compact_raw_reader, streamed_switch, ExactSwitch};
+use crate::ppml_separation::{ValuedDesign, ValuedModel, ValuedSearch};
+use streamed::{bind_compact_result, compact_raw_reader, streamed_switch, ExactSwitch, IrHint};
 mod trace;
 
 /// Private action-lifetime admission; no public numerical option is changed.
@@ -577,6 +578,8 @@ struct DetectorAdmission<'a> {
     graph: bool,
     span_plan: Option<&'a LiveMemoryPlan>,
     unit_projection: Option<(PpmlConfig, PreparedOlsFitConfig)>,
+    /// The simplex phase already ran a streamed exact lane on this generation.
+    exact_tried: bool,
 }
 
 impl From<bool> for DetectorAdmission<'_> {
@@ -585,6 +588,7 @@ impl From<bool> for DetectorAdmission<'_> {
             graph,
             span_plan: None,
             unit_projection: None,
+            exact_tried: false,
         }
     }
 }
@@ -955,6 +959,8 @@ where
         // A numerical compact Farkas vector likewise survives only to the IR
         // phase of this generation, where it must pass the full IR certificate.
         let mut dual_hint = None;
+        // Whether the simplex phase already ran a streamed exact lane here.
+        let mut streamed_tried = false;
         let (simplex_unresolved, restart_after_simplex) = measure_separation_phase(
             phase_allocation_probe,
             &mut phase_allocation_peaks,
@@ -976,7 +982,7 @@ where
                             view.prepared,
                             config,
                             interrupt,
-                            (&mut compact_hint, &mut dual_hint),
+                            (&mut compact_hint, &mut dual_hint, &mut streamed_tried),
                         )?;
                         reconcile::candidate(view.prepared, proposal, config, interrupt)?
                     }
@@ -1130,7 +1136,13 @@ where
                             ppml,
                             config,
                             linear,
-                            (graph_admitted, dual_hint.as_deref()),
+                            (
+                                DetectorAdmission {
+                                    exact_tried: streamed_tried,
+                                    ..graph_admitted
+                                },
+                                dual_hint.as_ref(),
+                            ),
                             interrupt,
                             &mut lap,
                         )
@@ -2089,7 +2101,7 @@ fn prepared_simplex_proposal(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-    (compact_hint, dual_hint): (&mut Option<Vec<i64>>, &mut Option<Vec<f64>>),
+    (compact_hint, dual_hint, streamed_tried): SimplexHints<'_>,
 ) -> Result<PreparedNumericalProposal> {
     let finite_columns = generation.model().columns.len();
     let topology = DetectorTopology::new(generation.prepared())?;
@@ -2192,7 +2204,7 @@ fn prepared_simplex_proposal(
                 return skipped();
             }
         }
-        let hints = (compact_hint, dual_hint);
+        let hints = (compact_hint, dual_hint, streamed_tried);
         return match later_simplex_lanes(
             generation,
             (positive, intercept_only),
@@ -2228,6 +2240,14 @@ fn prepared_simplex_proposal(
     bind_numerical_proposal(generation, raw)
 }
 
+/// A ray hint for IR, a Farkas hint for IR, and whether a streamed exact
+/// lane ran; all three belong to the current generation only.
+type SimplexHints<'h> = (
+    &'h mut Option<Vec<i64>>,
+    &'h mut Option<IrHint>,
+    &'h mut bool,
+);
+
 /// Raw-coordinate simplex lanes after the compact proposals, in their
 /// registered order; the streamed compact retry runs only after all of them.
 fn later_simplex_lanes(
@@ -2235,7 +2255,7 @@ fn later_simplex_lanes(
     (positive, intercept_only): (usize, bool),
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-    hints: (&mut Option<Vec<i64>>, &mut Option<Vec<f64>>),
+    hints: SimplexHints<'_>,
 ) -> Result<Option<PreparedNumericalProposal>> {
     if let Some(proof) = reconcile::sparse_slope_ray(generation, SeparationMethod::Simplex, config)?
     {
@@ -2247,10 +2267,7 @@ fn later_simplex_lanes(
     if let Some(proof) = positive_rank::deferred_simplex(generation, positive, config, interrupt)? {
         return bind_numerical_proposal(generation, proof).map(Some);
     }
-    if !intercept_only {
-        return Ok(None);
-    }
-    streamed::simplex_fallback(generation, config, interrupt, hints)
+    streamed::simplex_fallback(generation, config, interrupt, intercept_only, hints)
 }
 
 fn prepared_compact_simplex(
@@ -3980,8 +3997,8 @@ fn replay_numerical_no_drop<'a>(
             interrupt,
         )?
     } else if observed.method == SeparationMethod::Simplex {
-        let proposal =
-            prepared_simplex_proposal(generation, config, interrupt, (&mut None, &mut None))?;
+        let hints = (&mut None, &mut None, &mut false);
+        let proposal = prepared_simplex_proposal(generation, config, interrupt, hints)?;
         reconcile::candidate(generation, proposal, config, interrupt)?
     } else {
         let raw = bind_numerical_proposal(

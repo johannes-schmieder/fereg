@@ -11,7 +11,8 @@ mod simplex;
 pub(crate) use simplex::{
     compact_model, compact_model_scaled, full_positive_rank_proposal, model_simplex_interruptible,
     no_separation_certificate, raw_positive_dual, simplex_workspace_peak_cells, BinaryDesign,
-    CompactInput, CompactModel, CompactWork, StreamedEffect,
+    CompactInput, CompactModel, CompactWork, StreamedEffect, ValuedDesign, ValuedModel,
+    ValuedSearch,
 };
 
 pub(crate) use prepared_coordinator::{

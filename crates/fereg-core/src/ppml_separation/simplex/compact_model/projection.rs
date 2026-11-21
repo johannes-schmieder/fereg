@@ -7,7 +7,7 @@ use crate::error::Result;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 mod streamed;
-pub(super) use streamed::Grow;
+pub(super) use streamed::{build_with as streamed_with, row_key, Grow};
 
 pub(super) struct BoundaryCone {
     pub(super) rows: Vec<Vec<f64>>,
@@ -53,27 +53,157 @@ pub(super) fn minimum_basis_cells(dimension: usize, width: usize) -> usize {
         .saturating_add(dimension.saturating_mul(dimension.saturating_add(8)))
 }
 
+/// A scaled search projects each boundary row once through a column-major
+/// copy of the basis (the same sums in the same order as `project`), stores
+/// only distinct projected rows, and keeps the cone axes on which some
+/// distinct row is independent. Duplicates change neither rank nor pivots.
+fn scaled_cone(
+    design: &BinaryDesign,
+    boundary: &[usize],
+    basis: &[Vec<f64>],
+    tolerance: f64,
+    (available, work): (usize, usize),
+    grow: Option<Grow<'_>>,
+) -> Result<Option<BoundaryCone>> {
+    let (dimension, width) = (basis.len(), design.ncols());
+    // Column-major nonzeros: a raw column touches only the basis vectors
+    // whose support contains it, so a row costs its terms' basis entries.
+    let mut starts = fallible_filled(width + 1, 0usize, "unable to reserve compact basis columns")?;
+    for vector in basis {
+        for (j, &value) in vector.iter().enumerate() {
+            if value != 0. {
+                starts[j + 1] += 1;
+            }
+        }
+    }
+    for j in 0..width {
+        starts[j + 1] += starts[j];
+    }
+    let mut entries = fallible_filled(
+        starts[width],
+        (0u32, 0.),
+        "unable to reserve compact basis entries",
+    )?;
+    let mut next = fallible_collect(
+        starts[..width].iter().copied(),
+        width,
+        "unable to reserve compact basis cursor",
+    )?;
+    for (k, vector) in basis.iter().enumerate() {
+        for (j, &value) in vector.iter().enumerate() {
+            if value != 0. {
+                entries[next[j]] = (k as u32, value);
+                next[j] += 1;
+            }
+        }
+    }
+    drop(next);
+    let built = {
+        let mut projector = |i: usize, out: &mut [f64], work: &mut usize| -> Result<bool> {
+            let support = design.row(boundary[i]);
+            let touched: usize = support
+                .iter()
+                .map(|&j| starts[j as usize + 1] - starts[j as usize])
+                .sum();
+            let Some(left) = work.checked_sub(touched.saturating_add(dimension)) else {
+                return Ok(false);
+            };
+            *work = left;
+            out.fill(0.);
+            // The same sums in the same order as `project`: columns in row
+            // order, each adding its entry to every axis it touches.
+            for &j in support.iter() {
+                let j = j as usize;
+                for &(k, b) in &entries[starts[j]..starts[j + 1]] {
+                    out[k as usize] += b;
+                }
+            }
+            for value in out.iter_mut() {
+                if value.abs() <= tolerance {
+                    *value = 0.;
+                }
+            }
+            Ok(true)
+        };
+        let basis_cells = dimension
+            .saturating_mul(width.saturating_add(3))
+            .saturating_add(entries.len().saturating_mul(2))
+            .saturating_add(width);
+        streamed::build_with(
+            (boundary.len(), dimension),
+            &mut projector,
+            (available, work),
+            basis_cells,
+            grow,
+        )?
+    };
+    drop(entries);
+    drop(starts);
+    Ok(built)
+}
+
+/// Keep the cone axes on which some distinct row is independent, in the rows
+/// and in the basis. `false` means the rank pass exceeded its work.
+pub(super) fn retain_independent(
+    cone: &mut BoundaryCone,
+    basis: &mut Vec<Vec<f64>>,
+    tolerance: f64,
+    work: usize,
+) -> Result<bool> {
+    if basis.is_empty() {
+        return Ok(true);
+    }
+    let Some(keep) = independent_axes(&cone.rows, tolerance, work)? else {
+        trace_refusal("projection_rank_work", cone.rows.len(), work);
+        return Ok(false);
+    };
+    for row in &mut cone.rows {
+        retain_columns(row, &keep);
+    }
+    retain_columns(basis, &keep);
+    Ok(true)
+}
+
+/// The basis workspace; a scaled search requests it by its measured size.
+fn admit_basis(minimum: usize, available: usize, grow: &mut Option<Grow<'_>>) -> Option<usize> {
+    if minimum <= available {
+        return Some(available);
+    }
+    let granted = grow
+        .as_deref_mut()
+        .and_then(|g| g(minimum))
+        .filter(|&g| g >= minimum);
+    if granted.is_none() {
+        trace_refusal("projection_basis_cells", minimum, available);
+    }
+    granted
+}
+
 pub(super) fn build(
     design: &BinaryDesign,
     boundary: &[usize],
     basis: &mut Vec<Vec<f64>>,
     tolerance: f64,
     (available, work): (usize, usize),
-    grow: Option<Grow<'_>>,
+    mut grow: Option<Grow<'_>>,
 ) -> Result<Option<BoundaryCone>> {
     let dimension = basis.len();
     let width = design.ncols();
+    if grow.is_some() {
+        // A scaled search projects each row once and ranks distinct rows.
+        let needed = dimension.saturating_mul(width.saturating_mul(3).saturating_add(3));
+        let Some(available) = admit_basis(needed, available, &mut grow) else {
+            return Ok(None);
+        };
+        return scaled_cone(design, boundary, basis, tolerance, (available, work), grow);
+    }
     let basis_cells = dimension.saturating_mul(width + 3);
     let pivot_cells = dimension.saturating_mul(dimension + 8);
     let row_cells = boundary.len().saturating_mul(dimension + 3);
-    if minimum_basis_cells(dimension, width) > available {
-        trace_refusal(
-            "projection_basis_cells",
-            minimum_basis_cells(dimension, width),
-            available,
-        );
+    let minimum = minimum_basis_cells(dimension, width);
+    let Some(available) = admit_basis(minimum, available, &mut grow) else {
         return Ok(None);
-    }
+    };
     if basis_cells
         .saturating_add(pivot_cells)
         .saturating_add(row_cells)
@@ -196,6 +326,31 @@ pub(super) fn build(
             index: Vec::new(),
         }),
     )
+}
+
+/// Cone axes carrying an independent pivot of the distinct constraints, by
+/// the same thresholded elimination as the materialized panel.
+pub(super) fn independent_axes(
+    rows: &[Vec<f64>],
+    tolerance: f64,
+    work: usize,
+) -> Result<Option<Vec<bool>>> {
+    let dimension = rows.first().map_or(0, Vec::len);
+    if dimension == 0 {
+        return Ok(None);
+    }
+    let maximum = rows.iter().flatten().fold(0_f64, |m, v| m.max(v.abs()));
+    let mut rank = RowRank::new(dimension, maximum * tolerance, work)?;
+    for (i, row) in rows.iter().enumerate() {
+        crate::interrupt::row_checkpoint(i)?;
+        if !rank.insert(row)? {
+            return Ok(None);
+        }
+        if rank.full() {
+            break;
+        }
+    }
+    rank.columns().map(Some)
 }
 
 fn retain_columns<T>(slice: &mut Vec<T>, keep: &[bool]) {

@@ -485,7 +485,7 @@ fn streamed_rows_equal_the_packed_reader_and_refuse_any_disagreement() {
             &mut || Ok(()),
         )
         .unwrap()
-        .is_none()
+        .is_err()
     };
     assert!(refuse(&mut shifted, 2));
     assert!(refuse(&mut |_, _| Ok(false), 2));
@@ -498,7 +498,7 @@ fn streamed_rows_equal_the_packed_reader_and_refuse_any_disagreement() {
         &mut || Ok(())
     )
     .unwrap()
-    .is_none());
+    .is_err());
 }
 
 #[test]
@@ -514,6 +514,7 @@ fn scaled_streamed_search_finds_the_hidden_cell_the_fixed_allowance_refuses() {
             &mut || Ok(()),
         )
         .unwrap()
+        .ok()
         .unwrap();
         // The fixed allowance below the boundary index cannot even start.
         let limit = n / 2;
@@ -563,6 +564,9 @@ fn scaled_streamed_search_finds_the_hidden_cell_the_fixed_allowance_refuses() {
             Some(CompactModel::Terminal(_) | CompactModel::NumericalDual { .. }) => {
                 assert!(close, "the open hidden cell is separated")
             }
+            Some(CompactModel::NumericalDirection { .. }) => {
+                panic!("the hidden cell's ray has an exact integer lift")
+            }
             None => panic!("scaled compact search left the hidden cell unresolved"),
         }
     }
@@ -580,6 +584,7 @@ fn physical_dual_balances_every_original_column_on_a_closed_cell() {
         &mut || Ok(()),
     )
     .unwrap()
+    .ok()
     .unwrap();
     let boundary: Vec<_> = (0..n).filter(|&i| cell.outcome[i] == 0.).collect();
     let weights = vec![1.; boundary.len()];
@@ -623,6 +628,7 @@ fn physical_dual_balances_every_original_column_on_a_closed_cell() {
         &mut || Ok(()),
     )
     .unwrap()
+    .ok()
     .unwrap();
     let boundary: Vec<_> = (0..open.outcome.len())
         .filter(|&i| open.outcome[i] == 0.)
@@ -650,4 +656,122 @@ fn physical_dual_balances_every_original_column_on_a_closed_cell() {
         }
     }
     assert!(moments.iter().any(|m| m.abs() > 1e-3));
+}
+
+#[test]
+fn valued_lane_separates_the_hidden_cell_beside_a_continuous_regressor() {
+    for close in [false, true] {
+        let cell = hidden_cell(6, close);
+        let n = cell.outcome.len();
+        // A continuous column that no exact ray may use.
+        let z: Vec<f64> = (0..n).map(|i| ((i * 37 % 101) as f64 - 50.) / 7.).collect();
+        let width = HIDDEN_WIDTH + 1;
+        let read = |i: usize, f: &mut dyn FnMut(usize, f64)| -> Result<()> {
+            f(0, 1.);
+            if cell.x[i] {
+                f(1, 1.);
+            }
+            let mut offset = 2;
+            for (codes, levels) in cell.codes.iter().zip(HIDDEN_LEVELS) {
+                f(offset + codes[i] as usize, 1.);
+                offset += levels as usize;
+            }
+            f(HIDDEN_WIDTH, z[i]);
+            Ok(())
+        };
+        let design = ValuedDesign {
+            width,
+            row_terms: 7,
+            read: &read,
+        };
+        let mut search = ValuedSearch {
+            outcome: &cell.outcome,
+            design: &design,
+            config: config(),
+            work: CompactWork::scaled(n, 7, width),
+            available: 1 << 20,
+            held: 0,
+        };
+        let mut verify = |c: &[i64]| -> Result<bool> {
+            if c[HIDDEN_WIDTH] != 0 {
+                return Ok(false);
+            }
+            let mut strict = false;
+            for i in 0..n {
+                let mut score = i128::from(c[0]) + if cell.x[i] { i128::from(c[1]) } else { 0 };
+                let mut offset = 2;
+                for (codes, levels) in cell.codes.iter().zip(HIDDEN_LEVELS) {
+                    score += i128::from(c[offset + codes[i] as usize]);
+                    offset += levels as usize;
+                }
+                if score > 0 || (cell.outcome[i] > 0. && score != 0) {
+                    return Ok(false);
+                }
+                strict |= score < 0;
+            }
+            Ok(strict)
+        };
+        let result = search
+            .run(
+                &mut 0,
+                &mut || Ok(()),
+                &mut |needed| Some(needed),
+                &mut verify,
+            )
+            .unwrap();
+        match result {
+            Some(ValuedModel::Direction { coefficients, .. }) => {
+                assert!(!close);
+                assert!(verify(&coefficients).unwrap());
+            }
+            Some(ValuedModel::NumericalDual { dual }) => {
+                assert!(close);
+                for (i, &y) in cell.outcome.iter().enumerate() {
+                    if y == 0. {
+                        assert!(dual[i] >= 1.);
+                    }
+                }
+            }
+            Some(ValuedModel::NumericalDirection { .. }) => {
+                panic!("the hidden cell's ray has an exact integer lift")
+            }
+            None => panic!("valued lane left the design unresolved (close = {close})"),
+        }
+        if close {
+            continue;
+        }
+        // A refused exact replay leaves the float ray for the IR direction
+        // certificate instead of an unresolved generation.
+        let mut search = ValuedSearch {
+            outcome: &cell.outcome,
+            design: &design,
+            config: config(),
+            work: CompactWork::scaled(n, 7, width),
+            available: 1 << 20,
+            held: 0,
+        };
+        let refused = search
+            .run(
+                &mut 0,
+                &mut || Ok(()),
+                &mut |needed| Some(needed),
+                &mut |_| Ok(false),
+            )
+            .unwrap();
+        let Some(ValuedModel::NumericalDirection { coefficients, .. }) = refused else {
+            panic!("a refused exact lift must return the numerical ray");
+        };
+        let scale = coefficients.iter().fold(0f64, |m, v| m.max(v.abs()));
+        for i in 0..n {
+            let mut score = 0.;
+            read(i, &mut |j, v| score += v * coefficients[j]).unwrap();
+            let score = score / scale;
+            if cell.outcome[i] > 0. {
+                assert!(score.abs() < 1e-9);
+            } else {
+                assert!(score < 1e-9);
+            }
+        }
+        assert!(coefficients[HIDDEN_WIDTH].abs() < 1e-9 * scale);
+    }
 }

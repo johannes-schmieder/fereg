@@ -2,17 +2,23 @@
 
 ## Unreleased
 
-- Finish Poisson separation on large sparse designs with many categorical
-  fixed effects and binary regressors, where a separating combination of
-  levels from several factors previously left the certificate search running
-  for hours. The compact simplex now regenerates rows from the stored factor
-  codes, requests each workspace at its measured size within the fit's memory
-  budget and scales linear passes with the design.
-- When an exact proof of no separation needs larger integers than its
-  arithmetic holds, hand its numerical dual to the requested iterated
-  rectifier, which accepts it only through its complete certificate. A
-  rectifier without a certificate after 32 projections tries the streamed
-  exact proof once when no simplex step ran.
+- Finish Poisson separation on large sparse designs where a separating
+  combination of levels from several factors previously left the certificate
+  search running for hours. When the fixed-allowance simplex lanes are
+  inconclusive, an exact search on a streamed view of the raw design takes
+  over: rows are regenerated from the stored factor codes for binary intercept
+  designs and read on demand for continuous or indicator regressors and
+  absorbed slopes, positive rows are eliminated sparsely, and every workspace
+  is requested at its measured size within the fit's memory budget.
+- Separating directions are replayed exactly on every raw row. A direction or
+  Farkas vector beyond the exact arithmetic is handed to the requested
+  iterated rectifier, which accepts it only through its own complete
+  certificate.
+- The iterated rectifier now measures its progress toward either certificate.
+  When neither is reachable within the remaining budget at the measured rates,
+  or the budget is spent, it tries an exact lane not yet run on that
+  generation once and then stops with an explicit separation error instead of
+  restarting the same recurrence.
 - Explicit simplex cell limits and every result the fixed compact lanes
   already certify are unchanged.
 

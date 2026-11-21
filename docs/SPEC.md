@@ -2050,30 +2050,63 @@ must admit that audit on its current generation before allocating the
 scratch arrays. An exact original-coordinate proof can finish within
 its own allowance without reserving the numerical audit's dense workspace.
 
-If every fixed-allowance simplex lane leaves a generation with absorbed
-intercepts and binary columns unresolved, the implicit adaptive policy may
-retry the compact search on a streamed view of the same raw design. Rows are
-regenerated from a per-observation finite-column mask and the generation's
-factor codes. Construction reads every row once through the packing reader and
-requires exact agreement. The streamed design and every later buffer (dense
-positive rows, the distinct projected-constraint bank, the tableau and the
-physical dual) are requested at their measured sizes from the fit's live plan.
-The projected-constraint bank grows by doubling when its distinct rows exceed
-it. Each linear stage may spend four projected passes over the measured raw
-design at full model width. Phase I takes at most eight pivots per retained
-cone dimension and stops after two dimensions of degenerate pivots. Each
-size or work refusal is traced with its measured requirement and allowance.
-An explicit numeric simplex cell limit keeps the fixed policy. Rays and
-terminal duals take the incumbent exact certificates. When the exact terminal
-cannot reconstruct the positive kernel within its integer arithmetic, a
-numerical Farkas vector that passed the indexed replay is lifted to every
-observation: boundary rows keep their weights and independent positive rows
-receive refined least-squares weights. It is only a hint for a requested IR
-step on the same generation, which accepts it through the complete
-unit-metric dual certificate and repeats that check at terminal replay.
-Without simplex in the request, a unit-metric recurrence that has no
-certificate after 32 iterations may run the streamed lane once under the IR
-label. An unresolved attempt leaves the recurrence unchanged.
+If every fixed-allowance simplex lane leaves a generation unresolved, the
+implicit adaptive policy retries the compact search on a streamed view of the
+same raw design. A binary intercept design regenerates its rows from a
+per-observation finite-column mask and the generation's factor codes;
+construction reads every row once through the packing reader and requires
+exact agreement. Any other design (continuous or more than 64 finite columns,
+more than 128 row terms, absorbed slopes) reads its rows on demand through the
+raw reader, and the decline reason is traced. Both views eliminate every
+positive row sparsely: the pivot column is always one with the fewest remaining
+entries, the pivot row the shortest whose entry is at least one tenth of the
+column's largest, and columns are scaled by powers of two so that unit pivots
+on integer rows are exact. Each entry and fill update is charged to the stage
+work and the elimination's storage is requested as it grows. Back-substitution
+through the pivots gives one null-space vector per free column. Each zero row
+is projected once through the column-major nonzeros of that basis, and only
+distinct projected rows are stored. The projected constraint bank, including
+its row-proportional index, the tableau and every later buffer are requested
+at their measured sizes from the fit's live plan; the bank grows by doubling
+when its distinct rows exceed it. A distinct row whose exact negation is also
+a row is an implicit equality of every feasible direction. Phase I then runs on
+the null space of those equality rows, again from a sparse echelon form, after
+the rank pass keeps the axes on which some distinct row is independent. A
+reduced direction is a combination of the reduced basis; reduced Farkas
+weights are completed with extra mass on the pair row of matching sign so
+that the full-dimensional boundary total vanishes, and the full-dimensional
+rows verify them as before. Each linear stage
+may spend four projected passes over the measured raw design at full model
+width. Phase I takes at most eight pivots per retained cone dimension and stops
+after two dimensions of degenerate pivots. The exact dense certificates (full
+positive rank and the exact terminal) run only when their rank-revealing cost,
+k(k+1)/2 insertions of the model width for k independent positive rows, is at
+most eight times the measured sparse work plus one raw pass, and never below
+the incumbent allowance. Each size or work refusal is traced with its measured
+requirement and allowance. An explicit numeric simplex cell limit keeps the
+fixed policy. A proposed ray is lifted to integers on its binding rows and
+replayed exactly on every raw row. A ray that cannot be lifted becomes a
+linear-predictor direction for the IR direction certificate of a requested IR
+step on the same generation. A Farkas vector that the exact terminal cannot
+certify is lifted to every observation: boundary rows keep their weights and
+the independent positive rows receive the weights that balance them, solved
+through the echelon form and refined twice from compensated residuals. It is
+only a hint for a requested IR step, which accepts it through the complete
+unit-metric dual certificate, first as proposed and otherwise after one fresh
+unit projection removes its measured span component, and repeats that check
+at terminal replay.
+
+The unit-metric recurrence records its best boundary margin and its best
+normalized primal violation and compares them at doubling checkpoints from 16
+projections. It projects the projections each certificate still needs at the
+measured rate since the previous checkpoint, linear for the margin and a power
+law for the violation. When both exceed the remaining budget, or when a full
+budget is spent, it runs the streamed exact lane once if no simplex step ran
+it on this generation; a ray is replayed as an ordinary IR proposal and a
+Farkas vector must pass the complete certificate. Otherwise detection stops
+with an explicit separation error naming the generation, both measured
+quantities and the lanes tried. Such an error is final: the solver-variant
+retry policy does not repeat the same recurrence.
 
 When a model has only finite regressors and the dense simplex exceeds its
 allowance, a nonzero modular minor on positive-outcome rows can certify

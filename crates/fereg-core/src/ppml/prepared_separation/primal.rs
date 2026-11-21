@@ -271,6 +271,22 @@ impl ProofBudget {
     }
 }
 
+/// Exact dyadic replay of integer raw-order coefficients: zero on every
+/// positive outcome, nonpositive on every zero outcome, negative somewhere.
+pub(super) fn exact_ray(model: &PreparedPpmlModelGeneration, coefficients: &[i64]) -> Result<bool> {
+    let outcome = model.outcome();
+    let mut strict = false;
+    let valid = sparse::visit(model, coefficients, |r, sign, _| {
+        strict |= sign == Ordering::Less;
+        if outcome[r] > 0. {
+            sign == Ordering::Equal
+        } else {
+            sign != Ordering::Greater
+        }
+    })?;
+    Ok(valid && strict)
+}
+
 fn visit(
     model: &PreparedPpmlModelGeneration,
     witness: &Witness,

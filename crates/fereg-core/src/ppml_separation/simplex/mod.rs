@@ -12,7 +12,7 @@ mod compact_tableau;
 mod exact_terminal;
 pub(crate) use compact_model::{
     compact_model, compact_model_scaled, BinaryDesign, CompactInput, CompactModel, CompactWork,
-    StreamedEffect,
+    StreamedEffect, ValuedDesign, ValuedModel, ValuedSearch,
 };
 pub(crate) use exact_terminal::raw_positive_dual;
 mod nullspace;
