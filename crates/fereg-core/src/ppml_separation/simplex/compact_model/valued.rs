@@ -46,6 +46,63 @@ pub(crate) enum ValuedModel {
 /// Exact raw replay of an integer ray: true only for a certified ray.
 pub(crate) type Verify<'v> = &'v mut dyn FnMut(&[i64]) -> Result<bool>;
 
+/// Column-major copy of a dense cone basis: one row's projection visits only
+/// its own terms.
+struct Columns {
+    by_column: Vec<f64>,
+    dimension: usize,
+}
+
+impl Columns {
+    fn new(basis: &[Vec<f64>], width: usize) -> Result<Self> {
+        let dimension = basis.len();
+        let mut by_column =
+            fallible_filled(width * dimension, 0., "unable to reserve valued basis")?;
+        for (k, vector) in basis.iter().enumerate() {
+            for (j, &value) in vector.iter().enumerate() {
+                by_column[j * dimension + k] = value;
+            }
+        }
+        Ok(Self {
+            by_column,
+            dimension,
+        })
+    }
+
+    fn project(
+        &self,
+        read: RawReader<'_>,
+        row: usize,
+        out: &mut [f64],
+        (tolerance, row_terms): (f64, usize),
+        work: &mut usize,
+    ) -> Result<bool> {
+        let dimension = self.dimension;
+        let Some(left) = work.checked_sub((row_terms.max(1) + 1).saturating_mul(dimension)) else {
+            return Ok(false);
+        };
+        *work = left;
+        out.fill(0.);
+        let mut scale = 0_f64;
+        let width = self.by_column.len() / dimension.max(1);
+        read(row, &mut |j, v| {
+            if v != 0. && j < width {
+                scale += v.abs();
+                let column = &self.by_column[j * dimension..(j + 1) * dimension];
+                for (acc, &b) in out.iter_mut().zip(column) {
+                    *acc += v * b;
+                }
+            }
+        })?;
+        for value in out.iter_mut() {
+            if value.abs() <= tolerance * scale.max(1.) {
+                *value = 0.;
+            }
+        }
+        Ok(true)
+    }
+}
+
 /// Pivot counter, interrupt poll and memory request of one search.
 type Hooks<'p, 'i, 'g> = (
     &'p mut usize,
@@ -186,48 +243,57 @@ impl ValuedSearch<'_, '_> {
 
     /// Project every boundary row on the column-major basis into the
     /// coalesced cone bank, requested by its measured size.
+    /// Project every boundary row on the column-major basis into the
+    /// coalesced cone bank, requested by its measured size. When the plan
+    /// refuses the bank at the full dimension, rank the axes in two streaming
+    /// passes first and rebuild it at the retained dimension.
     fn project(
         &mut self,
-        basis: &[Vec<f64>],
+        basis: &mut Vec<Vec<f64>>,
         boundary: &[usize],
         fixed: usize,
         grow: &mut dyn FnMut(usize) -> Option<usize>,
     ) -> Result<Option<projection::BoundaryCone>> {
-        let (width, dimension) = (self.design.width, basis.len());
-        let tolerance = self.config.projection_tolerance;
-        let basis_cells = dimension.saturating_mul(width.saturating_add(3));
-        // Column-major basis: one row's projection visits only its own terms.
-        let mut by_column =
-            fallible_filled(width * dimension, 0., "unable to reserve valued basis")?;
-        for (k, vector) in basis.iter().enumerate() {
-            for (j, &value) in vector.iter().enumerate() {
-                by_column[j * dimension + k] = value;
+        let (width, tolerance) = (self.design.width, self.config.projection_tolerance);
+        let columns = Columns::new(basis, width)?;
+        if let Some(cone) = self.project_at(&columns, boundary, fixed, grow)? {
+            return Ok(Some(cone));
+        }
+        let dimension = basis.len();
+        if dimension > 1 {
+            let (read, terms) = (self.design.read, self.design.row_terms);
+            let mut projector = |i: usize, out: &mut [f64], work: &mut usize| {
+                columns.project(read, boundary[i], out, (tolerance, terms), work)
+            };
+            let shape = (boundary.len(), dimension);
+            let stage = self.work.stage;
+            let keep = projection::streamed_axes_with(shape, &mut projector, tolerance, stage)?;
+            if let Some(keep) = keep.filter(|keep| keep.iter().any(|&kept| !kept)) {
+                drop(columns);
+                projection::retain_axes(basis, &keep);
+                let columns = Columns::new(basis, width)?;
+                if let Some(cone) = self.project_at(&columns, boundary, fixed, grow)? {
+                    return Ok(Some(cone));
+                }
             }
         }
-        let read = self.design.read;
-        let row_terms = self.design.row_terms.max(1);
-        let mut projector = |position: usize, out: &mut [f64], work: &mut usize| -> Result<bool> {
-            let Some(left) = work.checked_sub((row_terms + 1).saturating_mul(dimension)) else {
-                return Ok(false);
-            };
-            *work = left;
-            out.fill(0.);
-            let mut scale = 0_f64;
-            read(boundary[position], &mut |j, v| {
-                if v != 0. && j < width {
-                    scale += v.abs();
-                    let column = &by_column[j * dimension..(j + 1) * dimension];
-                    for (acc, &b) in out.iter_mut().zip(column) {
-                        *acc += v * b;
-                    }
-                }
-            })?;
-            for value in out.iter_mut() {
-                if value.abs() <= tolerance * scale.max(1.) {
-                    *value = 0.;
-                }
-            }
-            Ok(true)
+        super::trace_unprojected("valued", dimension, self.available);
+        Ok(None)
+    }
+
+    fn project_at(
+        &mut self,
+        columns: &Columns,
+        boundary: &[usize],
+        fixed: usize,
+        grow: &mut dyn FnMut(usize) -> Option<usize>,
+    ) -> Result<Option<projection::BoundaryCone>> {
+        let (width, dimension) = (self.design.width, columns.dimension);
+        let tolerance = self.config.projection_tolerance;
+        let basis_cells = dimension.saturating_mul(width.saturating_add(3));
+        let (read, terms) = (self.design.read, self.design.row_terms);
+        let mut projector = |i: usize, out: &mut [f64], work: &mut usize| {
+            columns.project(read, boundary[i], out, (tolerance, terms), work)
         };
         let mut granted = None;
         let mut extend = |needed: usize| {
@@ -246,12 +312,8 @@ impl ValuedSearch<'_, '_> {
             basis_cells,
             Some(&mut extend as Grow<'_>),
         )?;
-        drop(by_column);
         if let Some(grant) = granted {
             self.available = self.available.max(grant);
-        }
-        if built.is_none() {
-            super::trace_unprojected("valued", dimension, cone_budget);
         }
         Ok(built)
     }
@@ -271,7 +333,7 @@ impl ValuedSearch<'_, '_> {
             .len()
             .saturating_add(representatives.len())
             .saturating_add(width);
-        let Some(mut cone) = self.project(&basis, boundary, fixed, grow)? else {
+        let Some(mut cone) = self.project(&mut basis, boundary, fixed, grow)? else {
             return Ok(None);
         };
         let live = fixed.saturating_add(cone.live_cells);

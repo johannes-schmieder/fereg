@@ -218,22 +218,35 @@ fn streamed_axes(
     tolerance: f64,
     stage_work: usize,
 ) -> Result<Option<Vec<bool>>> {
-    let dimension = columns.dimension;
+    let mut projector = |i: usize, out: &mut [f64], work: &mut usize| -> Result<bool> {
+        Ok(columns.project(&design.row(boundary[i]), out, tolerance, work))
+    };
+    let shape = (boundary.len(), columns.dimension);
+    streamed_axes_with(shape, &mut projector, tolerance, stage_work)
+}
+
+/// The same two streaming passes on any row projector.
+pub(super) fn streamed_axes_with(
+    (boundary, dimension): (usize, usize),
+    projector: streamed::Projector<'_>,
+    tolerance: f64,
+    stage_work: usize,
+) -> Result<Option<Vec<bool>>> {
     let mut out = fallible_filled(dimension, 0., "unable to reserve streamed cone row")?;
     let mut work = stage_work;
     let mut maximum = 0_f64;
-    for (i, &origin) in boundary.iter().enumerate() {
+    for i in 0..boundary {
         crate::interrupt::row_checkpoint(i)?;
-        if !columns.project(&design.row(origin), &mut out, tolerance, &mut work) {
+        if !projector(i, &mut out, &mut work)? {
             return Ok(None);
         }
         maximum = out.iter().fold(maximum, |m, v| m.max(v.abs()));
     }
     let mut rank = RowRank::new(dimension, maximum * tolerance, work)?;
-    for (i, &origin) in boundary.iter().enumerate() {
+    for i in 0..boundary {
         crate::interrupt::row_checkpoint(i)?;
-        let mut left = usize::MAX;
-        columns.project(&design.row(origin), &mut out, tolerance, &mut left);
+        let mut unmetered = usize::MAX;
+        projector(i, &mut out, &mut unmetered)?;
         if !rank.insert(&out)? {
             return Ok(None);
         }
@@ -242,6 +255,11 @@ fn streamed_axes(
         }
     }
     rank.columns().map(Some)
+}
+
+/// Keep the marked axes of a basis.
+pub(super) fn retain_axes<T>(slice: &mut Vec<T>, keep: &[bool]) {
+    retain_columns(slice, keep);
 }
 
 /// Keep the cone axes on which some distinct row is independent, in the rows

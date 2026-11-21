@@ -1,10 +1,16 @@
 {
   "growth": [
     {
-      "after": 142138,
-      "before": 142112,
+      "after": 1864,
+      "before": 1863,
+      "metric": "fereg-core/dispatch_candidates",
+      "reason": "Give the valued streamed lane the same retained-axes bank fallback as the binary lane when the plan refuses its bank at the full null-space dimension."
+    },
+    {
+      "after": 142205,
+      "before": 142138,
       "metric": "fereg-core/production_lines",
-      "reason": "Defer the valued streamed lane for designs with non-binary values or absorbed slopes to the requested IR step, which runs it at its first checkpoint or on a projected stall."
+      "reason": "Give the valued streamed lane the same retained-axes bank fallback as the binary lane when the plan refuses its bank at the full null-space dimension."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -29221,21 +29227,17 @@
             "line": 164
           },
           {
-            "condition": "! columns . project ( & design . row ( origin ) , & mut out , tolerance , & mut work )",
-            "line": 227
-          },
-          {
             "condition": "boundary . len ( ) . saturating_mul ( retained + 3 ) . saturating_add ( basis_cells ) . saturating_add ( dual_cells ) > available",
-            "line": 335
+            "line": 353
           }
         ],
         "functions": {
           "admit_basis#1": {
-            "line": 270,
+            "line": 288,
             "lines": 13
           },
           "build#1": {
-            "line": 284,
+            "line": 302,
             "lines": 148
           },
           "cells#1": {
@@ -29243,19 +29245,19 @@
             "lines": 6
           },
           "columns#1": {
-            "line": 631,
+            "line": 649,
             "lines": 15
           },
           "full#1": {
-            "line": 627,
+            "line": 645,
             "lines": 3
           },
           "independent_axes#1": {
-            "line": 435,
+            "line": 453,
             "lines": 22
           },
           "insert#1": {
-            "line": 593,
+            "line": 611,
             "lines": 33
           },
           "minimum_basis_cells#1": {
@@ -29267,11 +29269,11 @@
             "lines": 37
           },
           "new#2": {
-            "line": 578,
+            "line": 596,
             "lines": 14
           },
           "panel#1": {
-            "line": 520,
+            "line": 538,
             "lines": 24
           },
           "project#1": {
@@ -29279,19 +29281,23 @@
             "lines": 23
           },
           "project#2": {
-            "line": 545,
+            "line": 563,
             "lines": 24
           },
           "propose#1": {
             "line": 20,
             "lines": 28
           },
+          "retain_axes#1": {
+            "line": 261,
+            "lines": 3
+          },
           "retain_columns#1": {
-            "line": 458,
+            "line": 476,
             "lines": 4
           },
           "retain_independent#1": {
-            "line": 249,
+            "line": 267,
             "lines": 19
           },
           "scaled_bank#1": {
@@ -29303,19 +29309,23 @@
             "lines": 44
           },
           "seen_support#1": {
-            "line": 512,
+            "line": 530,
             "lines": 7
           },
           "streamed_axes#1": {
             "line": 214,
-            "lines": 32
+            "lines": 13
+          },
+          "streamed_axes_with#1": {
+            "line": 229,
+            "lines": 30
           },
           "streaming_columns#1": {
-            "line": 465,
+            "line": 483,
             "lines": 44
           }
         },
-        "production_lines": 591
+        "production_lines": 605
       },
       "crates/fereg-core/src/ppml_separation/simplex/compact_model/projection/streamed.rs": {
         "chunk_candidates": [],
@@ -29493,53 +29503,73 @@
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
-            "condition": "width == 0 || positive . is_empty ( ) || positive . len ( ) == outcome . len ( )",
-            "line": 94
+            "condition": "v != 0. && j < width",
+            "line": 89
           },
           {
-            "condition": "v != 0. && j < width",
-            "line": 217
+            "condition": "width == 0 || positive . is_empty ( ) || positive . len ( ) == outcome . len ( )",
+            "line": 151
+          },
+          {
+            "condition": "let Some ( cone ) = self . project_at ( & columns , boundary , fixed , grow ) ?",
+            "line": 259
+          },
+          {
+            "condition": "let Some ( cone ) = self . project_at ( & columns , boundary , fixed , grow ) ?",
+            "line": 275
           },
           {
             "condition": "space . rank ( ) + 1 >= k",
-            "line": 435
+            "line": 497
           },
           {
             "condition": "j < width && positions [ j ] != usize :: MAX",
-            "line": 442
+            "line": 504
           }
         ],
         "functions": {
           "cone#1": {
-            "line": 259,
+            "line": 321,
             "lines": 122
           },
           "dual#1": {
-            "line": 479,
+            "line": 541,
             "lines": 28
           },
           "lift#1": {
-            "line": 386,
+            "line": 448,
             "lines": 92
           },
+          "new#1": {
+            "line": 57,
+            "lines": 14
+          },
           "project#1": {
-            "line": 189,
-            "lines": 69
+            "line": 72,
+            "lines": 32
+          },
+          "project#2": {
+            "line": 250,
+            "lines": 33
+          },
+          "project_at#1": {
+            "line": 284,
+            "lines": 36
           },
           "require#1": {
-            "line": 67,
+            "line": 124,
             "lines": 13
           },
           "run#1": {
-            "line": 81,
+            "line": 138,
             "lines": 76
           },
           "search#1": {
-            "line": 158,
+            "line": 215,
             "lines": 28
           }
         },
-        "production_lines": 464
+        "production_lines": 517
       },
       "crates/fereg-core/src/ppml_separation/simplex/compact_tableau.rs": {
         "chunk_candidates": [],
@@ -34610,10 +34640,10 @@
       },
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1863,
+        "dispatch_candidates": 1864,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 142138
+        "production_lines": 142205
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
