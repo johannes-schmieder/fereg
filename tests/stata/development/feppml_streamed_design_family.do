@@ -59,7 +59,8 @@ program define exact_cell
     assert e(converged)==1 & e(num_singletons)==0
     assert e(separated)==`h'
     assert e(sample)==!hidden
-    assert reason==cond(hidden,10,0)
+    assert inlist(reason,10,11) if hidden
+    assert reason==0 if !hidden
 end
 
 capture program drop timed_fit

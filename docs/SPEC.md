@@ -2057,7 +2057,12 @@ per-observation finite-column mask and the generation's factor codes;
 construction reads every row once through the packing reader and requires
 exact agreement. Any other design (continuous or more than 64 finite columns,
 more than 128 row terms, absorbed slopes) reads its rows on demand through the
-raw reader, and the decline reason is traced. Both views eliminate every
+raw reader, and the decline reason is traced. The simplex phase runs that
+valued view only for binary designs declined for storage; a design with
+non-binary values or absorbed slopes goes first to the requested IR step,
+which certifies many such designs in a few projections, and IR runs the valued
+view at its first checkpoint (16 projections) or on a projected stall if it
+has not certified by then. Both views eliminate every
 positive row sparsely: the pivot column is always one with the fewest remaining
 entries, the pivot row the shortest whose entry is at least one tenth of the
 column's largest, and columns are scaled by powers of two so that unit pivots
@@ -2103,8 +2108,8 @@ normalized primal violation and compares them at doubling checkpoints from 16
 projections. It projects the projections each certificate still needs at the
 measured rate since the previous checkpoint, linear for the margin and a power
 law for the violation. When both exceed the remaining budget at two consecutive
-comparisons, it runs the streamed exact lane once if no simplex step ran it on
-this generation; a ray is replayed as an ordinary IR proposal and a Farkas
+comparisons, or at the first checkpoint when no exact lane has run on this
+generation, it runs the streamed exact lane once if no simplex step ran it; a ray is replayed as an ordinary IR proposal and a Farkas
 vector must pass the complete certificate. Otherwise the recurrence continues
 within its budget, because slow successes and failures can agree for hundreds
 of projections. Six consecutive refusals of positive-margin duals at the same

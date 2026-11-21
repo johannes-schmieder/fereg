@@ -55,9 +55,19 @@ pub(super) fn simplex_fallback(
         trace_decline(generation, "explicit_cell_limit");
         return Ok(None);
     }
-    *tried = true;
     let method = SeparationMethod::Simplex;
-    match exact_lane(generation, config, interrupt, method, intercept_only)? {
+    let Some(lane) = exact_lane(
+        generation,
+        config,
+        interrupt,
+        method,
+        (intercept_only, true),
+    )?
+    else {
+        return Ok(None);
+    };
+    *tried = true;
+    match lane {
         Some(Exact::Dual(dual)) => {
             if config.methods.iterated_rectifier {
                 *dual_hint = Some(IrHint::Dual(dual));
@@ -117,7 +127,14 @@ pub(super) fn streamed_switch(
         .effect_specs()
         .iter()
         .all(|spec| spec.slopes.is_empty());
-    let switched = match exact_lane(generation, config, interrupt, method, intercept_only)? {
+    let lane = exact_lane(
+        generation,
+        config,
+        interrupt,
+        method,
+        (intercept_only, false),
+    )?;
+    let switched = match lane.flatten() {
         Some(Exact::Binary(CompactModel::Direction {
             coefficients,
             iterations,
@@ -197,31 +214,43 @@ fn trace_decline(generation: &PreparedPpmlModelGeneration, reason: &str) {
 
 /// The binary lane when the design is a binary intercept design; otherwise,
 /// or when it declines, the valued lane on the raw reader.
+/// The simplex phase defers designs with non-binary values or absorbed slopes
+/// (outer `None`): the IR step that 0.6.7 uses on them often certifies in a
+/// few projections, and its measured stall runs the valued lane instead. A
+/// binary design declined only for storage still takes the valued lane here.
 fn exact_lane(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     method: SeparationMethod,
-    intercept_only: bool,
-) -> Result<Option<Exact>> {
-    if intercept_only {
+    (intercept_only, defer_values): (bool, bool),
+) -> Result<Option<Option<Exact>>> {
+    let valued_values = if intercept_only {
         match prepared_streamed_compact(generation, config, interrupt, method)? {
             Ok(model) => {
-                return Ok(model.map(|model| match model {
+                return Ok(Some(model.map(|model| match model {
                     CompactModel::NumericalDual { dual } => Exact::Dual(dual),
                     CompactModel::NumericalDirection {
                         coefficients,
                         iterations,
                     } => Exact::FloatRay(coefficients, iterations),
                     model => Exact::Binary(model),
-                }))
+                })))
             }
-            Err(reason) => trace_decline(generation, reason),
+            Err(reason) => {
+                trace_decline(generation, reason);
+                reason == "nonbinary"
+            }
         }
     } else {
         trace_decline(generation, "absorbed_slopes");
+        true
+    };
+    if defer_values && valued_values {
+        trace_decline(generation, "valued_after_ir_stall");
+        return Ok(None);
     }
-    valued_lane(generation, config, interrupt, method)
+    valued_lane(generation, config, interrupt, method).map(Some)
 }
 
 /// The projected-cone search on the raw reader: any finite values, any number

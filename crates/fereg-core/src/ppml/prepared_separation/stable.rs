@@ -116,8 +116,13 @@ pub(super) fn resolve(
         // this generation. The recurrence itself keeps its budget: slow
         // successes and failures agree for hundreds of projections.
         progress.observe(margin, primal_violation(outcome, &direction));
+        // When no exact lane has run on this generation (an IR-only request,
+        // or a design with real values the simplex phase defers to IR), the
+        // first checkpoint is also due: IR has spent the projections that
+        // certify easy designs, and the exact lane costs a few raw passes.
         let stall = progress.stalled(iteration, limit - iteration, config.certificate_tolerance);
-        if stall.is_some() && !std::mem::replace(&mut switched, true) {
+        let due = stall.is_some() || (!admission.exact_tried && iteration >= Progress::REFERENCE);
+        if due && !std::mem::replace(&mut switched, true) {
             drop(design.take());
             if let Some(resolution) = switch_lane(exit, interrupt, iteration)? {
                 return Ok(resolution);
@@ -299,7 +304,7 @@ pub(super) struct Stall {
 
 impl Progress {
     /// Recorded first after this many projections, then compared at twice it.
-    const REFERENCE: usize = 16;
+    pub(super) const REFERENCE: usize = 16;
     /// A stall must be projected at this many consecutive comparisons.
     const STRIKES: usize = 2;
     /// Positive-margin duals refused at one stage without a halving of the
