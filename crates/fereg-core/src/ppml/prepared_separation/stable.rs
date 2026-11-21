@@ -116,13 +116,8 @@ pub(super) fn resolve(
         // this generation. The recurrence itself keeps its budget: slow
         // successes and failures agree for hundreds of projections.
         progress.observe(margin, primal_violation(outcome, &direction));
-        let remaining = limit - iteration;
-        if !switched
-            && progress
-                .stalled(iteration, remaining, config.certificate_tolerance)
-                .is_some()
-        {
-            switched = true;
+        let stall = progress.stalled(iteration, limit - iteration, config.certificate_tolerance);
+        if stall.is_some() && !std::mem::replace(&mut switched, true) {
             drop(design.take());
             if let Some(resolution) = switch_lane(exit, interrupt, iteration)? {
                 return Ok(resolution);
@@ -147,8 +142,12 @@ pub(super) fn resolve(
                     "unit-metric separation dual has unresolved full-model orthogonality",
                 ));
             }
-            if let Some(stall) = progress.refused(refusal) {
-                return switch_or_stop(exit, interrupt, (stall, iteration), switched);
+            // Repeated refusals, like a projected stall, only switch lanes:
+            // an exact integer dual can still certify once the margin grows.
+            if progress.refused(refusal).is_some() && !std::mem::replace(&mut switched, true) {
+                if let Some(resolution) = switch_lane(exit, interrupt, iteration)? {
+                    return Ok(resolution);
+                }
             }
             unresolved_margin = relative_margin;
             response = refined;

@@ -53,93 +53,195 @@ pub(super) fn minimum_basis_cells(dimension: usize, width: usize) -> usize {
         .saturating_add(dimension.saturating_mul(dimension.saturating_add(8)))
 }
 
-/// A scaled search projects each boundary row once through a column-major
-/// copy of the basis (the same sums in the same order as `project`), stores
-/// only distinct projected rows, and keeps the cone axes on which some
-/// distinct row is independent. Duplicates change neither rank nor pivots.
+/// Column-major nonzeros of a cone basis: a raw column touches only the basis
+/// vectors whose support contains it, so a row costs its terms' entries.
+struct ColumnMajor {
+    starts: Vec<usize>,
+    entries: Vec<(u32, f64)>,
+    dimension: usize,
+}
+
+impl ColumnMajor {
+    fn new(basis: &[Vec<f64>], width: usize) -> Result<Self> {
+        let mut starts =
+            fallible_filled(width + 1, 0usize, "unable to reserve compact basis columns")?;
+        for vector in basis {
+            for (j, &value) in vector.iter().enumerate() {
+                if value != 0. {
+                    starts[j + 1] += 1;
+                }
+            }
+        }
+        for j in 0..width {
+            starts[j + 1] += starts[j];
+        }
+        let mut entries = fallible_filled(
+            starts[width],
+            (0u32, 0.),
+            "unable to reserve compact basis entries",
+        )?;
+        let mut next = fallible_collect(
+            starts[..width].iter().copied(),
+            width,
+            "unable to reserve compact basis cursor",
+        )?;
+        for (k, vector) in basis.iter().enumerate() {
+            for (j, &value) in vector.iter().enumerate() {
+                if value != 0. {
+                    entries[next[j]] = (k as u32, value);
+                    next[j] += 1;
+                }
+            }
+        }
+        Ok(Self {
+            starts,
+            entries,
+            dimension: basis.len(),
+        })
+    }
+
+    fn cells(&self) -> usize {
+        self.entries
+            .len()
+            .saturating_mul(2)
+            .saturating_add(self.starts.len())
+    }
+
+    /// The same sums in the same order as `project`: columns in row order,
+    /// each adding its entry to every axis it touches.
+    fn project(&self, support: &[u32], out: &mut [f64], tolerance: f64, work: &mut usize) -> bool {
+        let touched: usize = support
+            .iter()
+            .map(|&j| self.starts[j as usize + 1] - self.starts[j as usize])
+            .sum();
+        let Some(left) = work.checked_sub(touched.saturating_add(self.dimension)) else {
+            return false;
+        };
+        *work = left;
+        out.fill(0.);
+        for &j in support {
+            let j = j as usize;
+            for &(k, b) in &self.entries[self.starts[j]..self.starts[j + 1]] {
+                out[k as usize] += b;
+            }
+        }
+        for value in out.iter_mut() {
+            if value.abs() <= tolerance {
+                *value = 0.;
+            }
+        }
+        true
+    }
+}
+
+/// A scaled search projects each boundary row once through the column-major
+/// basis and stores only distinct projected rows. When the plan refuses that
+/// bank at the full dimension, the axes are first ranked by two streaming
+/// passes, as the incumbent panel does, and the bank is rebuilt at the
+/// retained dimension. Duplicates change neither rank nor pivots.
 fn scaled_cone(
     design: &BinaryDesign,
     boundary: &[usize],
-    basis: &[Vec<f64>],
+    basis: &mut Vec<Vec<f64>>,
+    tolerance: f64,
+    (available, work): (usize, usize),
+    mut grow: Option<Grow<'_>>,
+) -> Result<Option<BoundaryCone>> {
+    let width = design.ncols();
+    let columns = ColumnMajor::new(basis, width)?;
+    let reborrowed: Option<Grow<'_>> = match grow.as_mut() {
+        Some(hook) => Some(&mut **hook),
+        None => None,
+    };
+    let first = scaled_bank(
+        design,
+        boundary,
+        &columns,
+        tolerance,
+        (available, work),
+        reborrowed,
+    )?;
+    if first.is_some() || basis.len() <= 1 {
+        return Ok(first);
+    }
+    let Some(keep) = streamed_axes(design, boundary, &columns, tolerance, work)? else {
+        trace_refusal("projection_rank_work", boundary.len(), work);
+        return Ok(None);
+    };
+    drop(columns);
+    if keep.iter().all(|&kept| kept) {
+        return Ok(None);
+    }
+    retain_columns(basis, &keep);
+    let columns = ColumnMajor::new(basis, width)?;
+    scaled_bank(
+        design,
+        boundary,
+        &columns,
+        tolerance,
+        (available, work),
+        grow,
+    )
+}
+
+fn scaled_bank(
+    design: &BinaryDesign,
+    boundary: &[usize],
+    columns: &ColumnMajor,
     tolerance: f64,
     (available, work): (usize, usize),
     grow: Option<Grow<'_>>,
 ) -> Result<Option<BoundaryCone>> {
-    let (dimension, width) = (basis.len(), design.ncols());
-    // Column-major nonzeros: a raw column touches only the basis vectors
-    // whose support contains it, so a row costs its terms' basis entries.
-    let mut starts = fallible_filled(width + 1, 0usize, "unable to reserve compact basis columns")?;
-    for vector in basis {
-        for (j, &value) in vector.iter().enumerate() {
-            if value != 0. {
-                starts[j + 1] += 1;
-            }
-        }
-    }
-    for j in 0..width {
-        starts[j + 1] += starts[j];
-    }
-    let mut entries = fallible_filled(
-        starts[width],
-        (0u32, 0.),
-        "unable to reserve compact basis entries",
-    )?;
-    let mut next = fallible_collect(
-        starts[..width].iter().copied(),
-        width,
-        "unable to reserve compact basis cursor",
-    )?;
-    for (k, vector) in basis.iter().enumerate() {
-        for (j, &value) in vector.iter().enumerate() {
-            if value != 0. {
-                entries[next[j]] = (k as u32, value);
-                next[j] += 1;
-            }
-        }
-    }
-    drop(next);
-    let built = {
-        let mut projector = |i: usize, out: &mut [f64], work: &mut usize| -> Result<bool> {
-            let support = design.row(boundary[i]);
-            let touched: usize = support
-                .iter()
-                .map(|&j| starts[j as usize + 1] - starts[j as usize])
-                .sum();
-            let Some(left) = work.checked_sub(touched.saturating_add(dimension)) else {
-                return Ok(false);
-            };
-            *work = left;
-            out.fill(0.);
-            // The same sums in the same order as `project`: columns in row
-            // order, each adding its entry to every axis it touches.
-            for &j in support.iter() {
-                let j = j as usize;
-                for &(k, b) in &entries[starts[j]..starts[j + 1]] {
-                    out[k as usize] += b;
-                }
-            }
-            for value in out.iter_mut() {
-                if value.abs() <= tolerance {
-                    *value = 0.;
-                }
-            }
-            Ok(true)
-        };
-        let basis_cells = dimension
-            .saturating_mul(width.saturating_add(3))
-            .saturating_add(entries.len().saturating_mul(2))
-            .saturating_add(width);
-        streamed::build_with(
-            (boundary.len(), dimension),
-            &mut projector,
-            (available, work),
-            basis_cells,
-            grow,
-        )?
+    let (dimension, width) = (columns.dimension, design.ncols());
+    let mut projector = |i: usize, out: &mut [f64], work: &mut usize| -> Result<bool> {
+        Ok(columns.project(&design.row(boundary[i]), out, tolerance, work))
     };
-    drop(entries);
-    drop(starts);
-    Ok(built)
+    let basis_cells = dimension
+        .saturating_mul(width.saturating_add(3))
+        .saturating_add(columns.cells());
+    streamed::build_with(
+        (boundary.len(), dimension),
+        &mut projector,
+        (available, work),
+        basis_cells,
+        grow,
+    )
+}
+
+/// Axes on which some boundary row is independent, without storing rows: one
+/// pass for the largest projected entry and one rank-revealing pass, which
+/// stops once every axis has a pivot.
+fn streamed_axes(
+    design: &BinaryDesign,
+    boundary: &[usize],
+    columns: &ColumnMajor,
+    tolerance: f64,
+    stage_work: usize,
+) -> Result<Option<Vec<bool>>> {
+    let dimension = columns.dimension;
+    let mut out = fallible_filled(dimension, 0., "unable to reserve streamed cone row")?;
+    let mut work = stage_work;
+    let mut maximum = 0_f64;
+    for (i, &origin) in boundary.iter().enumerate() {
+        crate::interrupt::row_checkpoint(i)?;
+        if !columns.project(&design.row(origin), &mut out, tolerance, &mut work) {
+            return Ok(None);
+        }
+        maximum = out.iter().fold(maximum, |m, v| m.max(v.abs()));
+    }
+    let mut rank = RowRank::new(dimension, maximum * tolerance, work)?;
+    for (i, &origin) in boundary.iter().enumerate() {
+        crate::interrupt::row_checkpoint(i)?;
+        let mut left = usize::MAX;
+        columns.project(&design.row(origin), &mut out, tolerance, &mut left);
+        if !rank.insert(&out)? {
+            return Ok(None);
+        }
+        if rank.full() {
+            break;
+        }
+    }
+    rank.columns().map(Some)
 }
 
 /// Keep the cone axes on which some distinct row is independent, in the rows

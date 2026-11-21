@@ -1,16 +1,16 @@
 {
   "growth": [
     {
-      "after": 1861,
-      "before": 1860,
+      "after": 1863,
+      "before": 1861,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "Accept a streamed ray without an exact lift under the incumbent IR note, record which certificate stage refused a positive-margin dual, and stop only on repeated same-stage refusals or a spent budget after one exact switch."
+      "reason": "Rank the cone axes before the distinct bank when the plan refuses it at the full null-space dimension, and let repeated certificate refusals only trigger the single exact switch so later exact integer duals stay reachable."
     },
     {
-      "after": 142023,
-      "before": 141933,
+      "after": 142112,
+      "before": 142023,
       "metric": "fereg-core/production_lines",
-      "reason": "Accept a streamed ray without an exact lift under the incumbent IR note, record which certificate stage refused a positive-margin dual, and stop only on repeated same-stage refusals or a spent budget after one exact switch."
+      "reason": "Rank the cone axes before the distinct bank when the plan refuses it at the full null-space dimension, and let repeated certificate refusals only trigger the single exact switch so later exact integer duals stay reachable."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -26621,192 +26621,192 @@
           },
           {
             "condition": "certify_dual_with_weights ( generation , & refined , unit , ppml , config , linear , span_plan , scratch , ) ?",
-            "line": 195
+            "line": 194
           },
           {
             "condition": "margin_needs > budget && primal_needs > budget",
-            "line": 385
+            "line": 384
           },
           {
             "condition": "let Some ( ( fast_ppml , fast_linear ) ) = fast_unit_policy ( generation , ppml , linear , admission )",
-            "line": 537
+            "line": 536
           },
           {
             "condition": "certify_dual_with_weights ( generation , dual , & unit , fast_ppml , config , fast_linear , admission . span_plan , ( & mut None , & mut None ) , )",
-            "line": 538
+            "line": 537
           },
           {
             "condition": "dual . len ( ) != generation . outcome ( ) . len ( ) || dual . iter ( ) . any ( | v | ! v . is_finite ( ) )",
-            "line": 579
+            "line": 578
           },
           {
             "condition": "projected . kept_columns != kept",
-            "line": 908
+            "line": 907
           },
           {
             "condition": "let Some ( policy ) = fast_unit_policy ( generation , ppml , linear , admission )",
-            "line": 1014
+            "line": 1013
           },
           {
             "condition": "admission . unit_projection . is_none ( ) || ppml . absorb . solver != FeSolverKind :: Auto || ! ( 2.. = 5 ) . contains ( & effects . len ( ) ) || effects . iter ( ) . any ( | spec | ! spec . slopes . is_empty ( ) )",
-            "line": 1055
+            "line": 1054
           },
           {
             "condition": "! allowed_columns . contains ( & column )",
-            "line": 1349
+            "line": 1348
           },
           {
             "condition": "constant_in_certified_span ( generation , allowed_columns ) && response . iter ( ) . all ( | value | * value == response [ 0 ] )",
-            "line": 1374
+            "line": 1373
           }
         ],
         "functions": {
           "bound_dual#1": {
-            "line": 1131,
+            "line": 1130,
             "lines": 22
           },
           "centered_moment_ratio#1": {
-            "line": 724,
+            "line": 723,
             "lines": 53
           },
           "certify_dual#1": {
-            "line": 525,
+            "line": 524,
             "lines": 41
           },
           "certify_dual_with_weights#1": {
-            "line": 568,
+            "line": 567,
             "lines": 93
           },
           "certify_hint#1": {
-            "line": 1071,
+            "line": 1070,
             "lines": 59
           },
           "certify_omitted_contrasts#1": {
-            "line": 836,
+            "line": 835,
             "lines": 108
           },
           "certify_projected_dual#1": {
-            "line": 669,
+            "line": 668,
             "lines": 51
           },
           "certify_qr_aliases#1": {
-            "line": 781,
+            "line": 780,
             "lines": 49
           },
           "constant_in_certified_span#1": {
-            "line": 1459,
+            "line": 1458,
             "lines": 10
           },
           "dual_certificate#1": {
-            "line": 1191,
+            "line": 1190,
             "lines": 22
           },
           "error#1": {
-            "line": 430,
+            "line": 429,
             "lines": 25
           },
           "exact_absorbed_column#1": {
-            "line": 947,
+            "line": 946,
             "lines": 48
           },
           "exact_difference#1": {
-            "line": 1317,
+            "line": 1316,
             "lines": 6
           },
           "exact_finite_duplicate#1": {
-            "line": 1239,
+            "line": 1238,
             "lines": 77
           },
           "exact_integer_alias#1": {
-            "line": 1326,
+            "line": 1325,
             "lines": 132
           },
           "exhausted#1": {
-            "line": 345,
+            "line": 344,
             "lines": 10
           },
           "fast_unit_policy#1": {
-            "line": 1048,
+            "line": 1047,
             "lines": 20
           },
           "interior#1": {
-            "line": 176,
+            "line": 175,
             "lines": 26
           },
           "is_numerical_refusal#1": {
-            "line": 1038,
+            "line": 1037,
             "lines": 6
           },
           "is_stall#1": {
-            "line": 249,
+            "line": 248,
             "lines": 3
           },
           "new#1": {
-            "line": 311,
+            "line": 310,
             "lines": 10
           },
           "new#2": {
-            "line": 424,
+            "line": 423,
             "lines": 3
           },
           "observe#1": {
-            "line": 322,
+            "line": 321,
             "lines": 11
           },
           "primal_proposal#1": {
-            "line": 462,
+            "line": 461,
             "lines": 58
           },
           "primal_violation#1": {
-            "line": 256,
+            "line": 255,
             "lines": 11
           },
           "probe_dual#1": {
-            "line": 1006,
+            "line": 1005,
             "lines": 31
           },
           "rates#1": {
-            "line": 334,
+            "line": 333,
             "lines": 9
           },
           "recover#1": {
-            "line": 1158,
+            "line": 1157,
             "lines": 29
           },
           "refused#1": {
-            "line": 401,
+            "line": 400,
             "lines": 20
           },
           "resolve#1": {
             "line": 26,
-            "lines": 145
+            "lines": 144
           },
           "stable_norm#1": {
-            "line": 996,
+            "line": 995,
             "lines": 7
           },
           "stalled#1": {
-            "line": 361,
+            "line": 360,
             "lines": 37
           },
           "strict_projection_policy#1": {
-            "line": 1217,
+            "line": 1216,
             "lines": 10
           },
           "switch_lane#1": {
-            "line": 230,
+            "line": 229,
             "lines": 14
           },
           "switch_or_stop#1": {
-            "line": 214,
+            "line": 213,
             "lines": 14
           },
           "trace_dual_check#1": {
-            "line": 1228,
+            "line": 1227,
             "lines": 7
           }
         },
-        "production_lines": 1274
+        "production_lines": 1271
       },
       "crates/fereg-core/src/ppml/prepared_separation/stable/integer_dual.rs": {
         "chunk_candidates": [],
@@ -29223,33 +29223,45 @@
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
+            "condition": "first . is_some ( ) || basis . len ( ) <= 1",
+            "line": 164
+          },
+          {
+            "condition": "! columns . project ( & design . row ( origin ) , & mut out , tolerance , & mut work )",
+            "line": 227
+          },
+          {
             "condition": "boundary . len ( ) . saturating_mul ( retained + 3 ) . saturating_add ( basis_cells ) . saturating_add ( dual_cells ) > available",
-            "line": 233
+            "line": 335
           }
         ],
         "functions": {
           "admit_basis#1": {
-            "line": 168,
+            "line": 270,
             "lines": 13
           },
           "build#1": {
-            "line": 182,
+            "line": 284,
             "lines": 148
           },
+          "cells#1": {
+            "line": 103,
+            "lines": 6
+          },
           "columns#1": {
-            "line": 529,
+            "line": 631,
             "lines": 15
           },
           "full#1": {
-            "line": 525,
+            "line": 627,
             "lines": 3
           },
           "independent_axes#1": {
-            "line": 333,
+            "line": 435,
             "lines": 22
           },
           "insert#1": {
-            "line": 491,
+            "line": 593,
             "lines": 33
           },
           "minimum_basis_cells#1": {
@@ -29257,15 +29269,23 @@
             "lines": 5
           },
           "new#1": {
-            "line": 476,
+            "line": 65,
+            "lines": 37
+          },
+          "new#2": {
+            "line": 578,
             "lines": 14
           },
           "panel#1": {
-            "line": 418,
+            "line": 520,
             "lines": 24
           },
           "project#1": {
-            "line": 443,
+            "line": 112,
+            "lines": 23
+          },
+          "project#2": {
+            "line": 545,
             "lines": 24
           },
           "propose#1": {
@@ -29273,27 +29293,35 @@
             "lines": 28
           },
           "retain_columns#1": {
-            "line": 356,
+            "line": 458,
             "lines": 4
           },
           "retain_independent#1": {
-            "line": 147,
+            "line": 249,
             "lines": 19
           },
+          "scaled_bank#1": {
+            "line": 187,
+            "lines": 23
+          },
           "scaled_cone#1": {
-            "line": 60,
-            "lines": 84
+            "line": 142,
+            "lines": 44
           },
           "seen_support#1": {
-            "line": 410,
+            "line": 512,
             "lines": 7
           },
+          "streamed_axes#1": {
+            "line": 214,
+            "lines": 32
+          },
           "streaming_columns#1": {
-            "line": 363,
+            "line": 465,
             "lines": 44
           }
         },
-        "production_lines": 499
+        "production_lines": 591
       },
       "crates/fereg-core/src/ppml_separation/simplex/compact_model/projection/streamed.rs": {
         "chunk_candidates": [],
@@ -34588,10 +34616,10 @@
       },
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1861,
+        "dispatch_candidates": 1863,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 142023
+        "production_lines": 142112
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

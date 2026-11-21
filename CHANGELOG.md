@@ -16,9 +16,9 @@
   certificate.
 - The iterated rectifier now measures its progress toward either certificate
   and switches once to an exact lane not yet run on the generation when
-  neither is reachable at the measured rates. A dual that its certificate
-  keeps refusing at the same stage, or a spent budget, ends detection with an
-  explicit separation error instead of restarting the same recurrence.
+  neither is reachable at the measured rates or its certificate keeps
+  refusing at one stage. A spent budget ends detection with an explicit
+  separation error instead of restarting the same recurrence.
 - Explicit simplex cell limits and every result the fixed compact lanes
   already certify are unchanged.
 

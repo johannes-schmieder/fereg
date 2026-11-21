@@ -2068,7 +2068,9 @@ is projected once through the column-major nonzeros of that basis, and only
 distinct projected rows are stored. The projected constraint bank, including
 its row-proportional index, the tableau and every later buffer are requested
 at their measured sizes from the fit's live plan; the bank grows by doubling
-when its distinct rows exceed it. A distinct row whose exact negation is also
+when its distinct rows exceed it. When the plan refuses that bank at the full null-space dimension, the axes on
+which some zero row is independent are ranked first in two streaming passes and
+the bank is rebuilt at the retained dimension. A distinct row whose exact negation is also
 a row is an implicit equality of every feasible direction. Phase I then runs on
 the null space of those equality rows, again from a sparse echelon form, after
 the rank pass keeps the axes on which some distinct row is independent. A
@@ -2105,13 +2107,13 @@ comparisons, it runs the streamed exact lane once if no simplex step ran it on
 this generation; a ray is replayed as an ordinary IR proposal and a Farkas
 vector must pass the complete certificate. Otherwise the recurrence continues
 within its budget, because slow successes and failures can agree for hundreds
-of projections. A dual with a positive margin that the certificate refuses at
-the same stage six consecutive times, without its stage metric halving, ends
-detection; so does a spent full budget, after the same single exact switch.
-Detection then stops with an explicit separation error naming the generation,
-the measured quantities, the refusing stage if any and the lanes tried. Such
-an error is final: the solver-variant retry policy does not repeat the same
-recurrence.
+of projections. Six consecutive refusals of positive-margin duals at the same
+certificate stage, without the stage metric halving, trigger the same single
+switch and nothing else, because the exact integer dual of a later projection
+can still certify. A spent full budget, after that switch, stops detection
+with an explicit separation error naming the generation, the measured
+quantities and the lanes tried. Such an error is final: the solver-variant
+retry policy does not repeat the same recurrence.
 
 When a model has only finite regressors and the dense simplex exceeds its
 allowance, a nonzero modular minor on positive-outcome rows can certify
