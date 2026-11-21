@@ -14,11 +14,11 @@
   Farkas vector beyond the exact arithmetic is handed to the requested
   iterated rectifier, which accepts it only through its own complete
   certificate.
-- The iterated rectifier now measures its progress toward either certificate.
-  When neither is reachable within the remaining budget at the measured rates,
-  or the budget is spent, it tries an exact lane not yet run on that
-  generation once and then stops with an explicit separation error instead of
-  restarting the same recurrence.
+- The iterated rectifier now measures its progress toward either certificate
+  and switches once to an exact lane not yet run on the generation when
+  neither is reachable at the measured rates. A dual that its certificate
+  keeps refusing at the same stage, or a spent budget, ends detection with an
+  explicit separation error instead of restarting the same recurrence.
 - Explicit simplex cell limits and every result the fixed compact lanes
   already certify are unchanged.
 

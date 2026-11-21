@@ -2096,17 +2096,22 @@ unit-metric dual certificate, first as proposed and otherwise after one fresh
 unit projection removes its measured span component, and repeats that check
 at terminal replay.
 
-The unit-metric recurrence records its best boundary margin and its best
+The unit-metric recurrence records its current boundary margin and its best
 normalized primal violation and compares them at doubling checkpoints from 16
 projections. It projects the projections each certificate still needs at the
 measured rate since the previous checkpoint, linear for the margin and a power
-law for the violation. When both exceed the remaining budget, or when a full
-budget is spent, it runs the streamed exact lane once if no simplex step ran
-it on this generation; a ray is replayed as an ordinary IR proposal and a
-Farkas vector must pass the complete certificate. Otherwise detection stops
-with an explicit separation error naming the generation, both measured
-quantities and the lanes tried. Such an error is final: the solver-variant
-retry policy does not repeat the same recurrence.
+law for the violation. When both exceed the remaining budget at two consecutive
+comparisons, it runs the streamed exact lane once if no simplex step ran it on
+this generation; a ray is replayed as an ordinary IR proposal and a Farkas
+vector must pass the complete certificate. Otherwise the recurrence continues
+within its budget, because slow successes and failures can agree for hundreds
+of projections. A dual with a positive margin that the certificate refuses at
+the same stage six consecutive times, without its stage metric halving, ends
+detection; so does a spent full budget, after the same single exact switch.
+Detection then stops with an explicit separation error naming the generation,
+the measured quantities, the refusing stage if any and the lanes tried. Such
+an error is final: the solver-variant retry policy does not repeat the same
+recurrence.
 
 When a model has only finite regressors and the dense simplex exceeds its
 allowance, a nonzero modular minor on positive-outcome rows can certify

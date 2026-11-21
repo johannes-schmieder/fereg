@@ -140,4 +140,35 @@ near_finite
 quietly feppml y x, absorb(`controls' a b) vce(cluster g) dropreason(reason)
 assert e(converged)==1 & e(separated)==0 & e(N)==_N & reason==0
 
+* 6. A separating direction with non-integer coefficients: w equals a level
+* effect of h plus a positive shift on a tenth of the zero rows, so w minus the
+* h effects separates exactly those rows. Its exact integer lift fails and the
+* IR direction certificate must accept the deletion.
+clear
+set seed 2611
+quietly set obs 20000
+generate long id = _n
+local small
+forvalues k = 1/6 {
+    quietly generate byte f`k' = runiformint(0,1+mod(`k',5))
+    local small `small' f`k'
+}
+generate int g = runiformint(1,300)
+generate byte x = runiform()<.3
+generate int h = runiformint(1,40)
+generate double c = rnormal()
+bysort h (id): replace c = c[1]
+sort id
+generate byte y = runiform()<.05
+generate byte hidden = y==0 & runiform()<.1
+generate double w = c + cond(hidden, .2+runiform(), 0)
+quietly count if hidden
+local nh = r(N)
+timed_fit y x w, absorb(`small' h) vce(cluster g) dropreason(reason)
+assert r(seconds)<120
+assert e(converged)==1 & e(N)==_N-`nh' & e(sample)==!hidden & (reason!=0)==hidden
+local b = _b[x]
+quietly feppml y x w if !hidden, absorb(`small' h) vce(cluster g) separation(none)
+assert reldif(_b[x],`b')<1e-9
+
 display "END_FIXTURE|feppml_streamed_design_family|rc=0"

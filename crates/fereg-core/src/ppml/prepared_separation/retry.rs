@@ -403,13 +403,9 @@ pub(super) fn ir_step(
             direction.len(),
             "unable to reserve IR direction hint",
         )?;
-        if let Some(proposal) = super::stable::direction_proposal(
-            generation,
-            config,
-            *iterations,
-            &mut direction,
-            "streamed compact ray without an exact integer lift",
-        )? {
+        if let Some(proposal) =
+            super::stable::primal_proposal(generation, config, *iterations, &mut direction)?
+        {
             lap.detected(&proposal);
             let certified =
                 validate_numerical_proposal(generation, proposal, ppml, config, linear)?;

@@ -138,14 +138,8 @@ pub(super) fn streamed_switch(
         }
         Some(Exact::FloatRay(coefficients, iterations)) => {
             let mut direction = ray_direction(generation, &coefficients)?;
-            stable::direction_proposal(
-                generation,
-                config,
-                iterations,
-                &mut direction,
-                "streamed compact ray without an exact integer lift",
-            )?
-            .map(ExactSwitch::Direction)
+            stable::primal_proposal(generation, config, iterations, &mut direction)?
+                .map(ExactSwitch::Direction)
         }
         _ => None,
     };
