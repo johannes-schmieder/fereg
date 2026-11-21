@@ -10,7 +10,10 @@ use crate::error::{ErrorCode, FeregError, Result};
 mod compact_model;
 mod compact_tableau;
 mod exact_terminal;
-pub(crate) use compact_model::{compact_model, BinaryDesign, CompactInput, CompactModel};
+pub(crate) use compact_model::{
+    compact_model, compact_model_scaled, BinaryDesign, CompactInput, CompactModel, CompactWork,
+    StreamedEffect,
+};
 pub(crate) use exact_terminal::raw_positive_dual;
 mod nullspace;
 mod tableau;

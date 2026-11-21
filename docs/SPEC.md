@@ -2050,6 +2050,31 @@ must admit that audit on its current generation before allocating the
 scratch arrays. An exact original-coordinate proof can finish within
 its own allowance without reserving the numerical audit's dense workspace.
 
+If every fixed-allowance simplex lane leaves a generation with absorbed
+intercepts and binary columns unresolved, the implicit adaptive policy may
+retry the compact search on a streamed view of the same raw design. Rows are
+regenerated from a per-observation finite-column mask and the generation's
+factor codes. Construction reads every row once through the packing reader and
+requires exact agreement. The streamed design and every later buffer (dense
+positive rows, the distinct projected-constraint bank, the tableau and the
+physical dual) are requested at their measured sizes from the fit's live plan.
+The projected-constraint bank grows by doubling when its distinct rows exceed
+it. Each linear stage may spend four projected passes over the measured raw
+design at full model width. Phase I takes at most eight pivots per retained
+cone dimension and stops after two dimensions of degenerate pivots. Each
+size or work refusal is traced with its measured requirement and allowance.
+An explicit numeric simplex cell limit keeps the fixed policy. Rays and
+terminal duals take the incumbent exact certificates. When the exact terminal
+cannot reconstruct the positive kernel within its integer arithmetic, a
+numerical Farkas vector that passed the indexed replay is lifted to every
+observation: boundary rows keep their weights and independent positive rows
+receive refined least-squares weights. It is only a hint for a requested IR
+step on the same generation, which accepts it through the complete
+unit-metric dual certificate and repeats that check at terminal replay.
+Without simplex in the request, a unit-metric recurrence that has no
+certificate after 32 iterations may run the streamed lane once under the IR
+label. An unresolved attempt leaves the recurrence unchanged.
+
 When a model has only finite regressors and the dense simplex exceeds its
 allowance, a nonzero modular minor on positive-outcome rows can certify
 that every recession direction is zero. Include the structural intercept

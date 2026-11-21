@@ -462,6 +462,7 @@
         "tests/stata/development/feppml_separation_recovery.do",
         "tests/stata/development/feppml_separation_scalability.do",
         "tests/stata/development/feppml_sparse_support_coupled.do",
+        "tests/stata/development/feppml_streamed_compact_separation.do",
         "tests/stata/development/ols_score_design_rare_base.do",
         "tests/stata/development/ols_score_design_units.do",
         "tests/stata/development/feppml_saved_intercept_recovery.do",

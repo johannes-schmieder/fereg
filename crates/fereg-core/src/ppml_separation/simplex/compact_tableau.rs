@@ -72,8 +72,7 @@ pub(crate) fn propose(
 ) -> Result<Option<Proposal>> {
     propose_counting(
         cone,
-        tolerance,
-        max_iterations,
+        (tolerance, max_iterations, 1 << 30, 0),
         &mut 0,
         available_cells,
         interrupt,
@@ -82,8 +81,7 @@ pub(crate) fn propose(
 
 pub(super) fn propose_counting(
     cone: &[Vec<f64>],
-    tolerance: f64,
-    max_iterations: usize,
+    (tolerance, max_iterations, cell_visits, per_dimension): (f64, usize, usize, usize),
     pivots: &mut usize,
     available_cells: usize,
     interrupt: &mut dyn FnMut() -> Result<()>,
@@ -104,7 +102,7 @@ pub(super) fn propose_counting(
         max_iterations,
         pivots,
         available_cells,
-        1 << 30,
+        (cell_visits, per_dimension),
         interrupt,
     )? {
         return Ok(Some(proposal));
@@ -125,7 +123,7 @@ pub(super) fn propose_streamed(
     rows: &[Vec<f64>],
     groups: &[(usize, usize)],
     boundary: usize,
-    (tolerance, max_iterations): (f64, usize),
+    (tolerance, max_iterations, cell_visits, per_dimension): (f64, usize, usize, usize),
     pivots: &mut usize,
     available: usize,
     interrupt: &mut dyn FnMut() -> Result<()>,
@@ -141,7 +139,7 @@ pub(super) fn propose_streamed(
         max_iterations,
         pivots,
         available,
-        1 << 30,
+        (cell_visits, per_dimension),
         interrupt,
     )?;
     if crate::diagnostics::solver_trace_enabled() {
@@ -157,12 +155,17 @@ fn solve(
     max_iterations: usize,
     pivots: &mut usize,
     available_cells: usize,
-    cell_visits: usize,
+    (cell_visits, per_dimension): (usize, usize),
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<Proposal>> {
     let boundary = cone.len();
     let dimension = cone.rows[0].len();
     if workspace_cells(boundary, dimension).is_none_or(|cells| cells > available_cells) {
+        super::compact_model::trace_refusal(
+            "tableau_workspace",
+            workspace_cells(boundary, dimension).unwrap_or(usize::MAX),
+            available_cells,
+        );
         return Ok(None);
     }
     let width = boundary + dimension + 1;
@@ -174,10 +177,18 @@ fn solve(
     // Pricing scratch, output weights, normalization, and ratio/basis scans
     // cost at most eight row widths and four basis lengths beyond those passes.
     if cells > cell_visits / 16 {
+        super::compact_model::trace_refusal(
+            "tableau_setup_visits",
+            cells.saturating_mul(16),
+            cell_visits,
+        );
         return Ok(None);
     }
     let per_pivot = 4 * cells + 8 * width + 4 * dimension;
-    let pivot_limit = (max_iterations - *pivots).min((cell_visits - 16 * cells) / per_pivot);
+    let mut pivot_limit = (max_iterations - *pivots).min((cell_visits - 16 * cells) / per_pivot);
+    if per_dimension > 0 {
+        pivot_limit = pivot_limit.min(per_dimension.saturating_mul(dimension));
+    }
     interrupt()?;
     let mut tableau = fallible_filled(cells, 0., "unable to reserve transposed simplex tableau")?;
     let mut scales = fallible_filled(dimension, 0., "unable to reserve transposed simplex scales")?;
@@ -244,6 +255,7 @@ fn solve(
             return Ok(None);
         };
         if iterations == pivot_limit {
+            super::compact_model::trace_refusal("tableau_pivot_limit", pivot_limit, cell_visits);
             return Ok(None);
         }
         *pivots += 1;
@@ -254,6 +266,12 @@ fn solve(
         if step <= tolerance {
             degenerate += 1;
             bland |= degenerate >= dimension;
+            // Measured progress: a scaled solve stops once Bland's rule has
+            // also spent a full cone dimension of degenerate pivots.
+            if per_dimension > 0 && degenerate >= 2 * dimension {
+                super::compact_model::trace_refusal("tableau_stalled", degenerate, dimension);
+                return Ok(None);
+            }
         } else {
             degenerate = 0;
         }

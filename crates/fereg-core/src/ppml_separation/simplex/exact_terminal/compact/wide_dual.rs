@@ -31,7 +31,7 @@ pub(super) fn certify(
     )?;
     for (column, &i) in positive.iter().chain(extras).enumerate() {
         crate::interrupt::row_checkpoint(column)?;
-        for &j in design.row(i) {
+        for &j in design.row(i).iter() {
             system[j as usize * stride + column] = 1;
         }
     }
@@ -57,7 +57,7 @@ pub(super) fn certify(
         if !work.take(1, row.len() + 1) {
             return false;
         }
-        for &column in row {
+        for &column in row.iter() {
             let j = column as usize;
             let Some(sum) = moment[j].checked_add(weight) else {
                 return false;

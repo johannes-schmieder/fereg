@@ -35,7 +35,7 @@ pub(super) fn retry(
         max_iterations,
         pivots,
         left,
-        WORK,
+        (WORK, 0),
         interrupt,
     )?;
     if crate::diagnostics::solver_trace_enabled() {

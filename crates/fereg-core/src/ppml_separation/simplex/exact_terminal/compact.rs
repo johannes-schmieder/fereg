@@ -21,7 +21,7 @@ fn positive_basis(
             return Ok(false);
         }
         row.fill(0.);
-        for &j in ones {
+        for &j in ones.iter() {
             row[j as usize] = 1.;
         }
         space.insert(&row)?;
@@ -94,7 +94,7 @@ pub(in crate::ppml_separation::simplex) fn compact_no_recession(
         if !work.take(1, ones.len().saturating_add(1)) {
             return Ok(false);
         }
-        for &j in ones {
+        for &j in ones.iter() {
             aggregate[j as usize] += 1.;
         }
         if w > 1. {
@@ -213,7 +213,7 @@ fn quotient_balance(
             crate::interrupt::row_checkpoint(i)?;
             if y > 0. {
                 let row = design.row(i);
-                if !work.take(1, row.len()) || score(row) != 0 {
+                if !work.take(1, row.len()) || score(&row) != 0 {
                     if crate::diagnostics::solver_trace_enabled() {
                         eprintln!("FEREG_SOLVER_TRACE|phase=compact_terminal|failed=kernel_replay|column={j}|extras={}", extras.len());
                     }
@@ -232,7 +232,7 @@ fn quotient_balance(
             if !work.take(1, row.len() + 1) {
                 return Ok(false);
             }
-            *moment = score(row);
+            *moment = score(&row);
         }
         if moments.iter().any(|&v| v != 0) {
             // Conversion to the raw dual's dyadic coordinate type must be exact.
@@ -300,7 +300,7 @@ mod tests {
             .unwrap();
             let mut counts = [0.; 12];
             for &i in &boundary {
-                for &j in design.row(i) {
+                for &j in design.row(i).iter() {
                     counts[j as usize] += 1.;
                 }
             }

@@ -3,7 +3,7 @@
 //! This can use different divisors on different rows, including positive rows.
 use super::{
     fallible_collect, fallible_filled, projection::BoundaryCone, BinaryDesign, CompactModel,
-    CompactSearch, SeparationCertificate, MAX_WORK,
+    CompactSearch, CompactWork, SeparationCertificate, MAX_WORK,
 };
 use crate::error::Result;
 use crate::ppml_separation::SeparationConfig;
@@ -59,7 +59,7 @@ impl<'a> RawSupport<'a> {
         origins: &[usize],
         known_ones: Option<usize>,
         limit: usize,
-    ) -> Result<Option<BinaryDesign>> {
+    ) -> Result<Option<BinaryDesign<'static>>> {
         let fixed = n.saturating_add(1).saturating_add(self.terms.div_ceil(2));
         if u32::try_from(self.columns).is_err() || n as u128 > (1u128 << 53) {
             return Ok(None);
@@ -110,11 +110,7 @@ impl<'a> RawSupport<'a> {
             indices.extend_from_slice(&row);
             offsets[i + 1] = indices.len();
         }
-        Ok((indices.len() == ones).then_some(BinaryDesign {
-            offsets,
-            indices,
-            columns: self.columns,
-        }))
+        Ok((indices.len() == ones).then(|| BinaryDesign::packed(offsets, indices, self.columns)))
     }
 }
 
@@ -126,7 +122,7 @@ pub(super) struct RowGroups {
 }
 
 pub(crate) enum CompactInput {
-    Design(BinaryDesign),
+    Design(BinaryDesign<'static>),
     Proof(CompactModel),
 }
 
@@ -155,7 +151,7 @@ impl IndexWorkspace<'_> {
     }
 }
 
-impl BinaryDesign {
+impl BinaryDesign<'static> {
     pub(crate) fn prepare(
         outcome: &[f64],
         shape: (usize, usize, usize),
@@ -174,7 +170,7 @@ impl BinaryDesign {
         // If both the unreduced panel and the positive solve fit, preserve the
         // ordinary compact route and avoid even constructing a raw-row index.
         let small = n.saturating_mul(columns) <= limit
-            && super::dense_positive_admitted(n, positive, columns, limit);
+            && super::dense_positive_admitted(n, positive, columns, (limit, MAX_WORK));
         if !small {
             // Only the physical u32 index may extend the original compact
             // allowance. Hashing, representatives and all tableau/algebra
@@ -300,7 +296,13 @@ impl BinaryDesign {
         };
         let fixed = held + groups.counts.capacity() + signs.capacity();
         let available = space.live - fixed;
-        let mut search = CompactSearch::new(&signs, &design, config, Some(&groups), available);
+        let mut search = CompactSearch::new(
+            &signs,
+            &design,
+            config,
+            Some(&groups),
+            (available, CompactWork::INCUMBENT),
+        );
         let proposal = search.run(pivots, interrupt, &mut |required| {
             let total = fixed
                 .saturating_add(design.cells())
@@ -468,7 +470,7 @@ impl RowGroups {
                 return Ok(false);
             }
             self.counts[g] -= 1;
-            if !raw.row(i, &mut row)? || row != design.row(g) {
+            if !raw.row(i, &mut row)? || *row != *design.row(g) {
                 return Ok(false);
             }
         }

@@ -9,9 +9,9 @@
 mod prepared_coordinator;
 mod simplex;
 pub(crate) use simplex::{
-    compact_model, full_positive_rank_proposal, model_simplex_interruptible,
+    compact_model, compact_model_scaled, full_positive_rank_proposal, model_simplex_interruptible,
     no_separation_certificate, raw_positive_dual, simplex_workspace_peak_cells, BinaryDesign,
-    CompactInput, CompactModel,
+    CompactInput, CompactModel, CompactWork, StreamedEffect,
 };
 
 pub(crate) use prepared_coordinator::{

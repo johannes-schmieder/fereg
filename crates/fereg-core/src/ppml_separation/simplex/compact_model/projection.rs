@@ -2,11 +2,12 @@
 //! The projected columns propose a result. The original binary design
 //! independently verifies every accepted ray or terminal dual.
 use super::super::compact_tableau;
-use super::{fallible_collect, fallible_filled, reserve, BinaryDesign, MAX_WORK};
+use super::{fallible_collect, fallible_filled, reserve, trace_refusal, BinaryDesign};
 use crate::error::Result;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 mod streamed;
+pub(super) use streamed::Grow;
 
 pub(super) struct BoundaryCone {
     pub(super) rows: Vec<Vec<f64>>,
@@ -19,7 +20,7 @@ impl BoundaryCone {
     pub(super) fn propose(
         &self,
         boundary: usize,
-        (tolerance, max_iterations): (f64, usize),
+        (tolerance, max_iterations, cell_visits, per_dimension): (f64, usize, usize, usize),
         pivots: &mut usize,
         available: usize,
         interrupt: &mut dyn FnMut() -> Result<()>,
@@ -27,8 +28,7 @@ impl BoundaryCone {
         if self.groups.is_empty() {
             compact_tableau::propose_counting(
                 &self.rows,
-                tolerance,
-                max_iterations,
+                (tolerance, max_iterations, cell_visits, per_dimension),
                 pivots,
                 available,
                 interrupt,
@@ -38,7 +38,7 @@ impl BoundaryCone {
                 &self.rows,
                 &self.groups,
                 boundary,
-                (tolerance, max_iterations),
+                (tolerance, max_iterations, cell_visits, per_dimension),
                 pivots,
                 available,
                 interrupt,
@@ -58,7 +58,8 @@ pub(super) fn build(
     boundary: &[usize],
     basis: &mut Vec<Vec<f64>>,
     tolerance: f64,
-    available: usize,
+    (available, work): (usize, usize),
+    grow: Option<Grow<'_>>,
 ) -> Result<Option<BoundaryCone>> {
     let dimension = basis.len();
     let width = design.ncols();
@@ -66,6 +67,11 @@ pub(super) fn build(
     let pivot_cells = dimension.saturating_mul(dimension + 8);
     let row_cells = boundary.len().saturating_mul(dimension + 3);
     if minimum_basis_cells(dimension, width) > available {
+        trace_refusal(
+            "projection_basis_cells",
+            minimum_basis_cells(dimension, width),
+            available,
+        );
         return Ok(None);
     }
     if basis_cells
@@ -73,14 +79,16 @@ pub(super) fn build(
         .saturating_add(row_cells)
         <= available
     {
-        let Some(mut rows) = panel(design, boundary, basis, tolerance)? else {
+        let Some(mut rows) = panel(design, boundary, basis, tolerance, work)? else {
+            trace_refusal("projection_panel_work", boundary.len(), work);
             return Ok(None);
         };
         let maximum = rows.iter().flatten().fold(0_f64, |m, v| m.max(v.abs()));
-        let mut reduction = RowRank::new(dimension, maximum * tolerance)?;
+        let mut reduction = RowRank::new(dimension, maximum * tolerance, work)?;
         for (i, row) in rows.iter().enumerate() {
             crate::interrupt::row_checkpoint(i)?;
             if !reduction.insert(row)? {
+                trace_refusal("projection_rank_work", dimension, work);
                 return Ok(None);
             }
             if reduction.full() {
@@ -101,7 +109,15 @@ pub(super) fn build(
         {
             drop(rows);
             retain_columns(basis, &keep);
-            return streamed::build(design, boundary, basis, tolerance, available, basis_cells);
+            return streamed::build(
+                design,
+                boundary,
+                basis,
+                tolerance,
+                (available, work),
+                basis_cells,
+                grow,
+            );
         }
         let tableau =
             compact_tableau::workspace_cells(boundary.len(), retained).unwrap_or(usize::MAX);
@@ -143,7 +159,13 @@ pub(super) fn build(
     }
 
     let memo_cells = boundary.len().min(available - basis_cells - pivot_cells);
-    let Some(keep) = streaming_columns(design, boundary, basis, tolerance, memo_cells)? else {
+    let Some(keep) = streaming_columns(design, boundary, basis, tolerance, (memo_cells, work))?
+    else {
+        trace_refusal(
+            "projection_stream_work",
+            boundary.len().saturating_mul(dimension),
+            work,
+        );
         return Ok(None);
     };
     retain_columns(basis, &keep);
@@ -156,10 +178,18 @@ pub(super) fn build(
         .saturating_add(basis_cells);
     let dual_cells = boundary.len().saturating_mul(2).saturating_add(1);
     if live_cells.saturating_add(dual_cells) > available {
-        return streamed::build(design, boundary, basis, tolerance, available, basis_cells);
+        return streamed::build(
+            design,
+            boundary,
+            basis,
+            tolerance,
+            (available, work),
+            basis_cells,
+            grow,
+        );
     }
     Ok(
-        panel(design, boundary, basis, tolerance)?.map(|rows| BoundaryCone {
+        panel(design, boundary, basis, tolerance, work)?.map(|rows| BoundaryCone {
             rows,
             live_cells,
             groups: Vec::new(),
@@ -180,19 +210,19 @@ fn streaming_columns(
     boundary: &[usize],
     basis: &[Vec<f64>],
     tolerance: f64,
-    memo_cells: usize,
+    (memo_cells, stage_work): (usize, usize),
 ) -> Result<Option<Vec<bool>>> {
-    let mut work = MAX_WORK;
+    let mut work = stage_work;
     let mut row = fallible_filled(basis.len(), 0., "unable to reserve streamed boundary row")?;
     let mut maximum = 0_f64;
     for (i, &origin) in boundary.iter().enumerate() {
         crate::interrupt::row_checkpoint(i)?;
-        if !project(design.row(origin), basis, tolerance, &mut row, &mut work) {
+        if !project(&design.row(origin), basis, tolerance, &mut row, &mut work) {
             return Ok(None);
         }
         maximum = row.iter().fold(maximum, |m, v| m.max(v.abs()));
     }
-    let mut rank = RowRank::new(basis.len(), maximum * tolerance)?;
+    let mut rank = RowRank::new(basis.len(), maximum * tolerance, stage_work)?;
     let mut memo = fallible_filled(
         memo_cells,
         usize::MAX,
@@ -206,11 +236,11 @@ fn streaming_columns(
                 return Ok(None);
             };
             work = remaining;
-            if seen_support(design, support, origin, &mut memo) {
+            if seen_support(design, &support, origin, &mut memo) {
                 continue;
             }
         }
-        if !project(support, basis, tolerance, &mut row, &mut work) || !rank.insert(&row)? {
+        if !project(&support, basis, tolerance, &mut row, &mut work) || !rank.insert(&row)? {
             return Ok(None);
         }
         if rank.full() {
@@ -227,7 +257,7 @@ fn seen_support(design: &BinaryDesign, support: &[u32], origin: usize, memo: &mu
     support.hash(&mut hash);
     let slot = (hash.finish() % memo.len() as u64) as usize;
     let prior = std::mem::replace(&mut memo[slot], origin);
-    prior != usize::MAX && design.row(prior) == support
+    prior != usize::MAX && *design.row(prior) == *support
 }
 
 fn panel(
@@ -235,8 +265,9 @@ fn panel(
     boundary: &[usize],
     basis: &[Vec<f64>],
     tolerance: f64,
+    stage_work: usize,
 ) -> Result<Option<Vec<Vec<f64>>>> {
-    let mut work = MAX_WORK;
+    let mut work = stage_work;
     let mut rows = Vec::new();
     reserve(
         &mut rows,
@@ -246,7 +277,7 @@ fn panel(
     for (i, &origin) in boundary.iter().enumerate() {
         crate::interrupt::row_checkpoint(i)?;
         let mut row = fallible_filled(basis.len(), 0., "unable to reserve compact cone row")?;
-        if !project(design.row(origin), basis, tolerance, &mut row, &mut work) {
+        if !project(&design.row(origin), basis, tolerance, &mut row, &mut work) {
             return Ok(None);
         }
         rows.push(row);
@@ -287,7 +318,7 @@ struct RowRank {
 }
 
 impl RowRank {
-    fn new(dimension: usize, threshold: f64) -> Result<Self> {
+    fn new(dimension: usize, threshold: f64, work: usize) -> Result<Self> {
         let mut pivots = Vec::new();
         reserve(
             &mut pivots,
@@ -298,7 +329,7 @@ impl RowRank {
             pivots,
             scratch: fallible_filled(dimension, 0., "unable to reserve compact cone contrast")?,
             threshold,
-            work: MAX_WORK,
+            work,
         })
     }
 

@@ -21,9 +21,10 @@ use crate::ols::{
     PreparedOlsFitConfig,
 };
 use crate::ppml_separation::{
-    compact_model, model_simplex_interruptible, separation_generation_capacity,
-    separation_method_count, simplex_workspace_peak_cells, BinaryDesign, CompactInput,
-    CompactModel, PREFLIGHT_REPORT_GENERATIONS,
+    compact_model, compact_model_scaled, model_simplex_interruptible,
+    separation_generation_capacity, separation_method_count, simplex_workspace_peak_cells,
+    BinaryDesign, CompactInput, CompactModel, CompactWork, StreamedEffect,
+    PREFLIGHT_REPORT_GENERATIONS,
 };
 use crate::ppml_separation::{
     DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
@@ -566,6 +567,8 @@ mod reconcile;
 mod stable;
 mod stable_alias;
 mod stable_local;
+mod streamed;
+use streamed::{bind_compact_result, compact_raw_reader, streamed_switch, ExactSwitch};
 mod trace;
 
 /// Private action-lifetime admission; no public numerical option is changed.
@@ -949,6 +952,9 @@ where
         // Coefficients can survive only to the requested IR phase of this
         // immutable generation. They make no deletion claim until replayed.
         let mut compact_hint = None;
+        // A numerical compact Farkas vector likewise survives only to the IR
+        // phase of this generation, where it must pass the full IR certificate.
+        let mut dual_hint = None;
         let (simplex_unresolved, restart_after_simplex) = measure_separation_phase(
             phase_allocation_probe,
             &mut phase_allocation_peaks,
@@ -970,7 +976,7 @@ where
                             view.prepared,
                             config,
                             interrupt,
-                            &mut compact_hint,
+                            (&mut compact_hint, &mut dual_hint),
                         )?;
                         reconcile::candidate(view.prepared, proposal, config, interrupt)?
                     }
@@ -1124,7 +1130,7 @@ where
                             ppml,
                             config,
                             linear,
-                            graph_admitted,
+                            (graph_admitted, dual_hint.as_deref()),
                             interrupt,
                             &mut lap,
                         )
@@ -2083,7 +2089,7 @@ fn prepared_simplex_proposal(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-    compact_hint: &mut Option<Vec<i64>>,
+    (compact_hint, dual_hint): (&mut Option<Vec<i64>>, &mut Option<Vec<f64>>),
 ) -> Result<PreparedNumericalProposal> {
     let finite_columns = generation.model().columns.len();
     let topology = DetectorTopology::new(generation.prepared())?;
@@ -2186,21 +2192,17 @@ fn prepared_simplex_proposal(
                 return skipped();
             }
         }
-        if let Some(proof) =
-            reconcile::sparse_slope_ray(generation, SeparationMethod::Simplex, config)?
-        {
-            return Ok(proof);
-        }
-        if let Some(proof) = reconcile::factor_pair(generation, SeparationMethod::Simplex, config)?
-        {
-            return Ok(proof);
-        }
-        if let Some(proof) =
-            positive_rank::deferred_simplex(generation, positive, config, interrupt)?
-        {
-            return bind_numerical_proposal(generation, proof);
-        }
-        return skipped();
+        let hints = (compact_hint, dual_hint);
+        return match later_simplex_lanes(
+            generation,
+            (positive, intercept_only),
+            config,
+            interrupt,
+            hints,
+        )? {
+            Some(proof) => Ok(proof),
+            None => skipped(),
+        };
     }
     let design = prepared_simplex_design(generation, &topology, columns, cells)?;
     drop(topology);
@@ -2224,6 +2226,31 @@ fn prepared_simplex_proposal(
         result,
     )?;
     bind_numerical_proposal(generation, raw)
+}
+
+/// Raw-coordinate simplex lanes after the compact proposals, in their
+/// registered order; the streamed compact retry runs only after all of them.
+fn later_simplex_lanes(
+    generation: &PreparedPpmlModelGeneration,
+    (positive, intercept_only): (usize, bool),
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    hints: (&mut Option<Vec<i64>>, &mut Option<Vec<f64>>),
+) -> Result<Option<PreparedNumericalProposal>> {
+    if let Some(proof) = reconcile::sparse_slope_ray(generation, SeparationMethod::Simplex, config)?
+    {
+        return Ok(Some(proof));
+    }
+    if let Some(proof) = reconcile::factor_pair(generation, SeparationMethod::Simplex, config)? {
+        return Ok(Some(proof));
+    }
+    if let Some(proof) = positive_rank::deferred_simplex(generation, positive, config, interrupt)? {
+        return bind_numerical_proposal(generation, proof).map(Some);
+    }
+    if !intercept_only {
+        return Ok(None);
+    }
+    streamed::simplex_fallback(generation, config, interrupt, hints)
 }
 
 fn prepared_compact_simplex(
@@ -2258,26 +2285,7 @@ fn prepared_compact_simplex(
         }),
         config,
         &mut pivots,
-        &mut |i, row| {
-            // The sparse reader emits absorbed coordinates first. Restore
-            // finite-first order for packed simplex coefficients.
-            let mut absorbed_ones = 0;
-            let mut binary = true;
-            raw.terms(i, |coordinate, value| {
-                if value == 1. {
-                    if coordinate < absorbed {
-                        row.push((finite + coordinate) as u32);
-                        absorbed_ones += 1;
-                    } else {
-                        row.push((coordinate - absorbed) as u32);
-                    }
-                } else if value != 0. {
-                    binary = false;
-                }
-            })?;
-            row.rotate_left(absorbed_ones);
-            Ok(binary)
-        },
+        &mut compact_raw_reader(&raw, finite, absorbed),
         &mut poll,
     )?;
     drop(raw);
@@ -2288,44 +2296,7 @@ fn prepared_compact_simplex(
         }
         None => None,
     };
-    let proposal = match compact {
-        Some(CompactModel::Terminal(raw)) => Some(bind_numerical_proposal(generation, raw)?),
-        Some(CompactModel::Direction {
-            coefficients,
-            iterations,
-        }) => {
-            let required =
-                primal::RawRows::sparse_replay_words(generation, coefficients.capacity());
-            if !reconcile::admits_compact_replay(
-                generation,
-                SeparationMethod::Simplex,
-                config,
-                coefficients.capacity(),
-            ) {
-                if config.methods.iterated_rectifier
-                    && required
-                        <= primal::ProofBudget::for_sparse(
-                            generation,
-                            SeparationMethod::IteratedRectifier,
-                            config,
-                        )
-                        .words
-                {
-                    *compact_hint = Some(coefficients);
-                }
-                None
-            } else {
-                reconcile::compact_ray(
-                    generation,
-                    coefficients,
-                    iterations,
-                    SeparationMethod::Simplex,
-                    config,
-                )?
-            }
-        }
-        None => None,
-    };
+    let proposal = bind_compact_result(generation, compact, config, compact_hint)?;
     if crate::diagnostics::solver_trace_enabled() {
         eprintln!(
             "FEREG_SOLVER_TRACE|phase=compact_simplex|rows={rows}|columns={columns}|certified={}",
@@ -4009,7 +3980,8 @@ fn replay_numerical_no_drop<'a>(
             interrupt,
         )?
     } else if observed.method == SeparationMethod::Simplex {
-        let proposal = prepared_simplex_proposal(generation, config, interrupt, &mut None)?;
+        let proposal =
+            prepared_simplex_proposal(generation, config, interrupt, (&mut None, &mut None))?;
         reconcile::candidate(generation, proposal, config, interrupt)?
     } else {
         let raw = bind_numerical_proposal(

@@ -146,6 +146,22 @@ pub(super) fn resolve(
             response = refined;
             continue;
         }
+        // Measured progress: a recurrence still without a certificate after
+        // SWITCH_ITERATIONS full projections tries the streamed exact lane
+        // once. An unresolved switch leaves this recurrence unchanged.
+        if iteration == SWITCH_ITERATIONS {
+            drop(design.take());
+            match super::streamed_switch(generation, (ppml, linear), config, admission, interrupt)?
+            {
+                Some(super::ExactSwitch::Direction(proposal)) => {
+                    return Ok(Resolution::Direction(proposal))
+                }
+                Some(super::ExactSwitch::Dual(dual)) => {
+                    return Ok(Resolution::Dual(dual, iteration))
+                }
+                None => {}
+            }
+        }
         response = dual;
     }
     Err(FeregError::new(
@@ -153,6 +169,10 @@ pub(super) fn resolve(
         "unit-metric separation check exhausted its primal/dual iteration budget",
     ))
 }
+
+/// Unit-metric iterations, each at least one complete fixed-effect
+/// projection, before a stalled recurrence may switch to the exact lane.
+const SWITCH_ITERATIONS: usize = 32;
 
 /// Test the fitted primal direction before interpreting its dual residual.
 fn primal_proposal(
@@ -733,6 +753,40 @@ fn fast_unit_policy(
     linear.absorb.lsmr.max_iterations = linear.absorb.lsmr.max_iterations.min(128);
     ppml.absorb = linear.absorb;
     Some((ppml, linear))
+}
+
+/// Certify an externally proposed dual with the complete unit-metric check.
+/// A numerical refusal leaves the ordinary detector in control.
+pub(super) fn certify_hint(
+    generation: &PreparedPpmlModelGeneration,
+    dual: &[f64],
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+    admission: DetectorAdmission<'_>,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let certified = match certify_dual(generation, dual, ppml, config, linear, admission) {
+        Ok(certified) => certified,
+        Err(error) if is_numerical_refusal(&error) => false,
+        Err(error) => return Err(error),
+    };
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=compact_dual_ir|generation={}|rows={}|certified={}",
+            generation.generation(),
+            dual.len(),
+            u8::from(certified)
+        ));
+    }
+    if !certified {
+        return Ok(None);
+    }
+    let owned = fallible_collect(
+        dual.iter().copied(),
+        dual.len(),
+        "unable to reserve IR dual",
+    )?;
+    bound_dual(generation, owned, 1).map(Some)
 }
 
 fn bound_dual(

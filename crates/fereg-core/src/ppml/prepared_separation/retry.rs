@@ -373,10 +373,20 @@ pub(super) fn ir_step(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    graph_admitted: super::DetectorAdmission,
+    (graph_admitted, dual_hint): (super::DetectorAdmission, Option<&[f64]>),
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     lap: &mut trace::IrPhase,
 ) -> Result<Detected> {
+    // A compact simplex Farkas proposal can end detection only through the
+    // complete unit-metric dual certificate that terminal replay repeats.
+    if let Some(dual) = dual_hint {
+        if let Some(proposal) =
+            super::stable::certify_hint(generation, dual, ppml, config, linear, graph_admitted)?
+        {
+            lap.detected(&proposal);
+            return Ok(Detected::Terminal(proposal));
+        }
+    }
     let proposal = prepared_bound_iterated_rectifier(
         generation,
         ppml,

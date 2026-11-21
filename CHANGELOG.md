@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Finish Poisson separation on large sparse designs with many categorical
+  fixed effects and binary regressors, where a separating combination of
+  levels from several factors previously left the certificate search running
+  for hours. The compact simplex now regenerates rows from the stored factor
+  codes, requests each workspace at its measured size within the fit's memory
+  budget and scales linear passes with the design.
+- When an exact proof of no separation needs larger integers than its
+  arithmetic holds, hand its numerical dual to the requested iterated
+  rectifier, which accepts it only through its complete certificate. A
+  rectifier without a certificate after 32 projections tries the streamed
+  exact proof once when no simplex step ran.
+- Explicit simplex cell limits and every result the fixed compact lanes
+  already certify are unchanged.
+
 ## 0.6.7 — 2026-11-20
 
 - Scale Poisson separation checks to larger sparse designs, including models
