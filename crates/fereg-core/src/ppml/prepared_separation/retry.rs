@@ -373,10 +373,54 @@ pub(super) fn ir_step(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    graph_admitted: super::DetectorAdmission,
+    (graph_admitted, hint): (super::DetectorAdmission, Option<&super::IrHint>),
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     lap: &mut trace::IrPhase,
 ) -> Result<Detected> {
+    // A compact simplex Farkas proposal can end detection only through the
+    // complete unit-metric dual certificate that terminal replay repeats.
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=ir_step|generation={}|hint={}|exact_tried={}",
+            generation.generation(),
+            match hint {
+                Some(super::IrHint::Dual(_)) => "dual",
+                Some(super::IrHint::Direction { .. }) => "direction",
+                None => "none",
+            },
+            u8::from(graph_admitted.exact_tried),
+        ));
+    }
+    if let Some(super::IrHint::Direction {
+        direction,
+        iterations,
+    }) = hint
+    {
+        // A streamed ray the exact lift could not represent: the ordinary IR
+        // direction certificate and numerical deletion validation decide it.
+        let mut direction = super::fallible_collect(
+            direction.iter().copied(),
+            direction.len(),
+            "unable to reserve IR direction hint",
+        )?;
+        if let Some(proposal) =
+            super::stable::primal_proposal(generation, config, *iterations, &mut direction)?
+        {
+            lap.detected(&proposal);
+            let certified =
+                validate_numerical_proposal(generation, proposal, ppml, config, linear)?;
+            lap.validated();
+            return Ok(Detected::Deletion(certified));
+        }
+    }
+    if let Some(super::IrHint::Dual(dual)) = hint {
+        if let Some(proposal) =
+            super::stable::certify_hint(generation, dual, ppml, config, linear, graph_admitted)?
+        {
+            lap.detected(&proposal);
+            return Ok(Detected::Terminal(proposal));
+        }
+    }
     let proposal = prepared_bound_iterated_rectifier(
         generation,
         ppml,
@@ -438,10 +482,12 @@ pub(super) fn mu_step(
 /// A failed projection, score, FE or sign certificate, or a solver that did
 /// not converge. Break, allocation and internal errors are not retried.
 fn numerical(error: &FeregError) -> bool {
+    // A stalled recurrence is a property of the generation, not of the
+    // projection solver: re-executing it would repeat the same geometry.
     matches!(
         error.code,
         ErrorCode::NonConvergence | ErrorCode::InvalidData
-    )
+    ) && !super::stable::is_stall(error)
 }
 
 #[cfg(test)]

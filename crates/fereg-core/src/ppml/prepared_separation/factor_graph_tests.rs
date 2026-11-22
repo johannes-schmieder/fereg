@@ -198,7 +198,14 @@ fn pure_two_intercept_simplex_certifies_all_chain_connectors_together() {
         let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
         let g = coordinator.view().prepared;
         let config = SeparationConfig::default();
-        let p = prepared_simplex_proposal(g, config, &mut |_| Ok(()), &mut None).unwrap();
+        let p = prepared_simplex_proposal(
+            g,
+            config,
+            &mut |_| Ok(()),
+            (&mut None, &mut None, &mut false),
+            false,
+        )
+        .unwrap();
         let expected: Vec<_> = (0..rows.len()).filter(|&i| rows[i][0] == 0.).collect();
         assert_eq!(p.dropped_original_rows, expected);
         assert!(p.exact_graph_span.is_some());

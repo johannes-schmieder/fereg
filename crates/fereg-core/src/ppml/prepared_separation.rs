@@ -21,9 +21,10 @@ use crate::ols::{
     PreparedOlsFitConfig,
 };
 use crate::ppml_separation::{
-    compact_model, model_simplex_interruptible, separation_generation_capacity,
-    separation_method_count, simplex_workspace_peak_cells, BinaryDesign, CompactInput,
-    CompactModel, PREFLIGHT_REPORT_GENERATIONS,
+    compact_model, compact_model_scaled, model_simplex_interruptible,
+    separation_generation_capacity, separation_method_count, simplex_workspace_peak_cells,
+    BinaryDesign, CompactInput, CompactModel, CompactWork, StreamedEffect,
+    PREFLIGHT_REPORT_GENERATIONS,
 };
 use crate::ppml_separation::{
     DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
@@ -385,10 +386,21 @@ where
     let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
         prepare_initial_generation(owner, phase_allocation_probe)?;
     execution.preliminary_plan = plan.get();
-    let (projection_ppml, projection_linear, retained_cg, lsmr) =
-        admit_detector_projection(coordinator.view().prepared, ppml, config, &mut execution)?;
-    let mut admission =
-        DetectorAdmission::from(execution.preliminary_plan.separation_projection_bytes > 0);
+    let mut refused = false;
+    let (projection_ppml, projection_linear, retained_cg, lsmr) = admit_detector_projection(
+        coordinator.view().prepared,
+        ppml,
+        config,
+        (&mut execution, &mut refused),
+    )?;
+    let projection_bytes = execution.preliminary_plan.separation_projection_bytes;
+    let mut admission = DetectorAdmission::from(projection_bytes > 0);
+    admission.projection_refused = refused;
+    trace_projection_admission(projection_bytes, refused);
+    // A refused admission's policy: what a generation adopts when the
+    // admitted projection's charge refuses its exact lanes.
+    let plain = retry::DetectorPolicy::new(ppml, execution.linear, None, None);
+    admission.release = (projection_bytes > 0).then_some(&plain);
     // Charge the complete FE audit on the generation that actually uses it.
     // Exact sparse certificates can finish without a global FE factorization.
     admission.span_plan = Some(plan);
@@ -425,6 +437,16 @@ where
     Ok((outcome, fit))
 }
 
+fn trace_projection_admission(bytes: u128, refused: bool) {
+    if crate::diagnostics::solver_trace_enabled() {
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=detector_projection|admitted={}|refused={}|bytes={bytes}",
+            u8::from(bytes > 0),
+            u8::from(refused)
+        );
+    }
+}
+
 /// The admitted detector policy, the retained-CG re-execution policy of an
 /// Auto-routed detector, and the LSMR re-execution charge.
 type AdmittedDetector = (
@@ -441,7 +463,7 @@ fn admit_detector_projection(
     generation: &PreparedPpmlModelGeneration,
     mut ppml: PpmlConfig,
     config: SeparationConfig,
-    execution: &mut PreparedPpmlSeparationExecution,
+    (execution, refused): (&mut PreparedPpmlSeparationExecution, &mut bool),
 ) -> Result<AdmittedDetector> {
     let mut linear = execution.linear;
     if ppml.absorb.solver != FeSolverKind::Map
@@ -498,6 +520,7 @@ fn admit_detector_projection(
         .preliminary_plan
         .admit_separation_projection(bytes)
     {
+        *refused = true;
         return Ok((ppml, linear, None, None));
     }
     linear.absorb.solver = routing::projection_solver(execution.auto_projection, &design);
@@ -566,6 +589,12 @@ mod reconcile;
 mod stable;
 mod stable_alias;
 mod stable_local;
+mod streamed;
+use crate::ppml_separation::{
+    exact_dual_terminal, exact_dyadic_dual, ExactDual, ValuedDesign, ValuedModel, ValuedSearch,
+    Verifiers, WideRay,
+};
+use streamed::{bind_compact_result, compact_raw_reader, streamed_switch, ExactSwitch, IrHint};
 mod trace;
 
 /// Private action-lifetime admission; no public numerical option is changed.
@@ -574,6 +603,14 @@ struct DetectorAdmission<'a> {
     graph: bool,
     span_plan: Option<&'a LiveMemoryPlan>,
     unit_projection: Option<(PpmlConfig, PreparedOlsFitConfig)>,
+    /// The simplex phase already ran a streamed exact lane on this generation.
+    exact_tried: bool,
+    /// The memory plan refused the detector projection, so IR projects on
+    /// its MAP fallback and real-valued designs do not wait for IR.
+    projection_refused: bool,
+    /// The detector policy without the admitted projection, which a
+    /// generation adopts when the projection's charge refuses its lanes.
+    release: Option<&'a retry::DetectorPolicy<'a>>,
 }
 
 impl From<bool> for DetectorAdmission<'_> {
@@ -582,6 +619,9 @@ impl From<bool> for DetectorAdmission<'_> {
             graph,
             span_plan: None,
             unit_projection: None,
+            exact_tried: false,
+            projection_refused: false,
+            release: None,
         }
     }
 }
@@ -626,7 +666,7 @@ fn prepare_initial_generation(
 #[allow(clippy::too_many_arguments)]
 fn coordinate_prepared_ppml_separation<'a, T, E, F>(
     mut coordinator: PreparedSeparationCoordinator<PreparedPpmlModelOwner>,
-    policy: &retry::DetectorPolicy<'_>,
+    mut policy: &'a retry::DetectorPolicy<'a>,
     config: SeparationConfig,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
     graph_admitted: impl Into<DetectorAdmission<'a>>,
@@ -644,8 +684,9 @@ where
         &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     ) -> Result<T>,
 {
-    let graph_admitted = graph_admitted.into();
-    let (ppml, linear) = policy.admitted();
+    let mut graph_admitted = graph_admitted.into();
+    let (mut ppml, mut linear) = policy.admitted();
+    let mut released = None;
     let candidate_original_rows = coordinator.candidate_original_rows();
     let candidate_observations = candidate_original_rows.len();
     let generation_capacity = separation_generation_capacity(
@@ -687,6 +728,8 @@ where
     let mut covariance_scales = None;
     let (final_fit, final_replay) = loop {
         interrupt(PpmlInterruptPoint::SeparationGeneration)?;
+        let detector = (&mut policy, &mut ppml, &mut linear, &mut graph_admitted);
+        readmit_projection(&mut released, detector, coordinator.view().prepared);
         // A numerical deletion can also record an exact-FE follow-up after
         // this generation's no-drop FE report. Its extra deleted row consumes
         // a potential generation, preserving the full N * methods ceiling.
@@ -949,6 +992,11 @@ where
         // Coefficients can survive only to the requested IR phase of this
         // immutable generation. They make no deletion claim until replayed.
         let mut compact_hint = None;
+        // A numerical compact Farkas vector likewise survives only to the IR
+        // phase of this generation, where it must pass the full IR certificate.
+        let mut dual_hint = None;
+        // Whether the simplex phase already ran a streamed exact lane here.
+        let mut streamed_tried = false;
         let (simplex_unresolved, restart_after_simplex) = measure_separation_phase(
             phase_allocation_probe,
             &mut phase_allocation_peaks,
@@ -966,11 +1014,13 @@ where
                     {
                         factor
                     } else {
-                        let proposal = prepared_simplex_proposal(
+                        let detector = (&mut policy, &mut ppml, &mut linear, &mut graph_admitted);
+                        let proposal = simplex_with_release(
                             view.prepared,
                             config,
                             interrupt,
-                            &mut compact_hint,
+                            (&mut compact_hint, &mut dual_hint, &mut streamed_tried),
+                            (detector, &mut released),
                         )?;
                         reconcile::candidate(view.prepared, proposal, config, interrupt)?
                     }
@@ -1124,7 +1174,13 @@ where
                             ppml,
                             config,
                             linear,
-                            graph_admitted,
+                            (
+                                DetectorAdmission {
+                                    exact_tried: streamed_tried,
+                                    ..graph_admitted
+                                },
+                                dual_hint.as_ref(),
+                            ),
                             interrupt,
                             &mut lap,
                         )
@@ -2079,11 +2135,153 @@ fn simplex_full_model_width(
         .ok_or_else(|| allocation("prepared simplex full-model width overflowed"))
 }
 
+/// The coordinator's detector: its policy, the policy's two configurations
+/// and the admission flags. A generation may switch them to the release.
+type Detector<'s, 'a> = (
+    &'s mut &'a retry::DetectorPolicy<'a>,
+    &'s mut PpmlConfig,
+    &'s mut PreparedOlsFitConfig,
+    &'s mut DetectorAdmission<'a>,
+);
+
+/// The admitted detector a released generation hands back at its end, and
+/// the projection charge it gave up.
+#[derive(Clone, Copy)]
+struct Released<'a> {
+    policy: &'a retry::DetectorPolicy<'a>,
+    admission: DetectorAdmission<'a>,
+    bytes: u128,
+}
+
+/// An unresolved proposal without drops, evidence or hints: nothing of the
+/// attempt is live after it returns.
+fn bare_unresolved(proposal: &PreparedNumericalProposal) -> bool {
+    matches!(
+        proposal.status,
+        MethodStatus::SkippedMemory | MethodStatus::SkippedUnsupported | MethodStatus::Uncertified
+    ) && proposal.dropped_original_rows.is_empty()
+        && proposal.certificate.is_none()
+        && proposal.exact_fe_certificate.is_none()
+        && proposal.direction.is_none()
+        && proposal.exact_graph_span.is_none()
+        && proposal.exact_primal.is_none()
+        && proposal.fixed_point.is_none()
+        && proposal.stable_dual.is_none()
+}
+
+/// The simplex phase's proposal. The detector projection is optional storage
+/// and must never make an otherwise affordable fit fail. When the plan
+/// refused this attempt's exact lanes storage while it held the projection's
+/// charge, and the attempt left nothing live, the generation gives the
+/// projection up and runs the lanes once more, as under a refused admission.
+/// A resolved retry keeps the release for the rest of this generation
+/// ([`readmit_projection`] ends it); otherwise the plan is restored, keeping
+/// the retry's sparse peaks, and the first attempt stands.
+fn simplex_with_release<'a>(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    (compact_hint, dual_hint, streamed_tried): SimplexHints<'_>,
+    ((policy, ppml, linear, admission), released): (Detector<'_, 'a>, &mut Option<Released<'a>>),
+) -> Result<PreparedNumericalProposal> {
+    let live = generation.separation_memory.as_deref();
+    let refusals = live.map_or(0, LiveMemoryPlan::refusals);
+    let hints = (&mut *compact_hint, &mut *dual_hint, &mut *streamed_tried);
+    let first = prepared_simplex_proposal(
+        generation,
+        config,
+        interrupt,
+        hints,
+        admission.projection_refused,
+    )?;
+    let (Some(live), Some(plain)) = (live, admission.release) else {
+        return Ok(first);
+    };
+    let saved = live.get();
+    if saved.separation_projection_bytes == 0
+        || live.refusals() == refusals
+        || compact_hint.is_some()
+        || dual_hint.is_some()
+        || !bare_unresolved(&first)
+    {
+        return Ok(first);
+    }
+    let mut free = saved;
+    free.separation_projection_bytes = 0;
+    live.set(free);
+    let (mut retry_compact, mut retry_dual, mut retry_streamed) = (None, None, *streamed_tried);
+    let hints = (&mut retry_compact, &mut retry_dual, &mut retry_streamed);
+    let retry = prepared_simplex_proposal(generation, config, interrupt, hints, true)?;
+    let resolved = retry_compact.is_some() || retry_dual.is_some() || !bare_unresolved(&retry);
+    trace_projection_release(saved.separation_projection_bytes, resolved);
+    if !resolved {
+        let now = live.get().sparse_proof_peaks;
+        let mut restored = saved;
+        let peaks = std::array::from_fn(|k| saved.sparse_proof_peaks[k].max(now[k]));
+        if !restored.restore_sparse_peaks(peaks) {
+            return Err(invalid_argument(
+                "released simplex retry exceeded the usable memory",
+            ));
+        }
+        live.set(restored);
+        return Ok(first);
+    }
+    *released = Some(Released {
+        policy,
+        admission: *admission,
+        bytes: saved.separation_projection_bytes,
+    });
+    *policy = plain;
+    (*ppml, *linear) = plain.admitted();
+    *admission = DetectorAdmission {
+        graph: false,
+        unit_projection: None,
+        projection_refused: true,
+        release: None,
+        ..*admission
+    };
+    (*compact_hint, *dual_hint, *streamed_tried) = (retry_compact, retry_dual, retry_streamed);
+    Ok(retry)
+}
+
+/// A new generation takes the admitted projection back when the plan admits
+/// its charge again, so only a generation whose lanes it refused runs
+/// without it.
+fn readmit_projection<'a>(
+    released: &mut Option<Released<'a>>,
+    (policy, ppml, linear, admission): Detector<'_, 'a>,
+    generation: &PreparedPpmlModelGeneration,
+) {
+    let (Some(saved), Some(live)) = (*released, generation.separation_memory.as_deref()) else {
+        return;
+    };
+    let mut plan = live.get();
+    if !plan.admit_separation_projection(saved.bytes) {
+        return;
+    }
+    live.set(plan);
+    *released = None;
+    *policy = saved.policy;
+    (*ppml, *linear) = saved.policy.admitted();
+    *admission = saved.admission;
+}
+
+fn trace_projection_release(bytes: u128, resolved: bool) {
+    if crate::diagnostics::solver_trace_enabled() {
+        let outcome = if resolved { "released" } else { "restored" };
+        eprintln!("FEREG_SOLVER_TRACE|phase=projection_release|bytes={bytes}|outcome={outcome}");
+    }
+}
+
+/// `projection_refused`: the memory plan refused the detector projection,
+/// so IR projects on MAP; real-valued designs then take the streamed exact
+/// lane here instead of after IR's head start, and lane duals are made exact.
 fn prepared_simplex_proposal(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-    compact_hint: &mut Option<Vec<i64>>,
+    (compact_hint, dual_hint, streamed_tried): SimplexHints<'_>,
+    projection_refused: bool,
 ) -> Result<PreparedNumericalProposal> {
     let finite_columns = generation.model().columns.len();
     let topology = DetectorTopology::new(generation.prepared())?;
@@ -2186,23 +2384,23 @@ fn prepared_simplex_proposal(
                 return skipped();
             }
         }
-        if let Some(proof) =
-            reconcile::sparse_slope_ray(generation, SeparationMethod::Simplex, config)?
-        {
-            return Ok(proof);
-        }
-        if let Some(proof) = reconcile::factor_pair(generation, SeparationMethod::Simplex, config)?
-        {
-            return Ok(proof);
-        }
-        if let Some(proof) =
-            positive_rank::deferred_simplex(generation, positive, config, interrupt)?
-        {
-            return bind_numerical_proposal(generation, proof);
-        }
-        return skipped();
+        let hints = (compact_hint, dual_hint, streamed_tried);
+        return match later_simplex_lanes(
+            generation,
+            (positive, intercept_only, projection_refused),
+            config,
+            interrupt,
+            hints,
+        )? {
+            Some(proof) => Ok(proof),
+            None => skipped(),
+        };
     }
     let design = prepared_simplex_design(generation, &topology, columns, cells)?;
+    let intercept_only = topology
+        .effect_specs
+        .iter()
+        .all(|spec| spec.slopes.is_empty());
     drop(topology);
     let mut poll_pivot = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
     let result = model_simplex_interruptible(
@@ -2223,7 +2421,62 @@ fn prepared_simplex_proposal(
         topology_cells,
         result,
     )?;
+    let flags = (intercept_only, projection_refused);
+    let hints = (compact_hint, dual_hint, streamed_tried);
+    dense_or_streamed(generation, config, interrupt, raw, flags, hints)
+}
+
+/// An inconclusive dense phase I leaves slope designs (and designs whose
+/// detector projection was refused) to the streamed exact lane, as
+/// generations beyond the dense allowance get it.
+fn dense_or_streamed(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    raw: DetectionProposal,
+    (intercept_only, projection_refused): (bool, bool),
+    hints: SimplexHints<'_>,
+) -> Result<PreparedNumericalProposal> {
+    if raw.status == MethodStatus::Uncertified && (!intercept_only || projection_refused) {
+        let flags = (intercept_only, projection_refused);
+        if let Some(proof) =
+            streamed::simplex_fallback(generation, config, interrupt, flags, hints)?
+        {
+            return Ok(proof);
+        }
+    }
     bind_numerical_proposal(generation, raw)
+}
+
+/// A ray hint for IR, a Farkas hint for IR, and whether a streamed exact
+/// lane ran; all three belong to the current generation only.
+type SimplexHints<'h> = (
+    &'h mut Option<Vec<i64>>,
+    &'h mut Option<IrHint>,
+    &'h mut bool,
+);
+
+/// Raw-coordinate simplex lanes after the compact proposals, in their
+/// registered order; the streamed compact retry runs only after all of them.
+fn later_simplex_lanes(
+    generation: &PreparedPpmlModelGeneration,
+    (positive, intercept_only, projection_refused): (usize, bool, bool),
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    hints: SimplexHints<'_>,
+) -> Result<Option<PreparedNumericalProposal>> {
+    if let Some(proof) = reconcile::sparse_slope_ray(generation, SeparationMethod::Simplex, config)?
+    {
+        return Ok(Some(proof));
+    }
+    if let Some(proof) = reconcile::factor_pair(generation, SeparationMethod::Simplex, config)? {
+        return Ok(Some(proof));
+    }
+    if let Some(proof) = positive_rank::deferred_simplex(generation, positive, config, interrupt)? {
+        return bind_numerical_proposal(generation, proof).map(Some);
+    }
+    let flags = (intercept_only, projection_refused);
+    streamed::simplex_fallback(generation, config, interrupt, flags, hints)
 }
 
 fn prepared_compact_simplex(
@@ -2258,26 +2511,7 @@ fn prepared_compact_simplex(
         }),
         config,
         &mut pivots,
-        &mut |i, row| {
-            // The sparse reader emits absorbed coordinates first. Restore
-            // finite-first order for packed simplex coefficients.
-            let mut absorbed_ones = 0;
-            let mut binary = true;
-            raw.terms(i, |coordinate, value| {
-                if value == 1. {
-                    if coordinate < absorbed {
-                        row.push((finite + coordinate) as u32);
-                        absorbed_ones += 1;
-                    } else {
-                        row.push((coordinate - absorbed) as u32);
-                    }
-                } else if value != 0. {
-                    binary = false;
-                }
-            })?;
-            row.rotate_left(absorbed_ones);
-            Ok(binary)
-        },
+        &mut compact_raw_reader(&raw, finite, absorbed),
         &mut poll,
     )?;
     drop(raw);
@@ -2288,44 +2522,7 @@ fn prepared_compact_simplex(
         }
         None => None,
     };
-    let proposal = match compact {
-        Some(CompactModel::Terminal(raw)) => Some(bind_numerical_proposal(generation, raw)?),
-        Some(CompactModel::Direction {
-            coefficients,
-            iterations,
-        }) => {
-            let required =
-                primal::RawRows::sparse_replay_words(generation, coefficients.capacity());
-            if !reconcile::admits_compact_replay(
-                generation,
-                SeparationMethod::Simplex,
-                config,
-                coefficients.capacity(),
-            ) {
-                if config.methods.iterated_rectifier
-                    && required
-                        <= primal::ProofBudget::for_sparse(
-                            generation,
-                            SeparationMethod::IteratedRectifier,
-                            config,
-                        )
-                        .words
-                {
-                    *compact_hint = Some(coefficients);
-                }
-                None
-            } else {
-                reconcile::compact_ray(
-                    generation,
-                    coefficients,
-                    iterations,
-                    SeparationMethod::Simplex,
-                    config,
-                )?
-            }
-        }
-        None => None,
-    };
+    let proposal = bind_compact_result(generation, compact, config, compact_hint)?;
     if crate::diagnostics::solver_trace_enabled() {
         eprintln!(
             "FEREG_SOLVER_TRACE|phase=compact_simplex|rows={rows}|columns={columns}|certified={}",
@@ -4009,7 +4206,9 @@ fn replay_numerical_no_drop<'a>(
             interrupt,
         )?
     } else if observed.method == SeparationMethod::Simplex {
-        let proposal = prepared_simplex_proposal(generation, config, interrupt, &mut None)?;
+        let hints = (&mut None, &mut None, &mut false);
+        let refused = graph_admitted.projection_refused;
+        let proposal = prepared_simplex_proposal(generation, config, interrupt, hints, refused)?;
         reconcile::candidate(generation, proposal, config, interrupt)?
     } else {
         let raw = bind_numerical_proposal(
@@ -4304,13 +4503,20 @@ fn certify_numerical_proposal(
     linear: PreparedOlsFitConfig,
     defer_many_fe_fallback: bool,
 ) -> Result<SeparationCertificate> {
-    if let Some(primal::Witness::Sparse(coefficients)) = &proposal.exact_primal {
-        if !reconcile::admits_compact_replay(
-            generation,
-            proposal.method,
-            config,
-            coefficients.capacity(),
-        ) {
+    let replay = match &proposal.exact_primal {
+        Some(primal::Witness::Sparse(coefficients)) => Some(coefficients.capacity()),
+        // The wide replay holds a u32 slot per raw coordinate and its terms.
+        Some(primal::Witness::Wide(ray)) => Some(
+            ray.values
+                .iter()
+                .map(|v| v.limbs().len() + 3)
+                .sum::<usize>()
+                .saturating_add(primal::RawRows::new(generation, true)?.width.div_ceil(2)),
+        ),
+        _ => None,
+    };
+    if let Some(capacity) = replay {
+        if !reconcile::admits_compact_replay(generation, proposal.method, config, capacity) {
             return Err(allocation(
                 "unable to admit sparse separation certificate replay",
             ));

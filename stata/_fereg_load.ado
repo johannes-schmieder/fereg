@@ -1,4 +1,4 @@
-*! fereg plugin loader 0.6.7 20nov2026
+*! fereg plugin loader 0.6.8 22nov2026
 program define _fereg_load, rclass
     version 15.0
     syntax , ACTION(string) [THREADS(integer 0) VERBOSE]
@@ -50,7 +50,7 @@ program define _fereg_load, rclass
     else if `"`action'"' == "selftest" {
         local native_verbose = (`"`verbose'"' != "")
         plugin call `handle', selftest ///
-            `"ado=0.6.7"' ///
+            `"ado=0.6.8"' ///
             `"protocol_major=1"' ///
             `"protocol_minor=7"' ///
             `"stata=`c(stata_version)'"' ///

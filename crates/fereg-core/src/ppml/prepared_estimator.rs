@@ -909,6 +909,11 @@ impl GenerationFit<'_> {
             plan.preflight_dimensions.metadata,
         )?;
         let plan = (*plan).with_final_dimensions(dimensions)?;
+        let plan = if purpose == PreparedPpmlIrlsPurpose::Publication {
+            plan.for_publication()
+        } else {
+            plan
+        };
         let mut irls = PreparedPpmlIrlsConfig {
             linear,
             ..self.irls

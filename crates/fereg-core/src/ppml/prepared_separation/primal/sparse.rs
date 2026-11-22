@@ -18,6 +18,36 @@ fn raw_descriptor_words(model: &PreparedPpmlModelGeneration) -> usize {
         })
 }
 
+/// One absorbed intercept effect: its factor codes, the first raw coordinate
+/// of its levels and the number of levels.
+pub(in crate::ppml::prepared_separation) type InterceptBlock<'a> = (&'a [u32], usize, usize);
+
+impl<'a> RawRows<'a> {
+    /// Factor codes of every absorbed effect with the first raw coordinate of
+    /// its levels, or `None` when any effect carries a slope channel.
+    pub(in crate::ppml::prepared_separation) fn intercept_blocks(
+        &self,
+    ) -> Result<Option<Vec<InterceptBlock<'a>>>> {
+        if self
+            .blocks
+            .iter()
+            .any(|b| !b.intercept || !b.slopes.is_empty())
+        {
+            return Ok(None);
+        }
+        let mut blocks = Vec::new();
+        blocks
+            .try_reserve_exact(self.blocks.len())
+            .map_err(|_| allocation("unable to reserve streamed factor views"))?;
+        let mut base = 0usize;
+        for block in &self.blocks {
+            blocks.push((block.codes, base, block.levels));
+            base = base.saturating_add(block.levels);
+        }
+        Ok(Some(blocks))
+    }
+}
+
 impl RawRows<'_> {
     /// Binding owns the coefficient witness, the N-score direction, the
     /// N-capacity compact drop bank, and up to N stable-row IDs. Replay may

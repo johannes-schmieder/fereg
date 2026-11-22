@@ -11,6 +11,7 @@ mod factor_graph;
 mod fe_pair;
 mod pair;
 mod sparse;
+mod wide;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Column {
@@ -46,6 +47,8 @@ pub(super) enum Witness {
     Saturated {
         absorbed: bool,
     },
+    /// Raw-order coefficients beyond 64 bits from the exact dyadic lift.
+    Wide(crate::ppml_separation::WideRay),
 }
 
 struct Block<'a> {
@@ -110,6 +113,27 @@ impl<'a> RawRows<'a> {
 
     pub(super) fn len(&self) -> usize {
         self.model.outcome().len()
+    }
+
+    /// The absorbed effect with slopes and the most level coordinates, as
+    /// the block layout of the exact dual by levels (`None` without slopes).
+    pub(super) fn slope_blocks(&self) -> Option<crate::ppml_separation::Blocks<'a>> {
+        let mut base = 0;
+        let mut best: Option<crate::ppml_separation::Blocks<'a>> = None;
+        for block in &self.blocks {
+            let channels = usize::from(block.intercept) + block.slopes.len();
+            let size = channels * block.levels;
+            if !block.slopes.is_empty() && best.is_none_or(|b| b.channels * b.levels < size) {
+                best = Some(crate::ppml_separation::Blocks {
+                    base,
+                    channels,
+                    levels: block.levels,
+                    codes: block.codes,
+                });
+            }
+            base += size;
+        }
+        best
     }
 
     pub(super) fn value(&self, row: usize, column: usize) -> Result<f64> {
@@ -271,6 +295,41 @@ impl ProofBudget {
     }
 }
 
+/// Exact dyadic replay of integer raw-order coefficients: zero on every
+/// positive outcome, nonpositive on every zero outcome, negative somewhere.
+pub(super) fn exact_ray(model: &PreparedPpmlModelGeneration, coefficients: &[i64]) -> Result<bool> {
+    let outcome = model.outcome();
+    let mut strict = false;
+    let valid = sparse::visit(model, coefficients, |r, sign, _| {
+        strict |= sign == Ordering::Less;
+        if outcome[r] > 0. {
+            sign == Ordering::Equal
+        } else {
+            sign != Ordering::Greater
+        }
+    })?;
+    Ok(valid && strict)
+}
+
+/// Exact replay of a wide integer ray: zero on positive rows, nonpositive on
+/// zero rows and strictly negative on at least one.
+pub(super) fn exact_wide_ray(
+    model: &PreparedPpmlModelGeneration,
+    ray: &crate::ppml_separation::WideRay,
+) -> Result<bool> {
+    let outcome = model.outcome();
+    let mut strict = false;
+    let valid = wide::visit(model, ray, |r, sign, _| {
+        strict |= sign == Ordering::Less;
+        if outcome[r] > 0. {
+            sign == Ordering::Equal
+        } else {
+            sign != Ordering::Greater
+        }
+    })?;
+    Ok(valid && strict)
+}
+
 fn visit(
     model: &PreparedPpmlModelGeneration,
     witness: &Witness,
@@ -278,6 +337,7 @@ fn visit(
 ) -> Result<bool> {
     match witness {
         Witness::Sparse(coefficients) => sparse::visit(model, coefficients, inspect),
+        Witness::Wide(ray) => wide::visit(model, ray, inspect),
         Witness::FactorPair(pair) => pair.visit(model, inspect),
         Witness::Factor(f) => f.visit(model, inspect),
         Witness::PairOffsets {

@@ -8,7 +8,7 @@ set more off
 
 fereg, selftest
 local release `"`r(fereg_version)'"'
-assert `"`release'"' == "0.6.7"
+assert `"`release'"' == "0.6.8"
 
 set seed 20261031
 set obs 600

@@ -17,6 +17,15 @@ pub use workspace_peak::SolverWorkspacePeak;
 
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
 
+/// An available memory whose usable part is at least `usable`, tight to
+/// within the integer rounding of `usable_memory_bytes`'s headroom rule.
+#[must_use]
+pub fn available_for_usable(usable: u128) -> u128 {
+    usable
+        .saturating_add(MINIMUM_HEADROOM_BYTES)
+        .max(usable.saturating_mul(5).div_ceil(4))
+}
+
 /// Apply the shared native headroom policy before any construction stage.
 #[must_use]
 pub fn usable_memory_bytes(available_bytes: Option<u128>) -> Option<u128> {
@@ -554,6 +563,20 @@ mod tests {
             let actual = estimate_cg_solver_memory(rows, rhs, counts, threads).unwrap_err();
             assert_eq!(actual.code, expected.code);
             assert_eq!(actual.message, expected.message);
+        }
+    }
+
+    #[test]
+    fn available_for_usable_inverts_the_headroom_rule() {
+        for usable in [0u128, 1, 373_343_205, 2_147_483_648, 1 << 40] {
+            let available = available_for_usable(usable);
+            assert!(
+                usable_memory_bytes(Some(available)).unwrap() >= usable,
+                "{usable}"
+            );
+            // Sufficient and tight to within the rule's integer rounding.
+            let short = available.saturating_sub(available / 1000 + 8);
+            assert!(usable < 1000 || usable_memory_bytes(Some(short)).unwrap() < usable);
         }
     }
 

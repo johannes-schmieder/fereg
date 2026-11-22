@@ -90,6 +90,37 @@ pub(super) const DIAGNOSTIC_RECORD_BYTES: u128 = 288;
 pub(super) struct LiveMemoryPlan {
     current: std::sync::Mutex<PpmlMemoryPlan>,
     report_capacity: std::sync::atomic::AtomicUsize,
+    /// The largest sparse separation request the plan refused.
+    refused: std::sync::Mutex<Option<SparseRefusal>>,
+    /// Sparse separation requests refused so far.
+    refusals: std::sync::atomic::AtomicUsize,
+}
+
+/// A sparse separation request the live plan could not admit: the request,
+/// the bytes free for it and what holds the rest of the usable budget.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct SparseRefusal {
+    pub(super) phase: PpmlPhase,
+    pub(super) required_bytes: u128,
+    pub(super) free_bytes: u128,
+    pub(super) held_bytes: u128,
+    pub(super) usable_bytes: u128,
+    pub(super) available_bytes: Option<u128>,
+}
+
+impl SparseRefusal {
+    /// A user-facing account of the refusal and the memory that would admit it.
+    pub(super) fn describe(&self) -> String {
+        let need = self.held_bytes.saturating_add(self.required_bytes);
+        let limit = crate::memory::available_for_usable(need);
+        let available = self
+            .available_bytes
+            .map_or_else(|| "unknown".to_owned(), |v| format!("{v} bytes"));
+        format!(
+            "the exact separation lanes were refused a {:?} workspace of {} bytes: {} bytes were free of {} usable bytes ({} held by the fit; available memory {available}); allow at least {limit} bytes of memory (FEREG_MEMORY_LIMIT_BYTES or free system memory) for the exact lanes",
+            self.phase, self.required_bytes, self.free_bytes, self.usable_bytes, self.held_bytes,
+        )
+    }
 }
 
 impl PartialEq for LiveMemoryPlan {
@@ -109,6 +140,8 @@ impl LiveMemoryPlan {
         Self {
             current: std::sync::Mutex::new(plan),
             report_capacity: std::sync::atomic::AtomicUsize::new(0),
+            refused: std::sync::Mutex::new(None),
+            refusals: std::sync::atomic::AtomicUsize::new(0),
         }
     }
 
@@ -140,7 +173,28 @@ impl LiveMemoryPlan {
                 plan.selected_inventory()
                     .separation_method_report_record_bytes,
             );
-        plan.admit_sparse(phase, required_extra, preferred_extra, report_bytes)
+        let granted = plan.admit_sparse(phase, required_extra, preferred_extra, report_bytes);
+        if granted.is_none() {
+            self.refusals
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if let Some(refusal) = plan.sparse_refusal(phase, required_extra, report_bytes) {
+                let mut slot = self.refused.lock().expect("PPML sparse refusal");
+                if slot.is_none_or(|r| r.required_bytes < refusal.required_bytes) {
+                    *slot = Some(refusal);
+                }
+            }
+        }
+        granted
+    }
+
+    /// The largest sparse separation request refused so far.
+    pub(super) fn refusal(&self) -> Option<SparseRefusal> {
+        *self.refused.lock().expect("PPML sparse refusal")
+    }
+
+    /// The number of sparse separation requests refused so far.
+    pub(super) fn refusals(&self) -> usize {
+        self.refusals.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -761,6 +815,12 @@ pub struct PpmlMemoryPlan {
     pub reusable_certificate_bytes: u128,
     /// Optional coefficient-space slope workspace, sharing the linear-session lifetime.
     pub reusable_slope_bytes: u128,
+    /// The publication fit after separation: the IRLS-only buffers (solver
+    /// workspace and reusable banks) are admitted against the phases in
+    /// which they live (preparation less its scratch, and the IRLS phases),
+    /// not against the separation peak, which is over. Exploration fits run
+    /// inside separation and keep the all-phase rule.
+    pub(crate) post_separation: bool,
 }
 
 const fn const_max(left: u128, right: u128) -> u128 {
@@ -817,21 +877,82 @@ impl PpmlMemoryPlan {
         }
     }
 
+    /// The plan for the publication fit after separation (see
+    /// `post_separation`).
+    #[must_use]
+    pub(crate) const fn for_publication(mut self) -> Self {
+        self.post_separation = true;
+        self
+    }
+
+    const fn reusable_bytes(self) -> u128 {
+        self.reusable_projection_bytes
+            .saturating_add(self.reusable_certificate_bytes)
+            .saturating_add(self.reusable_slope_bytes)
+    }
+
+    /// The modeled peak of the phases that hold the IRLS-only buffers, with
+    /// `solver` and `reusable` bytes of them: preparation less its
+    /// generation-zero scratch plus the reusable banks (as in
+    /// `modeled_phase_peak_bytes`), and every IRLS phase plus both. Before
+    /// separation has ended the base is the all-phase required peak.
+    const fn irls_buffer_peak(self, solver: u128, reusable: u128) -> u128 {
+        let inventory = self.selected_inventory();
+        if !self.post_separation {
+            return const_max(
+                self.required_peak_bytes
+                    .saturating_add(solver)
+                    .saturating_add(reusable),
+                inventory.preparation_peak_bytes,
+            );
+        }
+        let preparation = const_max(
+            inventory
+                .preparation_peak_bytes
+                .saturating_sub(inventory.preparation_membership_scratch_bytes)
+                .saturating_add(reusable),
+            inventory.preparation_peak_bytes,
+        );
+        let irls = const_max(
+            const_max(
+                inventory.iteration_peak_bytes,
+                inventory.weight_response_refresh_peak_bytes,
+            ),
+            const_max(
+                const_max(
+                    inventory.post_solve_peak_bytes,
+                    inventory.objective_line_search_peak_bytes,
+                ),
+                inventory.strict_final_peak_bytes,
+            ),
+        );
+        const_max(
+            preparation,
+            irls.saturating_add(solver).saturating_add(reusable),
+        )
+    }
+
     #[must_use]
     pub const fn selected_bytes(self) -> u128 {
         let ordinary = self
             .solver_workspace_bytes
-            .saturating_add(self.reusable_projection_bytes)
-            .saturating_add(self.reusable_certificate_bytes)
-            .saturating_add(self.reusable_slope_bytes);
+            .saturating_add(self.reusable_bytes());
         let separate = self.separation_projection_bytes;
-        let later = self
-            .required_peak_bytes
-            .saturating_add(if ordinary > separate {
-                ordinary
-            } else {
-                separate
-            });
+        let later = if self.post_separation {
+            // The detector projection belongs to separation; the IRLS-only
+            // buffers to the phases after it.
+            const_max(
+                self.required_peak_bytes.saturating_add(separate),
+                self.irls_buffer_peak(self.solver_workspace_bytes, self.reusable_bytes()),
+            )
+        } else {
+            self.required_peak_bytes
+                .saturating_add(if ordinary > separate {
+                    ordinary
+                } else {
+                    separate
+                })
+        };
         let later = const_max(later, self.sparse_peak());
         let preparation = self.selected_inventory().preparation_peak_bytes;
         if later > preparation {
@@ -846,17 +967,27 @@ impl PpmlMemoryPlan {
         const_max(simplex, const_max(ir, mu))
     }
 
-    /// Admit only the extension to an already registered sparse workspace.
-    /// The phase base includes the complete generation-zero detector model,
-    /// the embedding's live bytes and the already admitted optional detector
-    /// projection. Report capacity beyond the initial bank is live as well.
-    fn admit_sparse(
-        &mut self,
+    /// The account of a refused sparse request for the final diagnosis.
+    fn sparse_refusal(
+        &self,
         phase: PpmlPhase,
         required_words: usize,
-        preferred_words: usize,
         extra_report_bytes: u128,
-    ) -> Option<usize> {
+    ) -> Option<SparseRefusal> {
+        let usable = self.usable_bytes?;
+        let (_, base) = self.sparse_base(phase, extra_report_bytes)?;
+        Some(SparseRefusal {
+            phase,
+            required_bytes: (required_words as u128).saturating_mul(size_of::<f64>() as u128),
+            free_bytes: usable.saturating_sub(base),
+            held_bytes: base,
+            usable_bytes: usable,
+            available_bytes: self.available_bytes,
+        })
+    }
+
+    /// The phase's peak index and the bytes live before its sparse arena.
+    fn sparse_base(&self, phase: PpmlPhase, extra_report_bytes: u128) -> Option<(usize, u128)> {
         let (index, phase_base) = match phase {
             PpmlPhase::SeparationSimplex => (0, self.selected_inventory().separation_peak_bytes),
             PpmlPhase::SeparationIr => (1, self.selected_inventory().separation_peak_bytes),
@@ -875,10 +1006,25 @@ impl PpmlMemoryPlan {
             }
             _ => return None,
         };
-        let usable = self.usable_bytes?;
         let base = phase_base
             .checked_add(self.separation_projection_bytes)?
             .checked_add(extra_report_bytes)?;
+        Some((index, base))
+    }
+
+    /// Admit only the extension to an already registered sparse workspace.
+    /// The phase base includes the complete generation-zero detector model,
+    /// the embedding's live bytes and the already admitted optional detector
+    /// projection. Report capacity beyond the initial bank is live as well.
+    fn admit_sparse(
+        &mut self,
+        phase: PpmlPhase,
+        required_words: usize,
+        preferred_words: usize,
+        extra_report_bytes: u128,
+    ) -> Option<usize> {
+        let usable = self.usable_bytes?;
+        let (index, base) = self.sparse_base(phase, extra_report_bytes)?;
         let headroom = usable.checked_sub(base)? / size_of::<f64>() as u128;
         let granted = (preferred_words as u128).min(headroom);
         if required_words > preferred_words
@@ -902,20 +1048,19 @@ impl PpmlMemoryPlan {
 
     // Charges contain the other two optional buffers and the proposed replacement.
     fn reusable_workspaces_fit(&self, charges: [u128; 3]) -> bool {
-        let Some(base) = self
-            .required_peak_bytes
-            .checked_add(self.solver_workspace_bytes)
-        else {
+        let Some(reusable) = charges.into_iter().try_fold(0u128, u128::checked_add) else {
             return false;
         };
-        charges
-            .into_iter()
-            .try_fold(base, u128::checked_add)
-            .is_some_and(|peak| {
-                self.usable_bytes.is_none_or(|usable| {
-                    peak.max(self.selected_inventory().preparation_peak_bytes) <= usable
-                })
-            })
+        if self
+            .required_peak_bytes
+            .checked_add(self.solver_workspace_bytes)
+            .and_then(|n| n.checked_add(reusable))
+            .is_none()
+        {
+            return false;
+        }
+        let peak = self.irls_buffer_peak(self.solver_workspace_bytes, reusable);
+        self.usable_bytes.is_none_or(|usable| peak <= usable)
     }
 
     /// Optional storage must never make an otherwise affordable fit fail.
@@ -970,6 +1115,9 @@ impl PpmlMemoryPlan {
     /// The peak [`Self::with_solver_workspace`] admitted against the usable
     /// bytes: the required peak, the solver workspace and the reusable banks.
     pub(crate) const fn solver_workspace_peak(self) -> u128 {
+        if self.post_separation {
+            return self.irls_buffer_peak(self.solver_workspace_bytes, self.reusable_bytes());
+        }
         self.required_peak_bytes
             .saturating_add(self.solver_workspace_bytes)
             .saturating_add(self.reusable_projection_bytes)
@@ -992,14 +1140,13 @@ impl PpmlMemoryPlan {
     }
 
     pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
-        let peak = self
-            .required_peak_bytes
+        self.required_peak_bytes
             .checked_add(bytes)
             .and_then(|n| n.checked_add(self.reusable_projection_bytes))
             .and_then(|n| n.checked_add(self.reusable_certificate_bytes))
             .and_then(|n| n.checked_add(self.reusable_slope_bytes))
-            .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?
-            .max(self.selected_inventory().preparation_peak_bytes);
+            .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?;
+        let peak = self.irls_buffer_peak(bytes, self.reusable_bytes());
         if self.usable_bytes.is_some_and(|usable| peak > usable) {
             return Err(allocation(format!(
                 "public PPML FE solver workspace does not fit the selected memory plan: solver_workspace={bytes}, execution={}, usable={}",
@@ -1180,12 +1327,16 @@ pub(crate) fn plan_ppml_memory_with_probe(
                 || "unavailable".to_owned(),
                 |value| format!("{value} bytes"),
             );
+            let smallest = estimate.fast.peak_bytes.min(estimate.low.peak_bytes);
+            let usable =
+                usable_bytes.map_or_else(|| "unknown".to_owned(), |value| format!("{value} bytes"));
             return Err(allocation(format!(
-                "feppml memory preflight failed before workspace allocation: fast={} bytes, low={} bytes, available={}, safety_headroom={} bytes",
+                "feppml memory preflight failed before workspace allocation: fast={} bytes, low={} bytes, available={}, safety_headroom={} bytes; the smaller route needs {smallest} bytes of workspace and {usable} are usable; allow at least {} bytes of memory (FEREG_MEMORY_LIMIT_BYTES or free system memory) or reduce the model",
                 estimate.fast.peak_bytes,
                 estimate.low.peak_bytes,
                 available,
                 safety_headroom_bytes,
+                crate::memory::available_for_usable(smallest),
             )));
         }
     };
@@ -1203,6 +1354,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         solver_workspace_bytes: 0,
         separation_projection_bytes: 0,
         sparse_proof_peaks: [0; 3],
+        post_separation: false,
         reusable_projection_bytes: 0,
         reusable_certificate_bytes: 0,
         reusable_slope_bytes: 0,
@@ -4212,14 +4364,11 @@ impl PpmlMemoryTelemetry {
         Ok(())
     }
 
-    pub(crate) fn validate(&self) -> Result<()> {
-        if self.effective_threads == 0 || self.plan.dimensions.threads != self.effective_threads {
-            return Err(invalid_argument(
-                "PPML memory telemetry has inconsistent effective threads",
-            ));
-        }
+    /// A fresh preflight of the plan's dimensions with its final dimensions,
+    /// publication state and solver workspace replayed.
+    fn reconstructed_plan(&self) -> Result<PpmlMemoryPlan> {
         let diagnostic_capacity = self.plan.estimate_diagnostic_capacity();
-        let mut reconstructed = plan_ppml_memory(
+        let mut plan = plan_ppml_memory(
             self.plan.preflight_dimensions,
             PpmlMemoryConfig {
                 requested: self.plan.requested,
@@ -4230,8 +4379,21 @@ impl PpmlMemoryTelemetry {
                 diagnostic_capacity,
             },
         )?
-        .with_final_dimensions(self.plan.dimensions)?
-        .with_solver_workspace(self.plan.solver_workspace_bytes)?;
+        .with_final_dimensions(self.plan.dimensions)?;
+        if self.plan.post_separation {
+            plan = plan.for_publication();
+        }
+        plan.with_solver_workspace(self.plan.solver_workspace_bytes)
+    }
+
+    pub(crate) fn validate(&self) -> Result<()> {
+        if self.effective_threads == 0 || self.plan.dimensions.threads != self.effective_threads {
+            return Err(invalid_argument(
+                "PPML memory telemetry has inconsistent effective threads",
+            ));
+        }
+        let diagnostic_capacity = self.plan.estimate_diagnostic_capacity();
+        let mut reconstructed = self.reconstructed_plan()?;
         if !reconstructed.admit_separation_projection(self.plan.separation_projection_bytes)
             || !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
             || !reconstructed.admit_reusable_certificate(self.plan.reusable_certificate_bytes)

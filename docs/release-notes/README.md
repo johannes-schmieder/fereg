@@ -2,6 +2,7 @@
 
 | Release | Original title |
 | --- | --- |
+| [v0.6.8](v0.6.8.md) | fereg 0.6.8 |
 | [v0.6.7](v0.6.7.md) | fereg 0.6.7 |
 | [v0.6.6](v0.6.6.md) | fereg 0.6.6 |
 | [v0.6.5](v0.6.5.md) | fereg 0.6.5 |
@@ -29,3 +30,5 @@
 | [v0.5.0-beta.3](v0.5.0-beta.3.md) | fereg 0.5.0 beta.3 |
 | [v0.5.0-beta.2](v0.5.0-beta.2.md) | fereg 0.5.0 beta.2 — validated universal macOS bundle |
 | [v0.5.0-beta.1](v0.5.0-beta.1.md) | fereg 0.5.0 macOS beta |
+
+Historical standalone checksum files for the earliest betas are archived in [checksums](checksums/).

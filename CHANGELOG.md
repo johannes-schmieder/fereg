@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.6.8 — 2026-11-22
+
+- Finish Poisson separation on large sparse designs where a separating
+  combination of levels from several factors previously left the certificate
+  search running for hours. When the fixed-allowance simplex lanes are
+  inconclusive, an exact search on a streamed view of the raw design takes
+  over: rows are regenerated from the stored factor codes for binary intercept
+  designs and read on demand for continuous or indicator regressors and
+  absorbed slopes, positive rows are eliminated sparsely, and every workspace
+  is requested at its measured size within the fit's memory budget.
+- Separating directions are replayed exactly on every raw row. A direction or
+  Farkas vector beyond the exact arithmetic is handed to the requested
+  iterated rectifier, which accepts it only through its own complete
+  certificate.
+- The iterated rectifier now measures its progress toward either certificate
+  and switches once to an exact lane not yet run on the generation when
+  neither is reachable at the measured rates or its certificate keeps
+  refusing at one stage. A spent budget ends detection with an explicit
+  separation error instead of restarting the same recurrence.
+- Explicit simplex cell limits and every result the fixed compact lanes
+  already certify are unchanged.
+
 ## 0.6.7 — 2026-11-20
 
 - Scale Poisson separation checks to larger sparse designs, including models

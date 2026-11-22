@@ -674,7 +674,14 @@ fn finite_minor_replay_retains_one_ulp_positive_contrast_and_rejects_substitutio
     };
     let a = PreparedSeparationCoordinator::new(owner(perturbed)).unwrap();
     let model = a.view().prepared;
-    let proposal = prepared_simplex_proposal(model, config, &mut |_| Ok(()), &mut None).unwrap();
+    let proposal = prepared_simplex_proposal(
+        model,
+        config,
+        &mut |_| Ok(()),
+        (&mut None, &mut None, &mut false),
+        false,
+    )
+    .unwrap();
     assert_eq!(
         proposal.certificate.as_ref().unwrap().proof,
         Proof::SimplexFullPositiveRank { columns: 3 }

@@ -50,7 +50,11 @@ pub(super) fn resolve(
             .all(|spec| spec.slopes.is_empty());
     let mut design = None;
     let mut unresolved_margin = 0.;
-    for iteration in 1..=iteration_limit.min(config.max_ir_iterations) {
+    let limit = iteration_limit.min(config.max_ir_iterations);
+    let mut progress = Progress::new();
+    let mut switched = false;
+    let exit = Exit(generation, (ppml, linear), config, admission);
+    for iteration in 1..=limit {
         interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
         for (value, &y) in response.iter_mut().zip(outcome) {
             if y == 0. {
@@ -78,6 +82,7 @@ pub(super) fn resolve(
         drop(response);
         drop(projection.coefficients);
         let dual = projection.residual;
+        let mut refusal = None;
         if certify_dual_with_weights(
             generation,
             &dual,
@@ -86,7 +91,7 @@ pub(super) fn resolve(
             config,
             linear,
             admission.span_plan,
-            &mut design,
+            (&mut design, &mut refusal),
         )? {
             return Ok(Resolution::Dual(dual, iteration));
         }
@@ -107,31 +112,31 @@ pub(super) fn resolve(
             .zip(&dual)
             .filter_map(|(&y, &value)| (y == 0.).then_some(value))
             .fold(f64::INFINITY, f64::min);
+        // A projected stall switches once to an exact lane not yet run on
+        // this generation. The recurrence itself keeps its budget: slow
+        // successes and failures agree for hundreds of projections.
+        progress.observe(margin, primal_violation(outcome, &direction));
+        // When no exact lane has run on this generation (an IR-only request,
+        // or a design with real values the simplex phase defers to IR), the
+        // first checkpoint is also due: IR has spent the projections that
+        // certify easy designs, and the exact lane costs a few raw passes.
+        let stall = progress.stalled(iteration, limit - iteration, config.certificate_tolerance);
+        let due = stall.is_some() || (!admission.exact_tried && iteration >= Progress::REFERENCE);
+        if due && !std::mem::replace(&mut switched, true) {
+            drop(design.take());
+            if let Some(resolution) = switch_lane(exit, interrupt, iteration)? {
+                return Ok(resolution);
+            }
+        }
         let relative_margin = margin / stable_norm(&dual);
         if margin.is_finite() && relative_margin > config.certificate_tolerance {
-            for (integer, &value) in direction.iter_mut().zip(&dual) {
-                *integer = (value / margin).round();
-            }
-            if integer_dual::certify(generation, &direction, config.certificate_tolerance)? {
-                return Ok(Resolution::Dual(direction, iteration));
-            }
-            drop(direction);
-            drop(design.take());
-            let refined =
-                prepared_project(generation, &dual, &unit, ppml, config, linear)?.residual;
-            drop(dual);
-            if certify_dual_with_weights(
-                generation,
-                &refined,
-                &unit,
-                ppml,
-                config,
-                linear,
-                admission.span_plan,
-                &mut design,
-            )? {
-                return Ok(Resolution::Dual(refined, iteration));
-            }
+            let state = (dual, direction, margin, iteration);
+            let scratch = (&mut design, &mut refusal);
+            let projections = (ppml, linear, admission.span_plan);
+            let refined = match interior(generation, state, &unit, projections, config, scratch)? {
+                Ok(resolution) => return Ok(resolution),
+                Err(refined) => refined,
+            };
             // The first strictly positive margin can be too small to resolve
             // scale-dependent roundoff. Continue the cone recurrence while its
             // normalized interior margin improves. Stagnation preserves the
@@ -142,11 +147,25 @@ pub(super) fn resolve(
                     "unit-metric separation dual has unresolved full-model orthogonality",
                 ));
             }
+            // Repeated refusals, like a projected stall, only switch lanes:
+            // an exact integer dual can still certify once the margin grows.
+            if progress.refused(refusal).is_some() && !std::mem::replace(&mut switched, true) {
+                if let Some(resolution) = switch_lane(exit, interrupt, iteration)? {
+                    return Ok(resolution);
+                }
+            }
             unresolved_margin = relative_margin;
             response = refined;
             continue;
         }
         response = dual;
+    }
+    if limit >= config.max_ir_iterations {
+        // A spent full budget is final, like a stall: no solver-variant
+        // restart repeats this recurrence.
+        drop(design.take());
+        let stall = (progress.exhausted(limit), limit);
+        return switch_or_stop(exit, interrupt, stall, switched);
     }
     Err(FeregError::new(
         ErrorCode::NonConvergence,
@@ -154,8 +173,317 @@ pub(super) fn resolve(
     ))
 }
 
+/// A positive-margin dual that failed the certificate as proposed: its exact
+/// integer multiple, then a fresh unit projection that removes its measured
+/// span component, each against the same full-model certificate. `Err` holds
+/// the refined dual for the next projection.
+fn interior<'a>(
+    generation: &'a PreparedPpmlModelGeneration,
+    (dual, mut direction, margin, iteration): (Vec<f64>, Vec<f64>, f64, usize),
+    unit: &[f64],
+    (ppml, linear, span_plan): (PpmlConfig, PreparedOlsFitConfig, Option<&LiveMemoryPlan>),
+    config: SeparationConfig,
+    (design, refusal): CertifyScratch<'_, 'a>,
+) -> Result<std::result::Result<Resolution, Vec<f64>>> {
+    for (integer, &value) in direction.iter_mut().zip(&dual) {
+        *integer = (value / margin).round();
+    }
+    if integer_dual::certify(generation, &direction, config.certificate_tolerance)? {
+        return Ok(Ok(Resolution::Dual(direction, iteration)));
+    }
+    drop(direction);
+    drop(design.take());
+    let refined = prepared_project(generation, &dual, unit, ppml, config, linear)?.residual;
+    drop(dual);
+    let scratch = (design, refusal);
+    if certify_dual_with_weights(
+        generation, &refined, unit, ppml, config, linear, span_plan, scratch,
+    )? {
+        return Ok(Ok(Resolution::Dual(refined, iteration)));
+    }
+    Ok(Err(refined))
+}
+
+/// The exact rational dual certificate of a streamed valued search.
+pub(super) fn certify_exact_dual(
+    generation: &PreparedPpmlModelGeneration,
+    dual: &crate::ppml_separation::ExactDual,
+) -> Result<bool> {
+    integer_dual::certify_exact(generation, dual)
+}
+
+/// What a stalled or spent recurrence needs to switch lanes or stop.
+#[derive(Clone, Copy)]
+struct Exit<'g, 'a>(
+    &'g PreparedPpmlModelGeneration,
+    (PpmlConfig, PreparedOlsFitConfig),
+    SeparationConfig,
+    DetectorAdmission<'a>,
+);
+
+/// After a certificate stall or a spent budget: one streamed exact lane not
+/// yet run on this generation, then the explicit, final stall error.
+fn switch_or_stop(
+    exit: Exit<'_, '_>,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    (stall, iteration): (Stall, usize),
+    switched: bool,
+) -> Result<Resolution> {
+    if !switched {
+        if let Some(resolution) = switch_lane(exit, interrupt, iteration)? {
+            return Ok(resolution);
+        }
+    }
+    let Exit(generation, _, _, admission) = exit;
+    let mut error = stall.error(generation.generation(), iteration, admission);
+    error.message.push_str(&memory_note(generation));
+    Err(error)
+}
+
+/// The largest exact-lane workspace the memory limit refused on this fit,
+/// as a clause for a final separation error; empty when none was refused.
+pub(super) fn memory_note(generation: &PreparedPpmlModelGeneration) -> String {
+    generation
+        .separation_memory
+        .as_deref()
+        .and_then(|plan| plan.refusal())
+        .map_or_else(String::new, |refusal| format!("; {}", refusal.describe()))
+}
+
+/// One streamed exact lane on this generation, unless a simplex step ran it.
+fn switch_lane(
+    exit: Exit<'_, '_>,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    iteration: usize,
+) -> Result<Option<Resolution>> {
+    let Exit(generation, projections, config, admission) = exit;
+    Ok(
+        match super::streamed_switch(generation, projections, config, admission, interrupt)? {
+            Some(super::ExactSwitch::Direction(proposal)) => Some(Resolution::Direction(proposal)),
+            Some(super::ExactSwitch::Dual(dual)) => Some(Resolution::Dual(dual, iteration)),
+            None => None,
+        },
+    )
+}
+
+/// Prefix of the explicit, non-retryable stall error. Re-running the same
+/// recurrence with another projection solver repeats the same geometry.
+pub(super) const STALLED: &str = "unit-metric separation recurrence stalled";
+
+pub(super) fn is_stall(error: &FeregError) -> bool {
+    error.code == ErrorCode::NonConvergence && error.message.starts_with(STALLED)
+}
+
+/// Largest normalized violation of the primal certificate: any value on a
+/// positive row and any positive value on a zero row, after the proposal's
+/// own unit max-norm scaling. A zero direction has no primal progress.
+fn primal_violation(outcome: &[f64], direction: &[f64]) -> f64 {
+    let scale = infinity_norm(direction);
+    if scale.is_nan() || scale <= f64::MIN_POSITIVE || (scale - 1.).abs() > 1e-12 {
+        return f64::INFINITY;
+    }
+    outcome
+        .iter()
+        .zip(direction)
+        .map(|(&y, &z)| if y > 0. { z.abs() } else { z.max(0.) })
+        .fold(0., f64::max)
+}
+
+/// Current margin and best primal violation, compared at doubling
+/// checkpoints, and the refusals of positive-margin duals. The margin must
+/// rise to the certificate's positive interior; the primal violation must
+/// fall to the certificate tolerance. Each projected count assumes the rate
+/// measured since the previous checkpoint continues: linear for the margin
+/// and a power law for the violation.
+struct Progress {
+    margin: f64,
+    best_violation: f64,
+    reference: Option<(usize, f64, f64)>,
+    next: usize,
+    /// Consecutive checkpoint comparisons that projected a stall.
+    strikes: usize,
+    /// Consecutive positive-margin duals refused at one certificate stage.
+    refusals: Option<(Refusal, usize, f64)>,
+}
+
+/// Where a positive-margin dual failed the unit-metric certificate, and its
+/// measured metric relative to the allowance (NaN for a stage without one).
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct Refusal {
+    stage: &'static str,
+    ratio: f64,
+}
+
+pub(super) struct Stall {
+    margin: f64,
+    margin_rate: f64,
+    violation: f64,
+    exponent: f64,
+    refused: Option<(&'static str, usize)>,
+}
+
+impl Progress {
+    /// Recorded first after this many projections, then compared at twice it.
+    pub(super) const REFERENCE: usize = 16;
+    /// A stall must be projected at this many consecutive comparisons.
+    const STRIKES: usize = 2;
+    /// Positive-margin duals refused at one stage without a halving of the
+    /// stage metric before the refusal counts as a stall. Recorded slow
+    /// successes refused at most three before their certificate passed.
+    const REFUSALS: usize = 6;
+
+    fn new() -> Self {
+        Self {
+            margin: f64::NEG_INFINITY,
+            best_violation: f64::INFINITY,
+            reference: None,
+            next: Self::REFERENCE,
+            strikes: 0,
+            refusals: None,
+        }
+    }
+
+    fn observe(&mut self, margin: f64, violation: f64) {
+        if margin.is_finite() {
+            self.margin = margin;
+        }
+        if margin.is_nan() || margin <= 0. {
+            self.refusals = None;
+        }
+        if !violation.is_nan() {
+            self.best_violation = self.best_violation.min(violation);
+        }
+    }
+
+    fn rates(&self, iteration: usize) -> (f64, f64) {
+        match self.reference {
+            Some((k0, m0, v0)) if iteration > k0 => (
+                (self.margin - m0) / (iteration - k0) as f64,
+                (v0 / self.best_violation).ln() / (iteration as f64 / k0 as f64).ln(),
+            ),
+            _ => (f64::NAN, f64::NAN),
+        }
+    }
+
+    /// The measured state after a spent budget, for the final error.
+    fn exhausted(&self, iteration: usize) -> Stall {
+        let (margin_rate, exponent) = self.rates(iteration);
+        Stall {
+            margin: self.margin,
+            margin_rate,
+            violation: self.best_violation,
+            exponent,
+            refused: None,
+        }
+    }
+
+    /// The current margin must rise to the positive interior at its rate
+    /// since the previous checkpoint, or the best primal violation must fall
+    /// to the tolerance at its measured power. A stall is declared only when
+    /// both projections exceed the remaining budget at consecutive
+    /// comparisons, so a transient dip is not one.
+    fn stalled(&mut self, iteration: usize, remaining: usize, tolerance: f64) -> Option<Stall> {
+        if iteration < self.next {
+            return None;
+        }
+        self.next = iteration.saturating_mul(2);
+        let (margin_rate, exponent) = self.rates(iteration);
+        self.reference
+            .replace((iteration, self.margin, self.best_violation))?;
+        let (m1, v1) = (self.margin, self.best_violation);
+        let margin_needs = if m1 >= 0. {
+            0.
+        } else if margin_rate > 0. {
+            -m1 / margin_rate
+        } else {
+            f64::INFINITY
+        };
+        let primal_needs = if v1 <= tolerance {
+            0.
+        } else if exponent > 0. && v1.is_finite() {
+            iteration as f64 * ((v1 / tolerance).powf(1. / exponent) - 1.)
+        } else {
+            f64::INFINITY
+        };
+        let budget = remaining as f64;
+        if margin_needs > budget && primal_needs > budget {
+            self.strikes += 1;
+        } else {
+            self.strikes = 0;
+        }
+        (self.strikes >= Self::STRIKES).then_some(Stall {
+            margin: m1,
+            margin_rate,
+            violation: v1,
+            exponent,
+            refused: None,
+        })
+    }
+
+    /// A positive-margin dual the certificate refused. Repeated refusals at
+    /// one stage without a measured halving of its metric are a stall.
+    fn refused(&mut self, refusal: Option<Refusal>) -> Option<Stall> {
+        let refusal = refusal?;
+        let streak = match self.refusals {
+            Some((last, count, start))
+                if last.stage == refusal.stage
+                    && !(refusal.ratio.is_finite() && refusal.ratio <= 0.5 * start) =>
+            {
+                (refusal, count + 1, start)
+            }
+            _ => (refusal, 1, refusal.ratio),
+        };
+        self.refusals = Some(streak);
+        (streak.1 >= Self::REFUSALS).then_some(Stall {
+            margin: self.margin,
+            margin_rate: f64::NAN,
+            violation: self.best_violation,
+            exponent: f64::NAN,
+            refused: Some((refusal.stage, streak.1)),
+        })
+    }
+}
+
+impl Refusal {
+    fn new(stage: &'static str, ratio: f64) -> Self {
+        Self { stage, ratio }
+    }
+}
+
+impl Stall {
+    fn error(
+        &self,
+        generation: usize,
+        iteration: usize,
+        admission: DetectorAdmission<'_>,
+    ) -> FeregError {
+        let lanes = if admission.exact_tried {
+            "in the simplex phase"
+        } else {
+            "after the stall"
+        };
+        let reason = match self.refused {
+            Some((stage, count)) => format!(
+                "the {stage} stage of the dual certificate refused {count} consecutive positive-margin duals without a measured improvement"
+            ),
+            None => "its full projection budget is spent without a certificate".to_string(),
+        };
+        FeregError::new(
+            ErrorCode::NonConvergence,
+            format!(
+                "{STALLED} on generation {generation} after {iteration} projections: zero-row margin {:.3e} (measured rate {:.3e} per projection), best primal violation {:.3e} (measured power {:.3}); {reason}; exact lanes tried: streamed compact simplex ({lanes})",
+                self.margin, self.margin_rate, self.violation, self.exponent,
+            ),
+        )
+    }
+}
+
 /// Test the fitted primal direction before interpreting its dual residual.
-fn primal_proposal(
+/// An IR deletion from a direction that is positive on the rows it drops:
+/// zero on positive rows and nonpositive on zero rows to the certificate
+/// tolerance, after unit max-norm scaling. A streamed ray without an exact
+/// integer lift takes this same certificate and note.
+pub(super) fn primal_proposal(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     iteration: usize,
@@ -239,7 +567,7 @@ pub(super) fn certify_dual(
             config,
             fast_linear,
             admission.span_plan,
-            &mut None,
+            (&mut None, &mut None),
         ) {
             Ok(true) => return Ok(true),
             Ok(false) => {}
@@ -256,7 +584,7 @@ pub(super) fn certify_dual(
         config,
         linear,
         admission.span_plan,
-        &mut None,
+        (&mut None, &mut None),
     )
 }
 
@@ -269,7 +597,7 @@ fn certify_dual_with_weights<'a>(
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
     span_plan: Option<&LiveMemoryPlan>,
-    design: &mut Option<crate::ols::UnitProjectionDesign<'a>>,
+    (design, refused): CertifyScratch<'_, 'a>,
 ) -> Result<bool> {
     let (ppml, linear) = strict_projection_policy(ppml, linear);
     if dual.len() != generation.outcome().len() || dual.iter().any(|v| !v.is_finite()) {
@@ -288,6 +616,10 @@ fn certify_dual_with_weights<'a>(
             stable_norm(dual),
             config.certificate_tolerance,
         );
+        *refused = Some(Refusal::new(
+            "margin",
+            config.certificate_tolerance * stable_norm(dual) / margin,
+        ));
         return Ok(false);
     }
     let columns = fallible_collect(
@@ -300,6 +632,10 @@ fn certify_dual_with_weights<'a>(
         .max(centered_moment_ratio(generation, dual)?);
     if moment > config.projection_tolerance * margin {
         trace_dual_check("moment", margin, moment, config.projection_tolerance);
+        *refused = Some(Refusal::new(
+            "moment",
+            moment / (config.projection_tolerance * margin),
+        ));
         return Ok(false);
     }
     if !stable_local::certify(
@@ -316,6 +652,7 @@ fn certify_dual_with_weights<'a>(
         span_plan,
     )? {
         trace_dual_check("local", margin, 0., config.projection_tolerance);
+        *refused = Some(Refusal::new("local", f64::NAN));
         return Ok(false);
     }
     // A missing margin leaves the design with the recurrence. Once there is
@@ -330,7 +667,7 @@ fn certify_dual_with_weights<'a>(
             ppml,
             config,
             linear,
-            Some(design),
+            (Some(design), &mut *refused),
         );
         match reused {
             Ok(true) => return Ok(true),
@@ -340,8 +677,17 @@ fn certify_dual_with_weights<'a>(
     }
     // A rejected single-response projection or span audit retries the original
     // joint projection. Terminal replay always comes directly through here.
-    certify_projected_dual(generation, dual, unit, margin, ppml, config, linear, None)
+    let checked = (None, &mut *refused);
+    certify_projected_dual(
+        generation, dual, unit, margin, ppml, config, linear, checked,
+    )
 }
+
+/// A retained unit projection design and the stage that refused, if any.
+type CertifyScratch<'r, 'a> = (
+    &'r mut Option<crate::ols::UnitProjectionDesign<'a>>,
+    &'r mut Option<Refusal>,
+);
 
 #[allow(clippy::too_many_arguments)]
 fn certify_projected_dual<'a>(
@@ -352,7 +698,10 @@ fn certify_projected_dual<'a>(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
-    mut design: Option<crate::ols::UnitProjectionDesign<'a>>,
+    (mut design, refused): (
+        Option<crate::ols::UnitProjectionDesign<'a>>,
+        &mut Option<Refusal>,
+    ),
 ) -> Result<bool> {
     let mut aliases = Vec::new();
     let checked = prepared_project_with(
@@ -376,15 +725,21 @@ fn certify_projected_dual<'a>(
             stable_norm(&checked.fitted),
             config.projection_tolerance,
         );
+        let ratio = stable_norm(&checked.fitted) / (config.projection_tolerance * margin);
+        *refused = Some(Refusal::new("span", ratio));
         return Ok(false);
     }
     let kept = checked.kept_columns;
     drop(checked.fitted);
     drop(checked.residual);
     drop(checked.coefficients);
-    certify_omitted_contrasts(
+    let certified = certify_omitted_contrasts(
         generation, dual, unit, &kept, &aliases, margin, ppml, config, linear,
-    )
+    )?;
+    if !certified {
+        *refused = Some(Refusal::new("omitted", f64::NAN));
+    }
+    Ok(certified)
 }
 
 /// Intercept-preserving translations must not hide an omitted model direction
@@ -735,6 +1090,68 @@ fn fast_unit_policy(
     Some((ppml, linear))
 }
 
+/// Certify an externally proposed dual with the complete unit-metric check.
+/// A numerical refusal leaves the ordinary detector in control.
+pub(super) fn certify_hint(
+    generation: &PreparedPpmlModelGeneration,
+    dual: &[f64],
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+    admission: DetectorAdmission<'_>,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let numerical = |result: Result<bool>| match result {
+        Ok(certified) => Ok(certified),
+        Err(error) if is_numerical_refusal(&error) => Ok(false),
+        Err(error) => Err(error),
+    };
+    let mut certified = numerical(certify_dual(
+        generation, dual, ppml, config, linear, admission,
+    ))?;
+    let mut refined = None;
+    if !certified {
+        // A least-squares lift balances each column to roundoff, which adds up
+        // over many rows. Remove the measured span component with one fresh
+        // unit projection, as the recurrence does, and certify that vector.
+        let (unit_ppml, unit_linear) = admission.unit_projection.unwrap_or((ppml, linear));
+        let (unit_ppml, unit_linear) = strict_projection_policy(unit_ppml, unit_linear);
+        let unit = fallible_filled(dual.len(), 1., "unable to reserve hint refinement weights")?;
+        let projected =
+            match prepared_project(generation, dual, &unit, unit_ppml, config, unit_linear) {
+                Ok(projection) => Some(projection.residual),
+                Err(error) if is_numerical_refusal(&error) => None,
+                Err(error) => return Err(error),
+            };
+        if let Some(vector) = projected {
+            certified = numerical(certify_dual(
+                generation, &vector, ppml, config, linear, admission,
+            ))?;
+            refined = Some(vector);
+        }
+    }
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=compact_dual_ir|generation={}|rows={}|refined={}|certified={}",
+            generation.generation(),
+            dual.len(),
+            u8::from(refined.is_some()),
+            u8::from(certified)
+        ));
+    }
+    if !certified {
+        return Ok(None);
+    }
+    let owned = match refined {
+        Some(vector) => vector,
+        None => fallible_collect(
+            dual.iter().copied(),
+            dual.len(),
+            "unable to reserve IR dual",
+        )?,
+    };
+    bound_dual(generation, owned, 1).map(Some)
+}
+
 fn bound_dual(
     generation: &PreparedPpmlModelGeneration,
     dual: Vec<f64>,
@@ -777,6 +1194,9 @@ pub(super) fn recover(
     ) {
         Ok(Resolution::Direction(proposal)) => Ok(proposal),
         Ok(Resolution::Dual(dual, iterations)) => bound_dual(generation, dual, iterations),
+        // A full-budget recovery that stalled is final; a short probe keeps
+        // the original error so its caller's ordinary fallback still runs.
+        Err(error) if is_stall(&error) && iterations >= config.max_ir_iterations => Err(error),
         Err(error)
             if matches!(
                 error.code,
@@ -1069,4 +1489,101 @@ fn constant_in_certified_span(generation: &PreparedPpmlModelGeneration, kept: &[
                 crate::ols::PreparedOlsColumnKind::Intercept
             )
         })
+}
+
+#[cfg(test)]
+mod progress_tests {
+    use super::{Progress, Refusal};
+
+    #[test]
+    fn diverging_margin_and_harmonic_primal_decay_stall_at_the_second_comparison() {
+        let mut progress = Progress::new();
+        let mut stalled = None;
+        for k in 1..=100usize {
+            // Margin drifts away from the interior; the primal violation
+            // falls like 1/k, far too slowly for a 1e-8 certificate.
+            progress.observe(-0.03 - 0.01 * k as f64, 0.5 / k as f64);
+            if let Some(stall) = progress.stalled(k, 10_000 - k, 1e-8) {
+                stalled = Some(k);
+                let _ = stall;
+                break;
+            }
+        }
+        assert_eq!(stalled, Some(64));
+    }
+
+    #[test]
+    fn an_improving_margin_that_reaches_the_interior_within_budget_continues() {
+        let mut progress = Progress::new();
+        for k in 1..=200usize {
+            progress.observe(-0.8 + 0.004 * k as f64, 0.5);
+            assert!(progress.stalled(k, 10_000 - k, 1e-8).is_none(), "{k}");
+        }
+    }
+
+    #[test]
+    fn a_transient_dip_of_the_margin_is_not_a_stall() {
+        let mut progress = Progress::new();
+        for k in 1..=300usize {
+            let margin = if k <= 40 {
+                -0.05 - 0.002 * k as f64
+            } else {
+                -0.13 + 0.01 * (k - 40) as f64
+            };
+            progress.observe(margin, 0.4);
+            assert!(progress.stalled(k, 10_000 - k, 1e-8).is_none(), "{k}");
+        }
+    }
+
+    #[test]
+    fn a_missed_checkpoint_still_fires_on_later_projections() {
+        let mut progress = Progress::new();
+        progress.observe(-0.5, 0.4);
+        assert!(progress.stalled(16, 1000, 1e-8).is_none());
+        // Projection 32 took the positive-margin branch and skipped the test.
+        progress.observe(-0.5, 0.4);
+        assert!(progress.stalled(33, 1000, 1e-8).is_none());
+        progress.observe(-0.5, 0.4);
+        assert!(progress.stalled(70, 1000, 1e-8).is_some());
+    }
+
+    #[test]
+    fn a_short_budget_declares_a_slow_but_real_improvement_unreachable() {
+        let mut progress = Progress::new();
+        let mut fired = false;
+        for k in 1..=64usize {
+            progress.observe(-0.7 + 0.0005 * k as f64, 0.3);
+            fired |= progress.stalled(k, 128 - k, 1e-8).is_some();
+        }
+        assert!(fired);
+    }
+
+    #[test]
+    fn repeated_refusals_at_one_stage_stall_unless_its_metric_halves() {
+        let mut progress = Progress::new();
+        progress.observe(0.2, 0.4);
+        let local = Refusal::new("local", f64::NAN);
+        for _ in 0..5 {
+            assert!(progress.refused(Some(local)).is_none());
+        }
+        let stall = progress.refused(Some(local)).expect("sixth local refusal");
+        assert_eq!(stall.refused, Some(("local", 6)));
+
+        let mut progress = Progress::new();
+        progress.observe(0.2, 0.4);
+        let mut ratio = 8.;
+        for _ in 0..10 {
+            assert!(progress
+                .refused(Some(Refusal::new("span", ratio)))
+                .is_none());
+            ratio *= 0.4;
+        }
+        // A negative margin between refusals restarts the count.
+        let mut progress = Progress::new();
+        for _ in 0..10 {
+            progress.observe(0.2, 0.4);
+            assert!(progress.refused(Some(local)).is_none());
+            progress.observe(-0.1, 0.4);
+        }
+    }
 }

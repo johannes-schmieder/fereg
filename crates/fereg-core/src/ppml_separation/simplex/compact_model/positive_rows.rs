@@ -1,17 +1,18 @@
 //! Select positive observations for the numerical nullspace proposal. A
 //! nonzero binary minor modulo two is nonzero over the reals. A zero minor
 //! gives no upper rank bound: the caller still certifies the full raw model.
-use super::{fallible_filled, reserve, BinaryDesign, MAX_WORK};
+use super::{fallible_filled, reserve, BinaryDesign};
 use crate::error::Result;
 
-/// `max_cells` is the eight-byte scratch allowance left beside the design.
+/// `max_cells` is the eight-byte scratch allowance left beside the design and
+/// `stage_work` the coordinate operations allowed for the selection.
 /// Rows enter in input order. Each pivot stores only the suffix beginning at
 /// its first nonzero word, and no storage scales with the number of positives
 /// once that number exceeds the width.
 pub(super) fn select(
     design: &BinaryDesign,
     outcome: &[f64],
-    max_cells: usize,
+    (max_cells, stage_work): (usize, usize),
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<Vec<usize>>> {
     interrupt()?;
@@ -20,11 +21,11 @@ pub(super) fn select(
     let capacity = width.min(outcome.len());
     let headers = std::mem::size_of::<Vec<u64>>().div_ceil(8);
     let fixed = width as u128 * headers as u128 + words as u128 + capacity as u128;
-    if width == 0 || fixed > max_cells as u128 || fixed > MAX_WORK as u128 {
+    if width == 0 || fixed > max_cells as u128 || fixed > stage_work as u128 {
         return Ok(None);
     }
     let mut free = max_cells - fixed as usize;
-    let mut work = MAX_WORK - fixed as usize;
+    let mut work = stage_work - fixed as usize;
     let mut pivots = fallible_filled(width, Vec::new(), "unable to reserve binary pivot rows")?;
     let mut row = fallible_filled(words, 0u64, "unable to reserve packed positive row")?;
     let mut selected = Vec::new();
@@ -51,7 +52,7 @@ pub(super) fn select(
         };
         work = left;
         row.fill(0);
-        for &column in ones {
+        for &column in ones.iter() {
             let j = column as usize;
             row[j / 64] |= 1u64 << (j % 64);
         }
@@ -89,7 +90,7 @@ pub(super) fn select(
 pub(super) fn select_odd(
     design: &BinaryDesign,
     outcome: &[f64],
-    max_cells: usize,
+    (max_cells, stage_work): (usize, usize),
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<Vec<usize>>> {
     let width = design.ncols();
@@ -98,7 +99,7 @@ pub(super) fn select_odd(
     if cells > max_cells {
         return Ok(None);
     }
-    let mut work = MAX_WORK.saturating_sub(cells);
+    let mut work = stage_work.saturating_sub(cells);
     let mut space = crate::ppml::ExactNullspace::new(width)?;
     let mut row = fallible_filled(width, 0., "unable to reserve modular positive row")?;
     let mut selected = Vec::new();
@@ -116,16 +117,16 @@ pub(super) fn select_odd(
             continue;
         }
         let support = design.row(i);
-        if prior == Some(support) {
+        if prior.is_some_and(|p| *design.row(p) == *support) {
             continue;
         }
-        prior = Some(support);
+        prior = Some(i);
         let Some(left) = work.checked_sub((space.rank() + 3).saturating_mul(width)) else {
             return Ok(None);
         };
         work = left;
         row.fill(0.);
-        for &j in support {
+        for &j in support.iter() {
             row[j as usize] = 1.;
         }
         space.insert(&row)?;
@@ -156,7 +157,15 @@ mod tests {
         })
         .unwrap()
         .unwrap();
-        let select_with = |cells| select(&design, &outcome, cells, &mut || Ok(())).unwrap();
+        let select_with = |cells| {
+            select(
+                &design,
+                &outcome,
+                (cells, super::super::MAX_WORK),
+                &mut || Ok(()),
+            )
+            .unwrap()
+        };
         let headers = 66 * std::mem::size_of::<Vec<u64>>().div_ceil(8);
         // Two scratch words, six row IDs and pivot suffixes of 1, 2, 2, 1.
         assert_eq!(select_with(headers + 14), Some(vec![1, 2, 4, 5]));
@@ -174,14 +183,20 @@ mod tests {
         .unwrap();
         // J-I has determinant 2; this subset cannot certify real rank two.
         assert_eq!(
-            select(&design, &[1.; 3], 64, &mut || Ok(())).unwrap(),
+            select(&design, &[1.; 3], (64, super::super::MAX_WORK), &mut || Ok(
+                ()
+            ))
+            .unwrap(),
             Some(vec![0, 1])
         );
         assert_eq!(
-            select_odd(&design, &[1.; 3], 64, &mut || Ok(())).unwrap(),
+            select_odd(&design, &[1.; 3], (64, super::super::MAX_WORK), &mut || Ok(
+                ()
+            ))
+            .unwrap(),
             Some(vec![0, 1, 2])
         );
-        let error = select(&design, &[1.; 3], 64, &mut || {
+        let error = select(&design, &[1.; 3], (64, super::super::MAX_WORK), &mut || {
             Err(crate::interrupt::interrupted())
         })
         .unwrap_err();
