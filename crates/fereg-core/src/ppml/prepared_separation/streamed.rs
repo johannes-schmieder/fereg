@@ -45,7 +45,7 @@ pub(super) fn simplex_fallback(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-    (intercept_only, defer_values): (bool, bool),
+    (intercept_only, refused): (bool, bool),
     (compact_hint, dual_hint, tried): SimplexHints<'_>,
 ) -> Result<Option<PreparedNumericalProposal>> {
     if compact_hint.is_some() {
@@ -61,7 +61,7 @@ pub(super) fn simplex_fallback(
         config,
         interrupt,
         method,
-        (intercept_only, defer_values),
+        (intercept_only, !refused, refused),
     )?
     else {
         return Ok(None);
@@ -132,7 +132,7 @@ pub(super) fn streamed_switch(
         config,
         interrupt,
         method,
-        (intercept_only, false),
+        (intercept_only, false, admission.projection_refused),
     )?;
     let switched = match lane.flatten() {
         Some(Exact::Binary(CompactModel::Direction {
@@ -224,10 +224,14 @@ fn exact_lane(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     method: SeparationMethod,
-    flags: (bool, bool),
+    (intercept_only, defer_values, refused): (bool, bool, bool),
 ) -> Result<Option<Option<Exact>>> {
+    // Exact duals where IR's certificate is the costly step: absorbed slopes
+    // (its local span audit) and a refused detector projection (MAP).
+    let exact_dual = !intercept_only || refused;
+    let flags = (intercept_only, defer_values, exact_dual);
     match lane_result(generation, config, interrupt, method, flags)? {
-        Some(Some(Exact::Dual(dual))) => {
+        Some(Some(Exact::Dual(dual))) if refused => {
             exact_physical_dual(generation, config, interrupt, method, dual).map(|e| Some(Some(e)))
         }
         other => Ok(other),
@@ -318,7 +322,7 @@ fn lane_result(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     method: SeparationMethod,
-    (intercept_only, defer_values): (bool, bool),
+    (intercept_only, defer_values, exact_dual): (bool, bool, bool),
 ) -> Result<Option<Option<Exact>>> {
     let valued_values = if intercept_only {
         match prepared_streamed_compact(generation, config, interrupt, method)? {
@@ -353,7 +357,7 @@ fn lane_result(
         trace_decline(generation, "valued_after_ir_stall");
         return Ok(None);
     }
-    valued_lane(generation, config, interrupt, method).map(Some)
+    valued_lane(generation, config, interrupt, method, exact_dual).map(Some)
 }
 
 /// The projected-cone search on the raw reader: any finite values, any number
@@ -364,6 +368,7 @@ fn valued_lane(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     method: SeparationMethod,
+    exact_dual: bool,
 ) -> Result<Option<Exact>> {
     let rows = generation.outcome().len();
     let raw = primal::RawRows::new(generation, true)?;
@@ -389,6 +394,7 @@ fn valued_lane(
         work,
         available: admission.words(),
         held: 0,
+        exact_dual,
     };
     let mut pivots = 0;
     let mut poll = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);

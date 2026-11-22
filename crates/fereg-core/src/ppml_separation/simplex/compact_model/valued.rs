@@ -161,6 +161,9 @@ pub(crate) struct ValuedSearch<'a, 'r> {
     pub(crate) available: usize,
     /// Words held by the live echelon form, counted in every request.
     pub(crate) held: usize,
+    /// Certify accepted Farkas weights by the exact dyadic dual before the
+    /// numerical physical dual (absorbed slopes, or IR on MAP).
+    pub(crate) exact_dual: bool,
 }
 
 impl ValuedSearch<'_, '_> {
@@ -487,13 +490,11 @@ impl ValuedSearch<'_, '_> {
                 let sets = (boundary, &weights[..], representatives);
                 let target = representatives.len() + cone_rank;
                 let proof = (certificate, iterations);
-                let terminal = self.exact_terminal(
-                    sets,
-                    target,
-                    proof,
-                    (&mut *interrupt, &mut *grow),
-                    verify,
-                )?;
+                let terminal = if self.exact_dual {
+                    self.exact_terminal(sets, target, proof, (&mut *interrupt, &mut *grow), verify)?
+                } else {
+                    None
+                };
                 if let Some(model) = terminal {
                     return Ok(Some(ValuedModel::Terminal(model)));
                 }

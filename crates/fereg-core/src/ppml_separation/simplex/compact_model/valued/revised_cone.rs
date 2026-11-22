@@ -97,13 +97,17 @@ impl ValuedSearch<'_, '_> {
                 drop(basis);
                 let sets = (boundary, &weights[..], representatives);
                 let target = representatives.len() + m;
-                let terminal = self.exact_terminal(
-                    sets,
-                    target,
-                    (certificate, iterations),
-                    (&mut *interrupt, &mut *grow),
-                    verify,
-                )?;
+                let terminal = if self.exact_dual {
+                    self.exact_terminal(
+                        sets,
+                        target,
+                        (certificate, iterations),
+                        (&mut *interrupt, &mut *grow),
+                        verify,
+                    )?
+                } else {
+                    None
+                };
                 if let Some(model) = terminal {
                     return Ok(Some(ValuedModel::Terminal(model)));
                 }

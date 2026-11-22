@@ -691,6 +691,7 @@ fn valued_lane_separates_the_hidden_cell_beside_a_continuous_regressor() {
             work: CompactWork::scaled(n, 7, width),
             available: 1 << 20,
             held: 0,
+            exact_dual: true,
         };
         let mut verify = |c: &[i64]| -> Result<bool> {
             if c[HIDDEN_WIDTH] != 0 {
@@ -789,6 +790,7 @@ fn valued_lane_separates_the_hidden_cell_beside_a_continuous_regressor() {
             work: CompactWork::scaled(n, 7, width),
             available: 1 << 20,
             held: 0,
+            exact_dual: true,
         };
         let refused = search
             .run(
