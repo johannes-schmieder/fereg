@@ -393,9 +393,14 @@ where
         config,
         (&mut execution, &mut refused),
     )?;
-    let mut admission =
-        DetectorAdmission::from(execution.preliminary_plan.separation_projection_bytes > 0);
+    let projection_bytes = execution.preliminary_plan.separation_projection_bytes;
+    let mut admission = DetectorAdmission::from(projection_bytes > 0);
     admission.projection_refused = refused;
+    trace_projection_admission(projection_bytes, refused);
+    // A refused admission's policy: what a generation adopts when the
+    // admitted projection's charge refuses its exact lanes.
+    let plain = retry::DetectorPolicy::new(ppml, execution.linear, None, None);
+    admission.release = (projection_bytes > 0).then_some(&plain);
     // Charge the complete FE audit on the generation that actually uses it.
     // Exact sparse certificates can finish without a global FE factorization.
     admission.span_plan = Some(plan);
@@ -430,6 +435,16 @@ where
     outcome.initial_preparation_elapsed = initial_preparation_elapsed;
     outcome.initial_preparation_peak = initial_preparation_peak;
     Ok((outcome, fit))
+}
+
+fn trace_projection_admission(bytes: u128, refused: bool) {
+    if crate::diagnostics::solver_trace_enabled() {
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=detector_projection|admitted={}|refused={}|bytes={bytes}",
+            u8::from(bytes > 0),
+            u8::from(refused)
+        );
+    }
 }
 
 /// The admitted detector policy, the retained-CG re-execution policy of an
@@ -593,6 +608,9 @@ struct DetectorAdmission<'a> {
     /// The memory plan refused the detector projection, so IR projects on
     /// its MAP fallback and real-valued designs do not wait for IR.
     projection_refused: bool,
+    /// The detector policy without the admitted projection, which a
+    /// generation adopts when the projection's charge refuses its lanes.
+    release: Option<&'a retry::DetectorPolicy<'a>>,
 }
 
 impl From<bool> for DetectorAdmission<'_> {
@@ -603,6 +621,7 @@ impl From<bool> for DetectorAdmission<'_> {
             unit_projection: None,
             exact_tried: false,
             projection_refused: false,
+            release: None,
         }
     }
 }
@@ -647,7 +666,7 @@ fn prepare_initial_generation(
 #[allow(clippy::too_many_arguments)]
 fn coordinate_prepared_ppml_separation<'a, T, E, F>(
     mut coordinator: PreparedSeparationCoordinator<PreparedPpmlModelOwner>,
-    policy: &retry::DetectorPolicy<'_>,
+    mut policy: &'a retry::DetectorPolicy<'a>,
     config: SeparationConfig,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
     graph_admitted: impl Into<DetectorAdmission<'a>>,
@@ -665,8 +684,9 @@ where
         &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     ) -> Result<T>,
 {
-    let graph_admitted = graph_admitted.into();
-    let (ppml, linear) = policy.admitted();
+    let mut graph_admitted = graph_admitted.into();
+    let (mut ppml, mut linear) = policy.admitted();
+    let mut released = None;
     let candidate_original_rows = coordinator.candidate_original_rows();
     let candidate_observations = candidate_original_rows.len();
     let generation_capacity = separation_generation_capacity(
@@ -708,6 +728,8 @@ where
     let mut covariance_scales = None;
     let (final_fit, final_replay) = loop {
         interrupt(PpmlInterruptPoint::SeparationGeneration)?;
+        let detector = (&mut policy, &mut ppml, &mut linear, &mut graph_admitted);
+        readmit_projection(&mut released, detector, coordinator.view().prepared);
         // A numerical deletion can also record an exact-FE follow-up after
         // this generation's no-drop FE report. Its extra deleted row consumes
         // a potential generation, preserving the full N * methods ceiling.
@@ -992,12 +1014,13 @@ where
                     {
                         factor
                     } else {
-                        let proposal = prepared_simplex_proposal(
+                        let detector = (&mut policy, &mut ppml, &mut linear, &mut graph_admitted);
+                        let proposal = simplex_with_release(
                             view.prepared,
                             config,
                             interrupt,
                             (&mut compact_hint, &mut dual_hint, &mut streamed_tried),
-                            graph_admitted.projection_refused,
+                            (detector, &mut released),
                         )?;
                         reconcile::candidate(view.prepared, proposal, config, interrupt)?
                     }
@@ -2110,6 +2133,144 @@ fn simplex_full_model_width(
     finite_columns
         .checked_add(absorbed_columns)
         .ok_or_else(|| allocation("prepared simplex full-model width overflowed"))
+}
+
+/// The coordinator's detector: its policy, the policy's two configurations
+/// and the admission flags. A generation may switch them to the release.
+type Detector<'s, 'a> = (
+    &'s mut &'a retry::DetectorPolicy<'a>,
+    &'s mut PpmlConfig,
+    &'s mut PreparedOlsFitConfig,
+    &'s mut DetectorAdmission<'a>,
+);
+
+/// The admitted detector a released generation hands back at its end, and
+/// the projection charge it gave up.
+#[derive(Clone, Copy)]
+struct Released<'a> {
+    policy: &'a retry::DetectorPolicy<'a>,
+    admission: DetectorAdmission<'a>,
+    bytes: u128,
+}
+
+/// An unresolved proposal without drops, evidence or hints: nothing of the
+/// attempt is live after it returns.
+fn bare_unresolved(proposal: &PreparedNumericalProposal) -> bool {
+    matches!(
+        proposal.status,
+        MethodStatus::SkippedMemory | MethodStatus::SkippedUnsupported | MethodStatus::Uncertified
+    ) && proposal.dropped_original_rows.is_empty()
+        && proposal.certificate.is_none()
+        && proposal.exact_fe_certificate.is_none()
+        && proposal.direction.is_none()
+        && proposal.exact_graph_span.is_none()
+        && proposal.exact_primal.is_none()
+        && proposal.fixed_point.is_none()
+        && proposal.stable_dual.is_none()
+}
+
+/// The simplex phase's proposal. The detector projection is optional storage
+/// and must never make an otherwise affordable fit fail. When the plan
+/// refused this attempt's exact lanes storage while it held the projection's
+/// charge, and the attempt left nothing live, the generation gives the
+/// projection up and runs the lanes once more, as under a refused admission.
+/// A resolved retry keeps the release for the rest of this generation
+/// ([`readmit_projection`] ends it); otherwise the plan is restored, keeping
+/// the retry's sparse peaks, and the first attempt stands.
+fn simplex_with_release<'a>(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    (compact_hint, dual_hint, streamed_tried): SimplexHints<'_>,
+    ((policy, ppml, linear, admission), released): (Detector<'_, 'a>, &mut Option<Released<'a>>),
+) -> Result<PreparedNumericalProposal> {
+    let live = generation.separation_memory.as_deref();
+    let refusals = live.map_or(0, LiveMemoryPlan::refusals);
+    let hints = (&mut *compact_hint, &mut *dual_hint, &mut *streamed_tried);
+    let first = prepared_simplex_proposal(
+        generation,
+        config,
+        interrupt,
+        hints,
+        admission.projection_refused,
+    )?;
+    let (Some(live), Some(plain)) = (live, admission.release) else {
+        return Ok(first);
+    };
+    let saved = live.get();
+    if saved.separation_projection_bytes == 0
+        || live.refusals() == refusals
+        || compact_hint.is_some()
+        || dual_hint.is_some()
+        || !bare_unresolved(&first)
+    {
+        return Ok(first);
+    }
+    let mut free = saved;
+    free.separation_projection_bytes = 0;
+    live.set(free);
+    let (mut retry_compact, mut retry_dual, mut retry_streamed) = (None, None, *streamed_tried);
+    let hints = (&mut retry_compact, &mut retry_dual, &mut retry_streamed);
+    let retry = prepared_simplex_proposal(generation, config, interrupt, hints, true)?;
+    let resolved = retry_compact.is_some() || retry_dual.is_some() || !bare_unresolved(&retry);
+    trace_projection_release(saved.separation_projection_bytes, resolved);
+    if !resolved {
+        let now = live.get().sparse_proof_peaks;
+        let mut restored = saved;
+        let peaks = std::array::from_fn(|k| saved.sparse_proof_peaks[k].max(now[k]));
+        if !restored.restore_sparse_peaks(peaks) {
+            return Err(invalid_argument(
+                "released simplex retry exceeded the usable memory",
+            ));
+        }
+        live.set(restored);
+        return Ok(first);
+    }
+    *released = Some(Released {
+        policy,
+        admission: *admission,
+        bytes: saved.separation_projection_bytes,
+    });
+    *policy = plain;
+    (*ppml, *linear) = plain.admitted();
+    *admission = DetectorAdmission {
+        graph: false,
+        unit_projection: None,
+        projection_refused: true,
+        release: None,
+        ..*admission
+    };
+    (*compact_hint, *dual_hint, *streamed_tried) = (retry_compact, retry_dual, retry_streamed);
+    Ok(retry)
+}
+
+/// A new generation takes the admitted projection back when the plan admits
+/// its charge again, so only a generation whose lanes it refused runs
+/// without it.
+fn readmit_projection<'a>(
+    released: &mut Option<Released<'a>>,
+    (policy, ppml, linear, admission): Detector<'_, 'a>,
+    generation: &PreparedPpmlModelGeneration,
+) {
+    let (Some(saved), Some(live)) = (*released, generation.separation_memory.as_deref()) else {
+        return;
+    };
+    let mut plan = live.get();
+    if !plan.admit_separation_projection(saved.bytes) {
+        return;
+    }
+    live.set(plan);
+    *released = None;
+    *policy = saved.policy;
+    (*ppml, *linear) = saved.policy.admitted();
+    *admission = saved.admission;
+}
+
+fn trace_projection_release(bytes: u128, resolved: bool) {
+    if crate::diagnostics::solver_trace_enabled() {
+        let outcome = if resolved { "released" } else { "restored" };
+        eprintln!("FEREG_SOLVER_TRACE|phase=projection_release|bytes={bytes}|outcome={outcome}");
+    }
 }
 
 /// `projection_refused`: the memory plan refused the detector projection,

@@ -92,6 +92,8 @@ pub(super) struct LiveMemoryPlan {
     report_capacity: std::sync::atomic::AtomicUsize,
     /// The largest sparse separation request the plan refused.
     refused: std::sync::Mutex<Option<SparseRefusal>>,
+    /// Sparse separation requests refused so far.
+    refusals: std::sync::atomic::AtomicUsize,
 }
 
 /// A sparse separation request the live plan could not admit: the request,
@@ -139,6 +141,7 @@ impl LiveMemoryPlan {
             current: std::sync::Mutex::new(plan),
             report_capacity: std::sync::atomic::AtomicUsize::new(0),
             refused: std::sync::Mutex::new(None),
+            refusals: std::sync::atomic::AtomicUsize::new(0),
         }
     }
 
@@ -172,6 +175,8 @@ impl LiveMemoryPlan {
             );
         let granted = plan.admit_sparse(phase, required_extra, preferred_extra, report_bytes);
         if granted.is_none() {
+            self.refusals
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             if let Some(refusal) = plan.sparse_refusal(phase, required_extra, report_bytes) {
                 let mut slot = self.refused.lock().expect("PPML sparse refusal");
                 if slot.is_none_or(|r| r.required_bytes < refusal.required_bytes) {
@@ -185,6 +190,11 @@ impl LiveMemoryPlan {
     /// The largest sparse separation request refused so far.
     pub(super) fn refusal(&self) -> Option<SparseRefusal> {
         *self.refused.lock().expect("PPML sparse refusal")
+    }
+
+    /// The number of sparse separation requests refused so far.
+    pub(super) fn refusals(&self) -> usize {
+        self.refusals.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
