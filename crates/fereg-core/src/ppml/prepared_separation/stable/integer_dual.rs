@@ -136,8 +136,14 @@ pub(super) fn certify_exact(
             .map(|&(row, _)| row)
             .chain(dual.basis.iter().map(|(row, _)| *row))
     };
+    // One term list, sized once by the listed rows, serves every moment.
+    let mut terms: Vec<(usize, i64, i32)> = Vec::new();
+    terms
+        .try_reserve_exact(listed)
+        .map_err(|_| crate::error::allocation("unable to reserve exact moment terms"))?;
+    let terms = std::cell::RefCell::new(terms);
     let moment = |rows: &mut dyn Iterator<Item = usize>, value: &dyn Fn(usize) -> Result<f64>| {
-        exact_zero_moment(rows, dual, &index, value)
+        exact_zero_moment(rows, (dual, &index), &mut terms.borrow_mut(), value)
     };
     if fit.fit_structural_intercept() && !moment(&mut all(), &|_| Ok(1.))? {
         return Ok(false);
@@ -180,13 +186,13 @@ pub(super) fn certify_exact(
 /// at their smallest exponent and added exactly.
 fn exact_zero_moment(
     rows: &mut dyn Iterator<Item = usize>,
-    dual: &crate::ppml_separation::ExactDual,
-    index: &[u32],
+    (dual, index): (&crate::ppml_separation::ExactDual, &[u32]),
+    terms: &mut Vec<(usize, i64, i32)>,
     value: &dyn Fn(usize) -> Result<f64>,
 ) -> Result<bool> {
     use crate::ppml_separation::Big;
     let split = dual.integers.len();
-    let mut terms: Vec<(usize, i64, i32)> = Vec::new();
+    terms.clear();
     for (position, row) in rows.enumerate() {
         crate::interrupt::row_checkpoint(position)?;
         let v = value(row)?;
@@ -194,9 +200,12 @@ fn exact_zero_moment(
             return Ok(false);
         }
         if v != 0. {
-            terms
-                .try_reserve(1)
-                .map_err(|_| crate::error::allocation("unable to reserve exact moment terms"))?;
+            if terms.len() == terms.capacity() {
+                // Every listed row appears at most once per moment.
+                return Err(crate::error::allocation(
+                    "exact moment terms exceed listed rows",
+                ));
+            }
             let (m, e) = dyadic_parts(v);
             terms.push((index[row] as usize, m, e));
         }
@@ -210,7 +219,7 @@ fn exact_zero_moment(
     };
     let (low_integer, low_explicit) = (low(false), low(true));
     let (mut integer, mut explicit) = (Big::zero(), Big::zero());
-    for &(slot, m, e) in &terms {
+    for &(slot, m, e) in terms.iter() {
         if slot < split {
             let k = i128::from(dual.integers[slot].1) * i128::from(m);
             let shift = (e - low_integer.unwrap_or(e)) as u32;

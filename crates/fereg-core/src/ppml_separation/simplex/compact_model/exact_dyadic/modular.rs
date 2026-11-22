@@ -475,7 +475,9 @@ pub(super) fn crt_solve(
         if used == needed {
             break;
         }
-        // A nonzero determinant has at most `needed` prime factors here.
+        // A prime that divides a pivot (a leading minor) is skipped. The
+        // determinant has fewer than `needed` such prime factors; a leading
+        // minor can have others, so this bound is a heuristic stop.
         if skipped > needed {
             return Ok(Err("exact_singular"));
         }

@@ -275,6 +275,32 @@ impl ValuedSearch<'_, '_> {
         if basis.is_empty() {
             // Positive rows span the model: unit boundary mass balances.
             let weights = fallible_filled(boundary.len(), 1., "unable to reserve unit dual mass")?;
+            if self.exact_dual && !boundary.is_empty() {
+                // The exact check, not this residual, certifies the dual.
+                let tolerance = self.config.certificate_tolerance;
+                let proof = super::super::farkas_residual_certificate(
+                    boundary.len(),
+                    0,
+                    1.,
+                    -1.,
+                    0.,
+                    0.,
+                    tolerance,
+                );
+                if let Some(certificate) = proof {
+                    let sets = (&boundary[..], &weights[..], representatives);
+                    let terminal = self.exact_terminal(
+                        sets,
+                        representatives.len(),
+                        (certificate, 0),
+                        (&mut *interrupt, &mut *grow),
+                        verify,
+                    )?;
+                    if let Some(model) = terminal {
+                        return Ok(Some(ValuedModel::Terminal(model)));
+                    }
+                }
+            }
             return self.dual(&boundary, &weights, representatives, echelon, grow);
         }
         self.cone(
@@ -715,6 +741,19 @@ impl ValuedSearch<'_, '_> {
                 return Ok(None);
             }
         };
+        // The dual itself and the exact check (row index, one term list).
+        let listed = dual.integers.len() + dual.basis.len();
+        let check = dual
+            .basis
+            .iter()
+            .map(|(_, d)| d.limbs().len() + 4)
+            .sum::<usize>()
+            .saturating_add(listed.saturating_mul(5))
+            .saturating_add(self.outcome.len() / 2 + 1);
+        if !self.require(check, grow) {
+            trace_refusal("exact_check_storage", check, self.available);
+            return Ok(None);
+        }
         let certified = (verify.dual)(&dual)?;
         if crate::diagnostics::solver_trace_enabled() {
             eprintln!(

@@ -1,10 +1,16 @@
 {
   "growth": [
     {
-      "after": 144726,
-      "before": 144719,
+      "after": 1920,
+      "before": 1919,
+      "metric": "fereg-core/dispatch_candidates",
+      "reason": "Reviewer pass-4 interim items: IR-only lane keeps 1403199's route, exact dual for spanning positive rows, wide-score exponents without a clamp, revised pricing charged to the stage work, exact-check and physical-dual storage requested."
+    },
+    {
+      "after": 144789,
+      "before": 144726,
       "metric": "fereg-core/production_lines",
-      "reason": "Gate the new exact duals to where IR's certificate is the costly step (absorbed slopes, or a refused detector projection), keeping 1403199's route and speed elsewhere."
+      "reason": "Reviewer pass-4 interim items: IR-only lane keeps 1403199's route, exact dual for spanning positive rows, wide-score exponents without a clamp, revised pricing charged to the stage work, exact-check and physical-dual storage requested."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -26311,15 +26317,15 @@
         "dispatch_candidates": [
           {
             "condition": "offset != 0 && word + 1 < limbs . len ( )",
-            "line": 54
+            "line": 56
           },
           {
             "condition": "ray . columns . len ( ) != ray . values . len ( )",
-            "line": 74
+            "line": 79
           },
           {
             "condition": "* s == u32 :: MAX => * s = k as u32 , _ => return Ok ( false ) , } } let mut terms : Vec < ( u32 , i64 , i32 ) > = Vec :: new ( )",
-            "line": 81
+            "line": 86
           }
         ],
         "functions": {
@@ -26328,23 +26334,23 @@
             "lines": 15
           },
           "rounded#1": {
-            "line": 45,
-            "lines": 21
+            "line": 47,
+            "lines": 24
           },
           "scale#1": {
-            "line": 30,
-            "lines": 11
+            "line": 31,
+            "lines": 12
           },
           "score#1": {
-            "line": 118,
-            "lines": 14
+            "line": 123,
+            "lines": 13
           },
           "visit#1": {
-            "line": 68,
+            "line": 73,
             "lines": 49
           }
         },
-        "production_lines": 114
+        "production_lines": 117
       },
       "crates/fereg-core/src/ppml/prepared_separation/primal_saturated.rs": {
         "chunk_candidates": [],
@@ -26894,8 +26900,12 @@
             "line": 115
           },
           {
+            "condition": "terms . len ( ) == terms . capacity ( )",
+            "line": 203
+          },
+          {
             "condition": "( low_integer , low_explicit )",
-            "line": 224
+            "line": 233
           }
         ],
         "functions": {
@@ -26905,22 +26915,22 @@
           },
           "certify_exact#1": {
             "line": 98,
-            "lines": 79
+            "lines": 85
           },
           "dyadic_parts#1": {
-            "line": 239,
+            "line": 248,
             "lines": 15
           },
           "exact_zero_moment#1": {
-            "line": 181,
-            "lines": 56
+            "line": 187,
+            "lines": 59
           },
           "zero_moment#1": {
             "line": 63,
             "lines": 30
           }
         },
-        "production_lines": 232
+        "production_lines": 239
       },
       "crates/fereg-core/src/ppml/prepared_separation/stable_alias.rs": {
         "chunk_candidates": [],
@@ -27086,56 +27096,56 @@
         "dispatch_candidates": [
           {
             "condition": "reconcile :: admits_compact_replay ( generation , method , config , coefficients . capacity ( ) , ) =>",
-            "line": 141
+            "line": 143
           },
           {
             "condition": "coefficients . len ( ) != raw . width",
-            "line": 183
+            "line": 185
           },
           {
             "condition": "dual . len ( ) != rows",
-            "line": 254
+            "line": 256
           },
           {
             "condition": "BinaryDesign :: streamed ( rows , ( columns , finite ) , effects , & mut read , & mut poll ) ?",
-            "line": 499
+            "line": 507
           },
           {
             "condition": "! reconcile :: admits_compact_replay ( generation , SeparationMethod :: Simplex , config , coefficients . capacity ( ) , )",
-            "line": 595
+            "line": 603
           }
         ],
         "functions": {
           "bind_compact_result#1": {
-            "line": 580,
+            "line": 588,
             "lines": 47
           },
           "compact_raw_reader#1": {
-            "line": 553,
+            "line": 561,
             "lines": 24
           },
           "exact_lane#1": {
-            "line": 222,
+            "line": 224,
             "lines": 18
           },
           "exact_physical_dual#1": {
-            "line": 245,
-            "lines": 67
+            "line": 247,
+            "lines": 73
           },
           "fallible_push#1": {
-            "line": 313,
+            "line": 321,
             "lines": 6
           },
           "lane_result#1": {
-            "line": 320,
+            "line": 328,
             "lines": 42
           },
           "prepared_streamed_compact#1": {
-            "line": 450,
+            "line": 458,
             "lines": 85
           },
           "ray_direction#1": {
-            "line": 176,
+            "line": 178,
             "lines": 20
           },
           "simplex_fallback#1": {
@@ -27144,26 +27154,26 @@
           },
           "streamed_switch#1": {
             "line": 106,
-            "lines": 67
+            "lines": 69
           },
           "trace_decline#1": {
-            "line": 206,
+            "line": 208,
             "lines": 8
           },
           "trace_streamed_compact#1": {
-            "line": 536,
+            "line": 544,
             "lines": 14
           },
           "trace_switch#1": {
-            "line": 197,
+            "line": 199,
             "lines": 8
           },
           "valued_lane#1": {
-            "line": 366,
+            "line": 374,
             "lines": 81
           }
         },
-        "production_lines": 548
+        "production_lines": 552
       },
       "crates/fereg-core/src/ppml/prepared_separation/trace.rs": {
         "chunk_candidates": [],
@@ -29506,19 +29516,19 @@
           },
           {
             "condition": "! budget . charge ( entries . saturating_mul ( 2 ) . saturating_add ( powers . len ( ) ) )",
-            "line": 492
+            "line": 494
           },
           {
             "condition": "budget . work == 0",
-            "line": 496
+            "line": 498
           },
           {
             "condition": "! budget . charge ( factor . entries ( ) . saturating_add ( ( r + 1 ) . saturating_mul ( limbs ) . saturating_mul ( 3 ) ) , )",
-            "line": 512
+            "line": 514
           },
           {
             "condition": "k < r",
-            "line": 521
+            "line": 523
           }
         ],
         "functions": {
@@ -29536,7 +29546,7 @@
           },
           "crt_solve#1": {
             "line": 434,
-            "lines": 117
+            "lines": 119
           },
           "determinant#1": {
             "line": 346,
@@ -30138,23 +30148,23 @@
           },
           {
             "condition": "let Some ( cone ) = self . project_at ( & columns , boundary , fixed , grow ) ?",
-            "line": 305
+            "line": 331
           },
           {
             "condition": "let Some ( cone ) = self . project_at ( & columns , boundary , fixed , grow ) ?",
-            "line": 321
+            "line": 347
           },
           {
             "condition": "space . rank ( ) + 1 >= k",
-            "line": 560
+            "line": 586
           },
           {
             "condition": "j < width && positions [ j ] != usize :: MAX",
-            "line": 567
+            "line": 593
           },
           {
             "condition": "j < width",
-            "line": 656
+            "line": 682
           }
         ],
         "functions": {
@@ -30163,23 +30173,23 @@
             "lines": 9
           },
           "cone#1": {
-            "line": 367,
+            "line": 393,
             "lines": 139
           },
           "direction_model#1": {
-            "line": 606,
+            "line": 632,
             "lines": 19
           },
           "dual#1": {
-            "line": 737,
+            "line": 776,
             "lines": 28
           },
           "exact_terminal#1": {
-            "line": 697,
-            "lines": 39
+            "line": 723,
+            "lines": 52
           },
           "lift#1": {
-            "line": 511,
+            "line": 537,
             "lines": 92
           },
           "new#1": {
@@ -30191,11 +30201,11 @@
             "lines": 32
           },
           "project#2": {
-            "line": 296,
+            "line": 322,
             "lines": 33
           },
           "project_at#1": {
-            "line": 330,
+            "line": 356,
             "lines": 36
           },
           "require#1": {
@@ -30208,38 +30218,38 @@
           },
           "search#1": {
             "line": 261,
-            "lines": 28
+            "lines": 54
           },
           "wide_lift#1": {
-            "line": 629,
+            "line": 655,
             "lines": 65
           }
         },
-        "production_lines": 683
+        "production_lines": 720
       },
       "crates/fereg-core/src/ppml_separation/simplex/compact_model/valued/revised_cone.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
             "condition": "j < width",
-            "line": 50
+            "line": 63
           },
           {
             "condition": "j < width",
-            "line": 133
+            "line": 146
           }
         ],
         "functions": {
           "revised_cone#1": {
             "line": 14,
-            "lines": 105
+            "lines": 118
           },
           "streamed_certificate#1": {
-            "line": 122,
+            "line": 135,
             "lines": 41
           }
         },
-        "production_lines": 155
+        "production_lines": 167
       },
       "crates/fereg-core/src/ppml_separation/simplex/compact_tableau.rs": {
         "chunk_candidates": [],
@@ -35310,10 +35320,10 @@
       },
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1919,
+        "dispatch_candidates": 1920,
         "files_over_1500": 15,
         "functions_over_150": 55,
-        "production_lines": 144726
+        "production_lines": 144789
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

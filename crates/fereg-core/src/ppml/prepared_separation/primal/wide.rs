@@ -26,8 +26,10 @@ fn dyadic(v: f64) -> (i64, i32) {
 }
 
 /// `x 2^k` by exact power-of-two steps (rounded only on overflow or
-/// underflow).
-fn scale(mut x: f64, mut k: i32) -> f64 {
+/// underflow). `|x| < 2^65`, so beyond `|k| = 2300` the result is already
+/// infinite or zero and `k` saturates there.
+fn scale(mut x: f64, k: i64) -> f64 {
+    let mut k = k.clamp(-2300, 2300) as i32;
     while k > 1000 {
         x *= 2f64.powi(1000);
         k -= 1000;
@@ -42,7 +44,7 @@ fn scale(mut x: f64, mut k: i32) -> f64 {
 /// `value 2^exponent` rounded to nearest binary64: the top 64 bits carry a
 /// sticky bit for every discarded nonzero bit, so the one u64 conversion
 /// rounds correctly.
-fn rounded(value: &Big, exponent: i32) -> f64 {
+fn rounded(value: &Big, exponent: i64) -> f64 {
     let limbs = value.limbs();
     let bits = value.bits();
     if bits == 0 {
@@ -56,7 +58,10 @@ fn rounded(value: &Big, exponent: i32) -> f64 {
     }
     let sticky = limbs[..word].iter().any(|&l| l != 0)
         || (offset != 0 && limbs[word] & ((1u64 << offset) - 1) != 0);
-    let magnitude = scale((top | u64::from(sticky)) as f64, exponent + drop as i32);
+    let magnitude = scale(
+        (top | u64::from(sticky)) as f64,
+        exponent.saturating_add(drop as i64),
+    );
     if value.is_negative() {
         -magnitude
     } else {
@@ -126,7 +131,6 @@ fn score(ray: &WideRay, terms: &[(u32, i64, i32)]) -> Result<(Ordering, f64)> {
     }
     let sign = sum.signum().cmp(&0);
     let exponent = i64::from(low) - i64::from(ray.shift);
-    let exponent = exponent.clamp(-100_000, 100_000) as i32;
     Ok((sign, rounded(&sum, exponent)))
 }
 
@@ -145,5 +149,35 @@ mod tests {
         let above = big((((1i128 << 53) + 1) << 70) + 1);
         assert_eq!(rounded(&above, -70), 9007199254740994.);
         assert_eq!(rounded(&big(1), -1074), f64::from_bits(1));
+    }
+
+    #[test]
+    fn scores_stay_exact_for_very_wide_coefficients() {
+        // Coefficients 2^(bits-1) and 2^(bits-3) with shift = bits: rows
+        // x0 = 1, x1 = 0.3 and x1 = 1 score 0.5, 0.0375 and 0.125 at any width.
+        for bits in [64u32, 99_940, 99_990, 100_030, 120_000, 1 << 20] {
+            let one = Big::from_i128(1).unwrap();
+            let ray = WideRay {
+                columns: vec![0, 1],
+                values: vec![one.shl(bits - 1).unwrap(), one.shl(bits - 3).unwrap()],
+                shift: bits,
+            };
+            let term = |k: u32, x: f64| {
+                let (m, e) = dyadic(x);
+                (k, m, e)
+            };
+            for (terms, want) in [
+                (vec![term(0, 1.)], 0.5),
+                (vec![term(1, 0.3)], 0.0375),
+                (vec![term(1, 1.)], 0.125),
+            ] {
+                let (sign, got) = score(&ray, &terms).unwrap();
+                assert_eq!(sign, Ordering::Greater);
+                assert!(
+                    (got - want).abs() <= f64::EPSILON * want,
+                    "{bits}: {got} vs {want}"
+                );
+            }
+        }
     }
 }

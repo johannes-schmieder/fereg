@@ -127,12 +127,14 @@ pub(super) fn streamed_switch(
         .effect_specs()
         .iter()
         .all(|spec| spec.slopes.is_empty());
-    let lane = exact_lane(
+    // IR-only requests keep 1403199's lane: its numerical dual goes to the
+    // IR certificate (certify_hint), which accepts no simplex terminal.
+    let lane = lane_result(
         generation,
         config,
         interrupt,
         method,
-        (intercept_only, false, admission.projection_refused),
+        (intercept_only, false, false),
     )?;
     let switched = match lane.flatten() {
         Some(Exact::Binary(CompactModel::Direction {
@@ -254,6 +256,18 @@ fn exact_physical_dual(
     if dual.len() != rows {
         return Ok(Exact::Dual(dual));
     }
+    let mut admission = primal::SparseProofAdmission::new_with_initial(
+        generation,
+        method,
+        config,
+        config.simplex_max_tableau_cells,
+    );
+    // Row lists (three words per row) and the exact check's index and terms
+    // (at most four words per row) stay live beside the exact dual.
+    let lists = rows.saturating_mul(7);
+    if !admission.admit(lists) {
+        return Ok(Exact::Dual(dual));
+    }
     let (mut boundary, mut weights, mut positive) = (Vec::new(), Vec::new(), Vec::new());
     for (i, (&y, &d)) in outcome.iter().zip(&dual).enumerate() {
         if y > 0. {
@@ -271,15 +285,9 @@ fn exact_physical_dual(
     let raw = primal::RawRows::new(generation, true)?;
     let width = raw.width;
     let read = |i: usize, f: &mut dyn FnMut(usize, f64)| raw.terms(i, &mut *f);
-    let mut admission = primal::SparseProofAdmission::new_with_initial(
-        generation,
-        method,
-        config,
-        config.simplex_max_tableau_cells,
-    );
     let stage = CompactWork::scaled(rows, raw.sparse_row_visits(), width).stage;
     let mut poll = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
-    let mut admit = |words: usize| admission.admit(words);
+    let mut admit = |words: usize| admission.admit(words.saturating_add(lists));
     let sets = (&boundary[..], &weights[..], &positive[..]);
     let built = exact_dyadic_dual(&read, width, sets, width, stage, &mut admit, &mut poll)?;
     let certified = match &built {

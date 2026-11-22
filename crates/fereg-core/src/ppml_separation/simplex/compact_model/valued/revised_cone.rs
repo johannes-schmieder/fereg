@@ -36,12 +36,25 @@ impl ValuedSearch<'_, '_> {
         }
         let columns = Columns::new(&basis, width)?;
         let (read, terms) = (self.design.read, self.design.row_terms);
-        let mut work = self.work.stage;
+        // Projections and pricing passes share the stage work.
+        let work = std::cell::Cell::new(self.work.stage);
         let mut project = |i: usize, out: &mut [f64]| {
-            columns.project(read, boundary[i], out, (tolerance, terms), &mut work)
+            let mut left = work.get();
+            let projected = columns.project(read, boundary[i], out, (tolerance, terms), &mut left);
+            work.set(left);
+            projected
         };
+        let pass = boundary
+            .len()
+            .saturating_mul(terms.max(1))
+            .saturating_add(width.saturating_mul(m));
         let mut combined = fallible_filled(width, 0., "unable to reserve revised prices")?;
         let mut scores = |y: &[f64], emit: &mut dyn FnMut(usize, f64)| -> Result<bool> {
+            let Some(left) = work.get().checked_sub(pass) else {
+                trace_refusal("revised_pricing_work", pass, work.get());
+                return Ok(false);
+            };
+            work.set(left);
             columns.combine(y, &mut combined);
             for (n, &row) in boundary.iter().enumerate() {
                 crate::interrupt::row_checkpoint(n)?;
