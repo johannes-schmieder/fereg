@@ -48,8 +48,7 @@ fereg, selftest
 
 Use the tagged `net install` command when you need a fixed release for replication.
 
-For an offline installation, download `fereg-0.6.8.zip` from the
-[0.6.8 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.6.8),
+For an offline installation, download the [tagged package ZIP](https://github.com/johannes-schmieder/fereg/archive/refs/tags/v0.6.8.zip),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 

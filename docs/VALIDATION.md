@@ -1,5 +1,9 @@
 # Validation status
 
+## 0.6.8 release qualification
+
+The release runtime comes from commit `73d83b3b`. The Linux and universal Mac plugins passed native and Stata fixture checks. The Windows x86-64 plugin passed its Stata and PyStata checks. The staged package passed its installed-package fixtures. The separation suite also passed all 119 comparisons on the reviewed Mac candidate.
+
 ## 0.6.7 release qualification, November 20, 2026
 
 The offline source archive at `98f0e3b2` built the signed universal Mac

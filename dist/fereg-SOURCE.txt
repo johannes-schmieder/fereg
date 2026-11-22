@@ -1,6 +1,6 @@
 Corresponding source archive (including pinned dependency sources, licenses,
 and build instructions):
-https://github.com/johannes-schmieder/fereg/releases/download/v0.6.7/fereg-0.6.7-source.zip
+https://github.com/johannes-schmieder/fereg/releases/download/v0.6.8/fereg-0.6.8-source.zip
 
 For an unpublished candidate, this URL is its intended publication location.
 For a modified local build, its source is the checkout used to build it.
