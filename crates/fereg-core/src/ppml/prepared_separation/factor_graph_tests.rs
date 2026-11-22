@@ -203,6 +203,7 @@ fn pure_two_intercept_simplex_certifies_all_chain_connectors_together() {
             config,
             &mut |_| Ok(()),
             (&mut None, &mut None, &mut false),
+            true,
         )
         .unwrap();
         let expected: Vec<_> = (0..rows.len()).filter(|&i| rows[i][0] == 0.).collect();

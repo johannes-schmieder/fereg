@@ -45,7 +45,7 @@ pub(super) fn simplex_fallback(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-    intercept_only: bool,
+    (intercept_only, defer_values): (bool, bool),
     (compact_hint, dual_hint, tried): SimplexHints<'_>,
 ) -> Result<Option<PreparedNumericalProposal>> {
     if compact_hint.is_some() {
@@ -61,7 +61,7 @@ pub(super) fn simplex_fallback(
         config,
         interrupt,
         method,
-        (intercept_only, true),
+        (intercept_only, defer_values),
     )?
     else {
         return Ok(None);

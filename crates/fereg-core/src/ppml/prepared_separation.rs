@@ -386,10 +386,16 @@ where
     let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
         prepare_initial_generation(owner, phase_allocation_probe)?;
     execution.preliminary_plan = plan.get();
-    let (projection_ppml, projection_linear, retained_cg, lsmr) =
-        admit_detector_projection(coordinator.view().prepared, ppml, config, &mut execution)?;
+    let mut refused = false;
+    let (projection_ppml, projection_linear, retained_cg, lsmr) = admit_detector_projection(
+        coordinator.view().prepared,
+        ppml,
+        config,
+        (&mut execution, &mut refused),
+    )?;
     let mut admission =
         DetectorAdmission::from(execution.preliminary_plan.separation_projection_bytes > 0);
+    admission.projection_refused = refused;
     // Charge the complete FE audit on the generation that actually uses it.
     // Exact sparse certificates can finish without a global FE factorization.
     admission.span_plan = Some(plan);
@@ -442,7 +448,7 @@ fn admit_detector_projection(
     generation: &PreparedPpmlModelGeneration,
     mut ppml: PpmlConfig,
     config: SeparationConfig,
-    execution: &mut PreparedPpmlSeparationExecution,
+    (execution, refused): (&mut PreparedPpmlSeparationExecution, &mut bool),
 ) -> Result<AdmittedDetector> {
     let mut linear = execution.linear;
     if ppml.absorb.solver != FeSolverKind::Map
@@ -499,6 +505,7 @@ fn admit_detector_projection(
         .preliminary_plan
         .admit_separation_projection(bytes)
     {
+        *refused = true;
         return Ok((ppml, linear, None, None));
     }
     linear.absorb.solver = routing::projection_solver(execution.auto_projection, &design);
@@ -583,6 +590,9 @@ struct DetectorAdmission<'a> {
     unit_projection: Option<(PpmlConfig, PreparedOlsFitConfig)>,
     /// The simplex phase already ran a streamed exact lane on this generation.
     exact_tried: bool,
+    /// The memory plan refused the detector projection, so IR projects on
+    /// its MAP fallback and real-valued designs do not wait for IR.
+    projection_refused: bool,
 }
 
 impl From<bool> for DetectorAdmission<'_> {
@@ -592,6 +602,7 @@ impl From<bool> for DetectorAdmission<'_> {
             span_plan: None,
             unit_projection: None,
             exact_tried: false,
+            projection_refused: false,
         }
     }
 }
@@ -986,6 +997,7 @@ where
                             config,
                             interrupt,
                             (&mut compact_hint, &mut dual_hint, &mut streamed_tried),
+                            !graph_admitted.projection_refused,
                         )?;
                         reconcile::candidate(view.prepared, proposal, config, interrupt)?
                     }
@@ -2100,11 +2112,14 @@ fn simplex_full_model_width(
         .ok_or_else(|| allocation("prepared simplex full-model width overflowed"))
 }
 
+/// `defer_values`: real-valued designs leave the streamed exact lane to IR,
+/// which runs it after its head start (false when IR projects on MAP).
 fn prepared_simplex_proposal(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     (compact_hint, dual_hint, streamed_tried): SimplexHints<'_>,
+    defer_values: bool,
 ) -> Result<PreparedNumericalProposal> {
     let finite_columns = generation.model().columns.len();
     let topology = DetectorTopology::new(generation.prepared())?;
@@ -2210,7 +2225,7 @@ fn prepared_simplex_proposal(
         let hints = (compact_hint, dual_hint, streamed_tried);
         return match later_simplex_lanes(
             generation,
-            (positive, intercept_only),
+            (positive, intercept_only, defer_values),
             config,
             interrupt,
             hints,
@@ -2255,7 +2270,7 @@ type SimplexHints<'h> = (
 /// registered order; the streamed compact retry runs only after all of them.
 fn later_simplex_lanes(
     generation: &PreparedPpmlModelGeneration,
-    (positive, intercept_only): (usize, bool),
+    (positive, intercept_only, defer_values): (usize, bool, bool),
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     hints: SimplexHints<'_>,
@@ -2270,7 +2285,8 @@ fn later_simplex_lanes(
     if let Some(proof) = positive_rank::deferred_simplex(generation, positive, config, interrupt)? {
         return bind_numerical_proposal(generation, proof).map(Some);
     }
-    streamed::simplex_fallback(generation, config, interrupt, intercept_only, hints)
+    let flags = (intercept_only, defer_values);
+    streamed::simplex_fallback(generation, config, interrupt, flags, hints)
 }
 
 fn prepared_compact_simplex(
@@ -4001,7 +4017,8 @@ fn replay_numerical_no_drop<'a>(
         )?
     } else if observed.method == SeparationMethod::Simplex {
         let hints = (&mut None, &mut None, &mut false);
-        let proposal = prepared_simplex_proposal(generation, config, interrupt, hints)?;
+        let defer = !graph_admitted.projection_refused;
+        let proposal = prepared_simplex_proposal(generation, config, interrupt, hints, defer)?;
         reconcile::candidate(generation, proposal, config, interrupt)?
     } else {
         let raw = bind_numerical_proposal(

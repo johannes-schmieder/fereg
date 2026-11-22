@@ -679,6 +679,7 @@ fn finite_minor_replay_retains_one_ulp_positive_contrast_and_rejects_substitutio
         config,
         &mut |_| Ok(()),
         (&mut None, &mut None, &mut false),
+        true,
     )
     .unwrap();
     assert_eq!(

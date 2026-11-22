@@ -658,6 +658,7 @@ fn independent_certificate_and_commit_token_are_both_required_atomically() {
         config,
         &mut interrupt,
         (&mut None, &mut None, &mut false),
+        true,
     )
     .expect("simplex proposal");
     assert!(!proposal.dropped_original_rows.is_empty());
