@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.8 — 2026-11-22
 
 - Finish Poisson separation on large sparse designs where a separating
   combination of levels from several factors previously left the certificate
