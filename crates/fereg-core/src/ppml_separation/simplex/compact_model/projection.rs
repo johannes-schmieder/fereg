@@ -7,7 +7,7 @@ use crate::error::Result;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 mod streamed;
-pub(super) use streamed::{build_with as streamed_with, row_key, Grow};
+pub(super) use streamed::{build_with as streamed_with, Grow};
 
 pub(super) struct BoundaryCone {
     pub(super) rows: Vec<Vec<f64>>,

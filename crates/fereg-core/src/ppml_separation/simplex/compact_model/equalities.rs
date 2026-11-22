@@ -27,19 +27,32 @@ pub(super) struct Reduced {
     echelon: Echelon,
 }
 
-/// Exact opposite pairs among the distinct rows, each row in at most one.
-fn opposite_pairs(rows: &[Vec<f64>], work: &mut usize) -> Result<Option<Vec<(usize, usize)>>> {
+/// Grid of the pairing key: entries are rounded to about `2^-GRID_BITS`
+/// times the row's largest magnitude, far coarser than projection rounding.
+const GRID_BITS: i32 = 30;
+
+/// Opposite pairs among the distinct rows, each row in at most one: every
+/// entry of `rows[i] + rows[j]` is at most `tolerance` times the larger
+/// magnitude. Rows that are exact negatives in real arithmetic differ here
+/// only by the rounding of their projections, so exact binary64 equality
+/// finds such pairs only by chance. A key on the rounded, negated entries
+/// locates candidates; the entrywise test confirms them. A wrong or missed
+/// pair changes only the proposal: results are checked on the full cone.
+fn opposite_pairs(
+    rows: &[Vec<f64>],
+    tolerance: f64,
+    work: &mut usize,
+) -> Result<Option<Vec<(usize, usize)>>> {
     let mut keys: Vec<(u64, usize)> = Vec::new();
     reserve(&mut keys, rows.len(), "unable to reserve cone row keys")?;
     for (i, row) in rows.iter().enumerate() {
-        let Some(key) = super::projection::row_key(row, work) else {
+        let Some(key) = grid_key(row, 1., work) else {
             return Ok(None);
         };
         keys.push((key, i));
     }
     keys.sort_unstable();
     let dimension = rows.first().map_or(0, Vec::len);
-    let mut negated = fallible_filled(dimension, 0., "unable to reserve negated cone row")?;
     let mut used = fallible_filled(rows.len(), false, "unable to reserve cone pair marks")?;
     let mut pairs = Vec::new();
     for (i, row) in rows.iter().enumerate() {
@@ -47,23 +60,25 @@ fn opposite_pairs(rows: &[Vec<f64>], work: &mut usize) -> Result<Option<Vec<(usi
         if used[i] || row.iter().all(|&v| v == 0.) {
             continue;
         }
-        for (value, &v) in negated.iter_mut().zip(row) {
-            *value = if v == 0. { 0. } else { -v };
-        }
-        let Some(key) = super::projection::row_key(&negated, work) else {
+        let Some(key) = grid_key(row, -1., work) else {
             return Ok(None);
         };
         let start = keys.partition_point(|&(k, _)| k < key);
-        let found = keys[start..]
-            .iter()
-            .take_while(|&&(k, _)| k == key)
-            .map(|&(_, j)| j)
-            .find(|&j| !used[j] && j != i && rows[j] == negated);
-        if let Some(j) = found {
+        let mut found = None;
+        for &(_, j) in keys[start..].iter().take_while(|&&(k, _)| k == key) {
+            if used[j] || j == i {
+                continue;
+            }
             let Some(left) = work.checked_sub(dimension) else {
                 return Ok(None);
             };
             *work = left;
+            if opposite(row, &rows[j], tolerance) {
+                found = Some(j);
+                break;
+            }
+        }
+        if let Some(j) = found {
             used[i] = true;
             used[j] = true;
             pairs
@@ -73,6 +88,45 @@ fn opposite_pairs(rows: &[Vec<f64>], work: &mut usize) -> Result<Option<Vec<(usi
         }
     }
     Ok(Some(pairs))
+}
+
+fn largest(row: &[f64]) -> f64 {
+    row.iter().fold(0_f64, |m, v| m.max(v.abs()))
+}
+
+/// Bucket key of `sign * row` rounded to the row's grid; `None` for a
+/// non-finite entry or a spent allowance. Rounding is symmetric, so a row
+/// and its exact negation get opposite grid values and the same key.
+fn grid_key(row: &[f64], sign: f64, work: &mut usize) -> Option<u64> {
+    *work = work.checked_sub(row.len())?;
+    let scale = largest(row);
+    if !scale.is_finite() {
+        return None;
+    }
+    // The grid is `2^(e - GRID_BITS)` for the binary exponent `e` of the
+    // largest magnitude; entries are scaled by its inverse.
+    let biased = ((scale.to_bits() >> 52) & 0x7ff) as i32;
+    let shift = GRID_BITS - (biased.max(1) - 1023);
+    let mut hash = 0x243f_6a88_85a3_08d3_u64;
+    for &value in row {
+        let level = power_of_two_scaled(sign * value, shift).round();
+        let bits = if level == 0. { 0 } else { level.to_bits() };
+        hash = (hash ^ bits).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+        hash ^= hash >> 29;
+    }
+    Some(hash)
+}
+
+/// `value * 2^shift` in two exact power-of-two steps, each factor finite and
+/// nonzero for every shift a binary64 exponent can produce.
+fn power_of_two_scaled(value: f64, shift: i32) -> f64 {
+    let half = shift / 2;
+    value * (2_f64).powi(half) * (2_f64).powi(shift - half)
+}
+
+fn opposite(a: &[f64], b: &[f64], tolerance: f64) -> bool {
+    let bound = tolerance * largest(a).max(largest(b));
+    a.iter().zip(b).all(|(&x, &y)| (x + y).abs() <= bound)
 }
 
 /// The reduction, or `None` when there is no equality or a bound refuses it;
@@ -90,11 +144,17 @@ pub(super) fn reduce(
     if dimension == 0 || basis.len() != dimension || cone.groups.len() != cone.rows.len() {
         return Ok(None);
     }
-    let Some(pairs) = opposite_pairs(&cone.rows, &mut work)? else {
+    let Some(pairs) = opposite_pairs(&cone.rows, tolerance, &mut work)? else {
         trace_refusal("equality_pairs_work", cone.rows.len(), stage_work);
         return Ok(None);
     };
     if pairs.is_empty() {
+        if crate::diagnostics::solver_trace_enabled() {
+            eprintln!(
+                "FEREG_SOLVER_TRACE|phase=cone_equalities|distinct={}|pairs=0|dimension={dimension}",
+                cone.rows.len()
+            );
+        }
         return Ok(None);
     }
     let ids: Vec<usize> = (0..pairs.len()).collect();
@@ -329,6 +389,40 @@ mod tests {
             let total: f64 = rows.iter().zip(&completed).map(|(row, w)| w * row[k]).sum();
             assert!(total.abs() < 1e-12, "axis {k}: {total}");
         }
+    }
+
+    #[test]
+    fn rounded_negatives_pair_and_distant_rows_do_not() {
+        // 0.1 + 0.2 rounds to 0.30000000000000004: the first two rows are
+        // negatives in real arithmetic but not bit for bit.
+        let sum = 0.1_f64 + 0.2;
+        assert_ne!(sum, 0.3);
+        let rows = vec![
+            vec![sum, -0.7, 0.],
+            vec![-0.3, 0.7, 0.],
+            vec![0., 1., 1e-6],
+            vec![0., -1., 0.],
+            vec![-1., -1., -1.],
+        ];
+        let mut work = usize::MAX;
+        let pairs = opposite_pairs(&rows, 1e-10, &mut work).unwrap().unwrap();
+        assert_eq!(pairs, vec![(0, 1)]);
+        let reduction = reduced(&cone(rows));
+        assert_eq!(reduction.rank(), 1);
+        assert_eq!(reduction.basis.len(), 2);
+    }
+
+    #[test]
+    fn exact_negatives_keep_pairing_at_any_magnitude() {
+        let rows = vec![
+            vec![3e-300, -1e-310, 0.],
+            vec![-3e-300, 1e-310, 0.],
+            vec![0., 5e200, -2.],
+            vec![0., -5e200, 2.],
+        ];
+        let mut work = usize::MAX;
+        let pairs = opposite_pairs(&rows, 1e-10, &mut work).unwrap().unwrap();
+        assert_eq!(pairs, vec![(0, 1), (2, 3)]);
     }
 
     #[test]

@@ -1,34 +1,16 @@
 {
   "growth": [
     {
-      "after": 1953,
-      "before": 1920,
+      "after": 1954,
+      "before": 1953,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "Block dual passes and the publication-phase admission branch."
+      "reason": "Pairing candidate scan and confirmation branches."
     },
     {
-      "after": 145729,
-      "before": 144789,
+      "after": 145769,
+      "before": 145729,
       "metric": "fereg-core/production_lines",
-      "reason": "Exact dual by level blocks for one high-cardinality slope effect (block.rs), big-integer border system and scaled weights; early-stopping Chinese remaindering; phase-specific admission of the publication fit's IRLS-only buffers; streamed exact lane after an inconclusive dense phase I."
-    },
-    {
-      "after": 3701,
-      "before": 3642,
-      "metric": "file/crates/fereg-core/src/ppml/memory.rs",
-      "reason": "Publication-phase admission: post_separation flag, irls_buffer_peak, reconstruction helper."
-    },
-    {
-      "after": 1944,
-      "before": 1939,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_estimator.rs",
-      "reason": "Mark the publication fit's plan for phase-specific admission."
-    },
-    {
-      "after": 4779,
-      "before": 4755,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Run the streamed exact lane after an inconclusive dense phase I on slope designs or refused projections."
+      "reason": "Cone equality pairs matched within the projection tolerance (rounded-negation key, entrywise confirmation) instead of bit-for-bit, and a trace line when no pair is found."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -29233,29 +29215,49 @@
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
+            "condition": "opposite ( row , & rows [ j ] , tolerance )",
+            "line": 76
+          },
+          {
             "condition": "dimension == 0 || basis . len ( ) != dimension || cone . groups . len ( ) != cone . rows . len ( )",
-            "line": 90
+            "line": 144
           }
         ],
         "functions": {
           "complete#1": {
-            "line": 224,
+            "line": 284,
             "lines": 30
           },
+          "grid_key#1": {
+            "line": 100,
+            "lines": 19
+          },
+          "largest#1": {
+            "line": 93,
+            "lines": 3
+          },
+          "opposite#1": {
+            "line": 127,
+            "lines": 4
+          },
           "opposite_pairs#1": {
-            "line": 31,
-            "lines": 46
+            "line": 41,
+            "lines": 51
+          },
+          "power_of_two_scaled#1": {
+            "line": 122,
+            "lines": 4
           },
           "rank#1": {
-            "line": 216,
+            "line": 276,
             "lines": 3
           },
           "reduce#1": {
-            "line": 80,
-            "lines": 133
+            "line": 134,
+            "lines": 139
           }
         },
-        "production_lines": 225
+        "production_lines": 265
       },
       "crates/fereg-core/src/ppml_separation/simplex/compact_model/exact_dyadic.rs": {
         "chunk_candidates": [],
@@ -35598,10 +35600,10 @@
       },
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1953,
+        "dispatch_candidates": 1954,
         "files_over_1500": 15,
         "functions_over_150": 54,
-        "production_lines": 145729
+        "production_lines": 145769
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
