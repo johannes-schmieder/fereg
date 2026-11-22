@@ -683,6 +683,7 @@ fn valued_lane_separates_the_hidden_cell_beside_a_continuous_regressor() {
             width,
             row_terms: 7,
             read: &read,
+            blocks: None,
         };
         let mut search = ValuedSearch {
             outcome: &cell.outcome,
@@ -718,6 +719,9 @@ fn valued_lane_separates_the_hidden_cell_beside_a_continuous_regressor() {
             let mut weight = vec![None; n];
             for &(row, k) in &dual.integers {
                 weight[row] = Some(dual.scale.mul_i64(k)?);
+            }
+            for (row, d) in &dual.scaled {
+                weight[*row] = Some(dual.scale.mul(d)?);
             }
             for (row, d) in &dual.basis {
                 weight[*row] = Some(d.clone());

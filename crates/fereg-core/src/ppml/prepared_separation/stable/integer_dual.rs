@@ -100,7 +100,7 @@ pub(super) fn certify_exact(
     dual: &crate::ppml_separation::ExactDual,
 ) -> Result<bool> {
     let outcome = generation.outcome();
-    let listed = dual.integers.len() + dual.basis.len();
+    let listed = dual.listed();
     if dual.scale.signum() <= 0 || listed >= u32::MAX as usize {
         return Ok(false);
     }
@@ -109,33 +109,20 @@ pub(super) fn certify_exact(
         u32::MAX,
         "unable to reserve exact dual index",
     )?;
-    let explicit = dual.basis.iter().map(|(row, _)| *row);
-    let rows = dual.integers.iter().map(|&(row, _)| row).chain(explicit);
-    for (slot, row) in rows.enumerate() {
+    for (slot, row) in dual.rows().enumerate() {
         if row >= outcome.len() || index[row] != u32::MAX {
             return Ok(false);
         }
         index[row] = slot as u32;
     }
-    let split = dual.integers.len();
     for (row, &y) in outcome.iter().enumerate() {
-        let slot = index[row] as usize;
-        let positive = match index[row] {
-            u32::MAX => false,
-            _ if slot < split => dual.integers[slot].1 >= 1,
-            _ => dual.basis[slot - split].1.signum() > 0,
-        };
+        let positive = index[row] != u32::MAX && dual.positive(index[row] as usize);
         if y == 0. && !positive {
             return Ok(false);
         }
     }
     let fit = generation.fit_view();
-    let all = || {
-        dual.integers
-            .iter()
-            .map(|&(row, _)| row)
-            .chain(dual.basis.iter().map(|(row, _)| *row))
-    };
+    let all = || dual.rows();
     // One term list, sized once by the listed rows, serves every moment.
     let mut terms: Vec<(usize, i64, i32)> = Vec::new();
     terms
@@ -191,7 +178,7 @@ fn exact_zero_moment(
     value: &dyn Fn(usize) -> Result<f64>,
 ) -> Result<bool> {
     use crate::ppml_separation::Big;
-    let split = dual.integers.len();
+    let (integers, split) = (dual.integers.len(), dual.integers.len() + dual.scaled.len());
     terms.clear();
     for (position, row) in rows.enumerate() {
         crate::interrupt::row_checkpoint(position)?;
@@ -220,10 +207,14 @@ fn exact_zero_moment(
     let (low_integer, low_explicit) = (low(false), low(true));
     let (mut integer, mut explicit) = (Big::zero(), Big::zero());
     for &(slot, m, e) in terms.iter() {
-        if slot < split {
+        if slot < integers {
             let k = i128::from(dual.integers[slot].1) * i128::from(m);
             let shift = (e - low_integer.unwrap_or(e)) as u32;
             integer = integer.add(&Big::from_i128(k)?.shl(shift)?)?;
+        } else if slot < split {
+            let shift = (e - low_integer.unwrap_or(e)) as u32;
+            let term = dual.scaled[slot - integers].1.mul_i64(m)?.shl(shift)?;
+            integer = integer.add(&term)?;
         } else {
             let shift = (e - low_explicit.unwrap_or(e)) as u32;
             explicit = explicit.add(&dual.basis[slot - split].1.mul_i64(m)?.shl(shift)?)?;

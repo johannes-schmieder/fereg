@@ -387,6 +387,7 @@ fn valued_lane(
         width,
         row_terms,
         read: &read,
+        blocks: raw.slope_blocks(),
     };
     let mut admission = primal::SparseProofAdmission::new_with_initial(
         generation,

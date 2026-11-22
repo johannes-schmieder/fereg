@@ -115,6 +115,27 @@ impl<'a> RawRows<'a> {
         self.model.outcome().len()
     }
 
+    /// The absorbed effect with slopes and the most level coordinates, as
+    /// the block layout of the exact dual by levels (`None` without slopes).
+    pub(super) fn slope_blocks(&self) -> Option<crate::ppml_separation::Blocks<'a>> {
+        let mut base = 0;
+        let mut best: Option<crate::ppml_separation::Blocks<'a>> = None;
+        for block in &self.blocks {
+            let channels = usize::from(block.intercept) + block.slopes.len();
+            let size = channels * block.levels;
+            if !block.slopes.is_empty() && best.is_none_or(|b| b.channels * b.levels < size) {
+                best = Some(crate::ppml_separation::Blocks {
+                    base,
+                    channels,
+                    levels: block.levels,
+                    codes: block.codes,
+                });
+            }
+            base += size;
+        }
+        best
+    }
+
     pub(super) fn value(&self, row: usize, column: usize) -> Result<f64> {
         let finite = self.model.model().columns.len();
         if column < finite {

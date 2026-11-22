@@ -135,6 +135,62 @@ fn sparse_proofs_charge_only_the_active_phase_and_reuse_released_capacity() {
 }
 
 #[test]
+fn publication_admits_irls_buffers_against_their_own_phases() {
+    let shape = dimensions();
+    let required = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+    let inventory = required.fast;
+    let usable = inventory.peak_bytes + 4096;
+    let available = usable + MINIMUM_HEADROOM_BYTES.max((usable - 1) / 4);
+    let plan = plan_ppml_memory(
+        shape,
+        PpmlMemoryConfig {
+            requested: MemoryMode::Fast,
+            available_bytes: Some(available),
+            ..PpmlMemoryConfig::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(plan.usable_bytes, Some(usable));
+    let irls = [
+        inventory.iteration_peak_bytes,
+        inventory.weight_response_refresh_peak_bytes,
+        inventory.post_solve_peak_bytes,
+        inventory.objective_line_search_peak_bytes,
+        inventory.strict_final_peak_bytes,
+    ]
+    .into_iter()
+    .max()
+    .unwrap();
+    let preparation =
+        inventory.preparation_peak_bytes - inventory.preparation_membership_scratch_bytes;
+    // Before separation ends the IRLS-only buffers stay charged on top of
+    // the all-phase peak, exactly as before.
+    let mut before = plan;
+    assert!(before.admit_reusable_projection(4096));
+    assert!(!before.admit_reusable_projection(4097));
+    assert!(plan.with_solver_workspace(4097).is_err());
+    // The publication fit charges them on top of the phases they live in.
+    let publication = plan.for_publication();
+    let room = usable - irls.max(preparation);
+    let mut after = publication;
+    assert!(after.admit_reusable_projection(room));
+    assert!(!after.admit_reusable_projection(room + 1));
+    assert!(after.selected_bytes() <= usable);
+    for phase in PPML_PHASES {
+        assert!(
+            after.modeled_phase_peak_bytes(phase) <= after.selected_bytes(),
+            "{phase:?}"
+        );
+    }
+    let solver = publication.with_solver_workspace(usable - irls).unwrap();
+    assert!(solver.selected_bytes() <= usable);
+    assert!(publication
+        .with_solver_workspace(usable - irls + 1)
+        .is_err());
+    assert_eq!(solver.solver_workspace_headroom(), Some(0));
+}
+
+#[test]
 fn membership_scratch_preserves_required_routes_and_later_workspace_admission() {
     let mut shape = dimensions();
     // Force preparation to determine the required peak. This makes any

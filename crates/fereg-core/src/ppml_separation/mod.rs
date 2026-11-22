@@ -14,7 +14,7 @@ pub(crate) use simplex::{
     CompactInput, CompactModel, CompactWork, ExactDual, StreamedEffect, ValuedDesign, ValuedModel,
     ValuedSearch, Verifiers, WideRay,
 };
-pub(crate) use simplex::{exact_dual_terminal, exact_dyadic_dual};
+pub(crate) use simplex::{exact_dual_terminal, exact_dyadic_dual, Blocks};
 
 pub(crate) use prepared_coordinator::{
     PreparedSeparationCascade, PreparedSeparationCoordinator, PreparedSeparationRebuilder,

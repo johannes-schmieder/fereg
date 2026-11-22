@@ -396,6 +396,55 @@ impl Factor {
 pub(super) struct System {
     pub(super) rows: Vec<Vec<(u32, i64, u32)>>,
     pub(super) top: u32,
+    /// Rows with arbitrary integer entries, used instead of `rows` when
+    /// nonempty (the block dual's border system).
+    pub(super) wide: Vec<Vec<(u32, Big)>>,
+}
+
+impl System {
+    pub(super) fn dyadic(rows: Vec<Vec<(u32, i64, u32)>>, top: u32) -> Self {
+        Self {
+            rows,
+            top,
+            wide: Vec::new(),
+        }
+    }
+
+    pub(super) fn len(&self) -> usize {
+        if self.wide.is_empty() {
+            self.rows.len()
+        } else {
+            self.wide.len()
+        }
+    }
+
+    fn row_lengths(&self) -> impl Iterator<Item = usize> + '_ {
+        let dyadic = self.wide.is_empty();
+        let n = self.len();
+        (0..n).map(move |k| {
+            if dyadic {
+                self.rows[k].len()
+            } else {
+                self.wide[k].len()
+            }
+        })
+    }
+
+    fn fill(&self, field: Field, powers: &[u64], residues: &mut [Vec<(u32, u64)>]) {
+        if self.wide.is_empty() {
+            for (out, row) in residues.iter_mut().zip(&self.rows) {
+                for (slot, &(c, m, k)) in out.iter_mut().zip(row) {
+                    *slot = (c, field.mul(field.signed(m), powers[k as usize]));
+                }
+            }
+        } else {
+            for (out, row) in residues.iter_mut().zip(&self.wide) {
+                for (slot, (c, v)) in out.iter_mut().zip(row) {
+                    *slot = (*c, field.big(v));
+                }
+            }
+        }
+    }
 }
 
 /// Storage and work of one exact certificate stage.
@@ -439,13 +488,13 @@ pub(super) fn crt_solve(
     budget: &mut Budget<'_>,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<std::result::Result<(Big, Vec<Big>), &'static str>> {
-    let r = system.rows.len();
+    let r = system.len();
     if !bits.is_finite() || bits > 1e7 {
         return Ok(Err("exact_bits_limit"));
     }
     let needed = ((bits + 2.) / 61.).ceil() as usize;
     // Residue rows, final values and the modulus are held at once.
-    let entries: usize = system.rows.iter().map(Vec::len).sum();
+    let entries: usize = system.row_lengths().sum();
     let words = (r + 1)
         .saturating_mul(needed + 1)
         .saturating_add(entries.saturating_mul(4))
@@ -455,9 +504,9 @@ pub(super) fn crt_solve(
     }
     let mut residues: Vec<Vec<(u32, u64)>> = Vec::new();
     reserve(&mut residues, r, "unable to reserve exact residues")?;
-    for row in &system.rows {
+    for len in system.row_lengths() {
         residues.push(fallible_filled(
-            row.len(),
+            len,
             (0u32, 0u64),
             "unable to reserve exact residues",
         )?);
@@ -470,7 +519,7 @@ pub(super) fn crt_solve(
     let mut values = fallible_filled(r + 1, Big::zero(), "unable to reserve exact values")?;
     let mut modulus = Big::from_i128(1)?;
     let mut t = fallible_filled(r, 0u64, "unable to reserve exact right side")?;
-    let (mut used, mut skipped) = (0usize, 0usize);
+    let (mut used, mut skipped, mut stabilized) = (0usize, 0usize, false);
     for field in primes() {
         if used == needed {
             break;
@@ -486,11 +535,7 @@ pub(super) fn crt_solve(
         for k in 1..powers.len() {
             powers[k] = field.add(powers[k - 1], powers[k - 1]);
         }
-        for (out, row) in residues.iter_mut().zip(&system.rows) {
-            for (slot, &(c, m, k)) in out.iter_mut().zip(row) {
-                *slot = (c, field.mul(field.signed(m), powers[k as usize]));
-            }
-        }
+        system.fill(field, &powers, &mut residues);
         if !budget.charge(entries.saturating_mul(2).saturating_add(powers.len())) {
             return Ok(Err("exact_solve_work"));
         }
@@ -518,18 +563,34 @@ pub(super) fn crt_solve(
         ) {
             return Ok(Err("exact_solve_work"));
         }
+        // Symmetric Garner steps keep every value in (-M/2, M/2]. Once a
+        // whole prime leaves every value unchanged the values are the
+        // integers sought unless all r + 1 residues agreed by chance
+        // (probability below p^-(r+1)); the caller's exact check decides
+        // in any case. The Hadamard bound only caps the prime count.
         let inverse = field.inverse(field.big(&modulus));
+        let mut unchanged = used > 0;
         for (k, value) in values.iter_mut().enumerate() {
             let target = if k < r { field.mul(det, t[k]) } else { det };
             let step = field.mul(field.sub(target, field.big(value)), inverse);
             if step != 0 {
-                *value = value.add(&modulus.mul_i64(step as i64)?)?;
+                unchanged = false;
+                let signed = if step > field.p / 2 {
+                    step as i64 - field.p as i64
+                } else {
+                    step as i64
+                };
+                *value = value.add(&modulus.mul_i64(signed)?)?;
             }
         }
         modulus = modulus.mul_i64(field.p as i64)?;
         used += 1;
+        if unchanged {
+            stabilized = true;
+            break;
+        }
     }
-    if used < needed {
+    if used < needed && !stabilized {
         return Ok(Err("exact_primes_exhausted"));
     }
     let half = modulus.half()?;
@@ -578,14 +639,14 @@ mod tests {
     #[test]
     fn sparse_factor_solves_both_systems() {
         // A = [[2,1,0],[0,3,1],[1,0,4]], b = [1,2,3].
-        let system = System {
-            rows: vec![
+        let system = System::dyadic(
+            vec![
                 vec![(0, 1, 1), (1, 1, 0)],
                 vec![(1, 3, 0), (2, 1, 0)],
                 vec![(0, 1, 0), (2, 1, 2)],
             ],
-            top: 2,
-        };
+            2,
+        );
         let rhs: Vec<Big> = [1, 2, 3]
             .iter()
             .map(|&v| Big::from_i128(v).unwrap())

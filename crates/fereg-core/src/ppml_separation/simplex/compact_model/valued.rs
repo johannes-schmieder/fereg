@@ -28,6 +28,9 @@ pub(crate) struct ValuedDesign<'r> {
     /// Upper bound on emitted coordinates per row, for work accounting.
     pub(crate) row_terms: usize,
     pub(crate) read: RawReader<'r>,
+    /// The high-cardinality absorbed slope effect's coordinates, for the
+    /// exact dual by level blocks.
+    pub(crate) blocks: Option<super::Blocks<'r>>,
 }
 
 pub(crate) enum ValuedModel {
@@ -730,10 +733,21 @@ impl ValuedSearch<'_, '_> {
     ) -> Result<Option<super::CompactModel>> {
         let (read, width) = (self.design.read, self.design.width);
         let stage = self.work.stage;
+        let blocks = self.design.blocks;
         let mut admit = |words: usize| self.require(words, grow);
-        let built = super::exact_dyadic::exact_dual(
-            read, width, sets, target, stage, &mut admit, interrupt,
-        )?;
+        // When the slope effect's level coordinates dominate, its levels are
+        // solved one by one (no global determinant); otherwise, or if that
+        // fails, the general exact dual.
+        let mut built = Err("block_absent");
+        if let Some(blocks) = blocks.filter(|b| 2 * b.channels * b.levels >= width) {
+            let shape = (read, width, blocks);
+            built = super::exact_dyadic::block_dual(shape, sets, stage, &mut admit, interrupt)?;
+        }
+        if built.is_err() {
+            built = super::exact_dyadic::exact_dual(
+                read, width, sets, target, stage, &mut admit, interrupt,
+            )?;
+        }
         let dual = match built {
             Ok(dual) => dual,
             Err(reason) => {
@@ -742,12 +756,9 @@ impl ValuedSearch<'_, '_> {
             }
         };
         // The dual itself and the exact check (row index, one term list).
-        let listed = dual.integers.len() + dual.basis.len();
+        let listed = dual.listed();
         let check = dual
-            .basis
-            .iter()
-            .map(|(_, d)| d.limbs().len() + 4)
-            .sum::<usize>()
+            .limbs()
             .saturating_add(listed.saturating_mul(5))
             .saturating_add(self.outcome.len() / 2 + 1);
         if !self.require(check, grow) {
@@ -759,8 +770,8 @@ impl ValuedSearch<'_, '_> {
             eprintln!(
                 "FEREG_SOLVER_TRACE|phase=valued_exact_dual|target={target}|basis={}|rows={}|bits={}|certified={}",
                 dual.basis.len(),
-                dual.basis.len() + dual.integers.len(),
-                dual.basis.iter().map(|(_, d)| d.bits()).max().unwrap_or(0),
+                dual.listed(),
+                dual.basis.iter().chain(&dual.scaled).map(|(_, d)| d.bits()).max().unwrap_or(0),
                 u8::from(certified)
             );
         }

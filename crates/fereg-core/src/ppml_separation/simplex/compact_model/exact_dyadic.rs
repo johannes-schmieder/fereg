@@ -16,8 +16,10 @@
 //! positive and the caller's exact check finds every model moment exactly
 //! zero; no tolerance, rank threshold or conditioning assumption enters.
 mod big;
+mod block;
 mod modular;
 pub(crate) use big::Big;
+pub(crate) use block::{block_dual, Blocks};
 
 use modular::{crt_solve, primes, Budget, Elimination, Field, System};
 
@@ -33,12 +35,50 @@ const WEIGHT_BITS: i32 = 52;
 const TOP_EXPONENT: u32 = 1 << 14;
 
 /// An exact Farkas dual in compact form: weight `scale * k` on each
-/// `integers` row, an explicit weight on each `basis` row, zero elsewhere.
+/// `integers` row, `scale * v` on each `scaled` row, an explicit weight on
+/// each `basis` row, zero elsewhere. Slots number the rows in that order.
 #[derive(Debug)]
 pub(crate) struct ExactDual {
     pub(crate) scale: Big,
     pub(crate) integers: Vec<(usize, i64)>,
+    pub(crate) scaled: Vec<(usize, Big)>,
     pub(crate) basis: Vec<(usize, Big)>,
+}
+
+impl ExactDual {
+    pub(crate) fn listed(&self) -> usize {
+        self.integers.len() + self.scaled.len() + self.basis.len()
+    }
+
+    /// Listed rows in slot order.
+    pub(crate) fn rows(&self) -> impl Iterator<Item = usize> + '_ {
+        let integers = self.integers.iter().map(|&(row, _)| row);
+        let scaled = self.scaled.iter().map(|(row, _)| *row);
+        integers
+            .chain(scaled)
+            .chain(self.basis.iter().map(|(row, _)| *row))
+    }
+
+    /// Whether slot `slot`'s weight is strictly positive (`scale > 0`).
+    pub(crate) fn positive(&self, slot: usize) -> bool {
+        let (i, s) = (self.integers.len(), self.scaled.len());
+        if slot < i {
+            self.integers[slot].1 >= 1
+        } else if slot < i + s {
+            self.scaled[slot - i].1.signum() > 0
+        } else {
+            self.basis[slot - i - s].1.signum() > 0
+        }
+    }
+
+    /// Bytes-free size of the explicit big weights, in limbs.
+    pub(crate) fn limbs(&self) -> usize {
+        self.scaled
+            .iter()
+            .chain(&self.basis)
+            .map(|(_, d)| d.limbs().len() + 4)
+            .sum()
+    }
 }
 
 /// A finite binary64 as `m 2^e` with `m` odd, or `(0, 0)`.
@@ -468,7 +508,7 @@ fn transposed_system(
     if top > TOP_EXPONENT {
         return Ok(Err("exact_exponent_range"));
     }
-    Ok(Ok((System { rows, top }, rhs)))
+    Ok(Ok((System::dyadic(rows, top), rhs)))
 }
 
 /// Candidate rows for the basis: positive pivots, then boundary rows by
@@ -568,6 +608,7 @@ pub(crate) fn exact_dual(
     Ok(Ok(ExactDual {
         scale: det,
         integers,
+        scaled: Vec::new(),
         basis,
     }))
 }
@@ -617,7 +658,7 @@ fn direct_system(
         rows.push(row);
         rhs.push(sum.negated()?);
     }
-    Ok(Ok((System { rows, top }, rhs)))
+    Ok(Ok((System::dyadic(rows, top), rhs)))
 }
 
 /// An exact integer null vector of the binding rows on the active
@@ -763,6 +804,9 @@ mod tests {
         for &(row, k) in &dual.integers {
             weight[row] = Some(dual.scale.mul_i64(k).unwrap());
         }
+        for (row, d) in &dual.scaled {
+            weight[*row] = Some(dual.scale.mul(d).unwrap());
+        }
         for (row, d) in &dual.basis {
             weight[*row] = Some(d.clone());
         }
@@ -867,6 +911,72 @@ mod tests {
             }
             assert_eq!(sum.signum(), if i == 0 { 0 } else { -1 }, "row {i}");
         }
+    }
+
+    #[test]
+    fn block_dual_balances_levels_and_border_exactly() {
+        // (x, w, level, z, positive): border coordinates 0 (x) and 7 (w);
+        // level l, channel c is coordinate 1 + 2 l + c (intercept, slope z).
+        let data: [(f64, f64, u32, f64, bool); 14] = [
+            (0., 1., 0, 0.5, true),
+            (1., 0., 0, -0.3, true),
+            (1., 1., 0, 0.9, true),
+            (1., 0., 0, 0.2, false),
+            (0., 0.5, 0, 1.1, false),
+            (0., 0., 1, 0.25, true),
+            (1., 1., 1, -0.75, true),
+            (0.5, 1., 1, 0.1, true),
+            (1., 0., 1, 0.6, false),
+            (1., 0., 2, 0.3, true),
+            (0., 1., 2, 1.5, true),
+            (1., 1., 2, -0.2, true),
+            (0., 0., 2, 0.7, false),
+            (1., 1., 2, 0.05, false),
+        ];
+        let rows: Vec<Vec<(usize, f64)>> = data
+            .iter()
+            .map(|&(x, w, l, z, _)| {
+                let l = l as usize;
+                vec![(0, x), (7, w), (1 + 2 * l, 1.), (2 + 2 * l, z)]
+            })
+            .collect();
+        let codes: Vec<u32> = data.iter().map(|d| d.2).collect();
+        let read = |i: usize, f: &mut dyn FnMut(usize, f64)| -> Result<()> {
+            for &(j, v) in &rows[i] {
+                f(j, v);
+            }
+            Ok(())
+        };
+        let positives: Vec<usize> = (0..data.len()).filter(|&i| data[i].4).collect();
+        let boundary: Vec<usize> = (0..data.len()).filter(|&i| !data[i].4).collect();
+        let weights = [1.0, 0.7, 1.3, 0.4, 2.0];
+        let blocks = Blocks {
+            base: 1,
+            channels: 2,
+            levels: 3,
+            codes: &codes,
+        };
+        let dual = block_dual(
+            (&read, 8, blocks),
+            (&boundary, &weights, &positives),
+            usize::MAX,
+            &mut |_| true,
+            &mut || Ok(()),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(dual.scale.signum(), 1);
+        let mut weight = vec![None; data.len()];
+        for (row, d) in &dual.scaled {
+            weight[*row] = Some(dual.scale.mul(d).unwrap());
+        }
+        for (row, d) in &dual.basis {
+            weight[*row] = Some(d.clone());
+        }
+        for &i in &boundary {
+            assert_eq!(weight[i].as_ref().map(Big::signum), Some(1), "row {i}");
+        }
+        assert!(moments(&rows, &dual, 8).iter().all(Big::is_zero));
     }
 
     #[test]

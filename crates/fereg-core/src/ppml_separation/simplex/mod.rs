@@ -15,7 +15,7 @@ pub(crate) use compact_model::{
     CompactWork, ExactDual, StreamedEffect, ValuedDesign, ValuedModel, ValuedSearch, Verifiers,
     WideRay,
 };
-pub(crate) use compact_model::{exact_dual_terminal, exact_dyadic_dual};
+pub(crate) use compact_model::{exact_dual_terminal, exact_dyadic_dual, Blocks};
 pub(crate) use exact_terminal::raw_positive_dual;
 mod nullspace;
 mod tableau;

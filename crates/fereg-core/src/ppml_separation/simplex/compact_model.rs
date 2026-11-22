@@ -34,7 +34,7 @@ pub(crate) enum CompactModel {
 mod equalities;
 mod exact_dyadic;
 mod revised;
-pub(crate) use exact_dyadic::{exact_dual as exact_dyadic_dual, Big, ExactDual, WideRay};
+pub(crate) use exact_dyadic::{exact_dual as exact_dyadic_dual, Big, Blocks, ExactDual, WideRay};
 mod grouped;
 pub(crate) use grouped::CompactInput;
 mod positive_rows;

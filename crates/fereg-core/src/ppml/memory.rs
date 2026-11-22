@@ -805,6 +805,12 @@ pub struct PpmlMemoryPlan {
     pub reusable_certificate_bytes: u128,
     /// Optional coefficient-space slope workspace, sharing the linear-session lifetime.
     pub reusable_slope_bytes: u128,
+    /// The publication fit after separation: the IRLS-only buffers (solver
+    /// workspace and reusable banks) are admitted against the phases in
+    /// which they live (preparation less its scratch, and the IRLS phases),
+    /// not against the separation peak, which is over. Exploration fits run
+    /// inside separation and keep the all-phase rule.
+    pub(crate) post_separation: bool,
 }
 
 const fn const_max(left: u128, right: u128) -> u128 {
@@ -861,21 +867,82 @@ impl PpmlMemoryPlan {
         }
     }
 
+    /// The plan for the publication fit after separation (see
+    /// `post_separation`).
+    #[must_use]
+    pub(crate) const fn for_publication(mut self) -> Self {
+        self.post_separation = true;
+        self
+    }
+
+    const fn reusable_bytes(self) -> u128 {
+        self.reusable_projection_bytes
+            .saturating_add(self.reusable_certificate_bytes)
+            .saturating_add(self.reusable_slope_bytes)
+    }
+
+    /// The modeled peak of the phases that hold the IRLS-only buffers, with
+    /// `solver` and `reusable` bytes of them: preparation less its
+    /// generation-zero scratch plus the reusable banks (as in
+    /// `modeled_phase_peak_bytes`), and every IRLS phase plus both. Before
+    /// separation has ended the base is the all-phase required peak.
+    const fn irls_buffer_peak(self, solver: u128, reusable: u128) -> u128 {
+        let inventory = self.selected_inventory();
+        if !self.post_separation {
+            return const_max(
+                self.required_peak_bytes
+                    .saturating_add(solver)
+                    .saturating_add(reusable),
+                inventory.preparation_peak_bytes,
+            );
+        }
+        let preparation = const_max(
+            inventory
+                .preparation_peak_bytes
+                .saturating_sub(inventory.preparation_membership_scratch_bytes)
+                .saturating_add(reusable),
+            inventory.preparation_peak_bytes,
+        );
+        let irls = const_max(
+            const_max(
+                inventory.iteration_peak_bytes,
+                inventory.weight_response_refresh_peak_bytes,
+            ),
+            const_max(
+                const_max(
+                    inventory.post_solve_peak_bytes,
+                    inventory.objective_line_search_peak_bytes,
+                ),
+                inventory.strict_final_peak_bytes,
+            ),
+        );
+        const_max(
+            preparation,
+            irls.saturating_add(solver).saturating_add(reusable),
+        )
+    }
+
     #[must_use]
     pub const fn selected_bytes(self) -> u128 {
         let ordinary = self
             .solver_workspace_bytes
-            .saturating_add(self.reusable_projection_bytes)
-            .saturating_add(self.reusable_certificate_bytes)
-            .saturating_add(self.reusable_slope_bytes);
+            .saturating_add(self.reusable_bytes());
         let separate = self.separation_projection_bytes;
-        let later = self
-            .required_peak_bytes
-            .saturating_add(if ordinary > separate {
-                ordinary
-            } else {
-                separate
-            });
+        let later = if self.post_separation {
+            // The detector projection belongs to separation; the IRLS-only
+            // buffers to the phases after it.
+            const_max(
+                self.required_peak_bytes.saturating_add(separate),
+                self.irls_buffer_peak(self.solver_workspace_bytes, self.reusable_bytes()),
+            )
+        } else {
+            self.required_peak_bytes
+                .saturating_add(if ordinary > separate {
+                    ordinary
+                } else {
+                    separate
+                })
+        };
         let later = const_max(later, self.sparse_peak());
         let preparation = self.selected_inventory().preparation_peak_bytes;
         if later > preparation {
@@ -971,20 +1038,19 @@ impl PpmlMemoryPlan {
 
     // Charges contain the other two optional buffers and the proposed replacement.
     fn reusable_workspaces_fit(&self, charges: [u128; 3]) -> bool {
-        let Some(base) = self
-            .required_peak_bytes
-            .checked_add(self.solver_workspace_bytes)
-        else {
+        let Some(reusable) = charges.into_iter().try_fold(0u128, u128::checked_add) else {
             return false;
         };
-        charges
-            .into_iter()
-            .try_fold(base, u128::checked_add)
-            .is_some_and(|peak| {
-                self.usable_bytes.is_none_or(|usable| {
-                    peak.max(self.selected_inventory().preparation_peak_bytes) <= usable
-                })
-            })
+        if self
+            .required_peak_bytes
+            .checked_add(self.solver_workspace_bytes)
+            .and_then(|n| n.checked_add(reusable))
+            .is_none()
+        {
+            return false;
+        }
+        let peak = self.irls_buffer_peak(self.solver_workspace_bytes, reusable);
+        self.usable_bytes.is_none_or(|usable| peak <= usable)
     }
 
     /// Optional storage must never make an otherwise affordable fit fail.
@@ -1039,6 +1105,9 @@ impl PpmlMemoryPlan {
     /// The peak [`Self::with_solver_workspace`] admitted against the usable
     /// bytes: the required peak, the solver workspace and the reusable banks.
     pub(crate) const fn solver_workspace_peak(self) -> u128 {
+        if self.post_separation {
+            return self.irls_buffer_peak(self.solver_workspace_bytes, self.reusable_bytes());
+        }
         self.required_peak_bytes
             .saturating_add(self.solver_workspace_bytes)
             .saturating_add(self.reusable_projection_bytes)
@@ -1061,14 +1130,13 @@ impl PpmlMemoryPlan {
     }
 
     pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
-        let peak = self
-            .required_peak_bytes
+        self.required_peak_bytes
             .checked_add(bytes)
             .and_then(|n| n.checked_add(self.reusable_projection_bytes))
             .and_then(|n| n.checked_add(self.reusable_certificate_bytes))
             .and_then(|n| n.checked_add(self.reusable_slope_bytes))
-            .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?
-            .max(self.selected_inventory().preparation_peak_bytes);
+            .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?;
+        let peak = self.irls_buffer_peak(bytes, self.reusable_bytes());
         if self.usable_bytes.is_some_and(|usable| peak > usable) {
             return Err(allocation(format!(
                 "public PPML FE solver workspace does not fit the selected memory plan: solver_workspace={bytes}, execution={}, usable={}",
@@ -1276,6 +1344,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         solver_workspace_bytes: 0,
         separation_projection_bytes: 0,
         sparse_proof_peaks: [0; 3],
+        post_separation: false,
         reusable_projection_bytes: 0,
         reusable_certificate_bytes: 0,
         reusable_slope_bytes: 0,
@@ -4285,14 +4354,11 @@ impl PpmlMemoryTelemetry {
         Ok(())
     }
 
-    pub(crate) fn validate(&self) -> Result<()> {
-        if self.effective_threads == 0 || self.plan.dimensions.threads != self.effective_threads {
-            return Err(invalid_argument(
-                "PPML memory telemetry has inconsistent effective threads",
-            ));
-        }
+    /// A fresh preflight of the plan's dimensions with its final dimensions,
+    /// publication state and solver workspace replayed.
+    fn reconstructed_plan(&self) -> Result<PpmlMemoryPlan> {
         let diagnostic_capacity = self.plan.estimate_diagnostic_capacity();
-        let mut reconstructed = plan_ppml_memory(
+        let mut plan = plan_ppml_memory(
             self.plan.preflight_dimensions,
             PpmlMemoryConfig {
                 requested: self.plan.requested,
@@ -4303,8 +4369,21 @@ impl PpmlMemoryTelemetry {
                 diagnostic_capacity,
             },
         )?
-        .with_final_dimensions(self.plan.dimensions)?
-        .with_solver_workspace(self.plan.solver_workspace_bytes)?;
+        .with_final_dimensions(self.plan.dimensions)?;
+        if self.plan.post_separation {
+            plan = plan.for_publication();
+        }
+        plan.with_solver_workspace(self.plan.solver_workspace_bytes)
+    }
+
+    pub(crate) fn validate(&self) -> Result<()> {
+        if self.effective_threads == 0 || self.plan.dimensions.threads != self.effective_threads {
+            return Err(invalid_argument(
+                "PPML memory telemetry has inconsistent effective threads",
+            ));
+        }
+        let diagnostic_capacity = self.plan.estimate_diagnostic_capacity();
+        let mut reconstructed = self.reconstructed_plan()?;
         if !reconstructed.admit_separation_projection(self.plan.separation_projection_bytes)
             || !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
             || !reconstructed.admit_reusable_certificate(self.plan.reusable_certificate_bytes)

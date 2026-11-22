@@ -2236,6 +2236,10 @@ fn prepared_simplex_proposal(
         };
     }
     let design = prepared_simplex_design(generation, &topology, columns, cells)?;
+    let intercept_only = topology
+        .effect_specs
+        .iter()
+        .all(|spec| spec.slopes.is_empty());
     drop(topology);
     let mut poll_pivot = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
     let result = model_simplex_interruptible(
@@ -2256,6 +2260,30 @@ fn prepared_simplex_proposal(
         topology_cells,
         result,
     )?;
+    let flags = (intercept_only, projection_refused);
+    let hints = (compact_hint, dual_hint, streamed_tried);
+    dense_or_streamed(generation, config, interrupt, raw, flags, hints)
+}
+
+/// An inconclusive dense phase I leaves slope designs (and designs whose
+/// detector projection was refused) to the streamed exact lane, as
+/// generations beyond the dense allowance get it.
+fn dense_or_streamed(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    raw: DetectionProposal,
+    (intercept_only, projection_refused): (bool, bool),
+    hints: SimplexHints<'_>,
+) -> Result<PreparedNumericalProposal> {
+    if raw.status == MethodStatus::Uncertified && (!intercept_only || projection_refused) {
+        let flags = (intercept_only, projection_refused);
+        if let Some(proof) =
+            streamed::simplex_fallback(generation, config, interrupt, flags, hints)?
+        {
+            return Ok(proof);
+        }
+    }
     bind_numerical_proposal(generation, raw)
 }
 
