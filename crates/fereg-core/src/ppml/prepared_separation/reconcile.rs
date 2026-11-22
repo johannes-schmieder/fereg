@@ -265,6 +265,22 @@ pub(super) fn sparse_ray(
     Ok(proposal)
 }
 
+/// Raw-order wide integer coefficients from the exact dyadic lift; replayed
+/// exactly like the sparse witness before binding.
+pub(super) fn wide_ray(
+    model: &PreparedPpmlModelGeneration,
+    ray: crate::ppml_separation::WideRay,
+    iterations: usize,
+    method: SeparationMethod,
+    config: SeparationConfig,
+) -> Result<Option<PreparedNumericalProposal>> {
+    let mut proposal = bind_witness(model, method, config, primal::Witness::Wide(ray))?;
+    if let Some(proof) = &mut proposal {
+        proof.iterations = iterations;
+    }
+    Ok(proposal)
+}
+
 /// A capped simplex returned only coefficients. Their first original-row
 /// materialization and independent acceptance belong to this IR phase.
 pub(super) fn certify_compact_hint(

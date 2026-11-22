@@ -204,6 +204,14 @@ fn interior<'a>(
     Ok(Err(refined))
 }
 
+/// The exact rational dual certificate of a streamed valued search.
+pub(super) fn certify_exact_dual(
+    generation: &PreparedPpmlModelGeneration,
+    dual: &crate::ppml_separation::ExactDual,
+) -> Result<bool> {
+    integer_dual::certify_exact(generation, dual)
+}
+
 /// What a stalled or spent recurrence needs to switch lanes or stop.
 #[derive(Clone, Copy)]
 struct Exit<'g, 'a>(
@@ -227,7 +235,19 @@ fn switch_or_stop(
         }
     }
     let Exit(generation, _, _, admission) = exit;
-    Err(stall.error(generation.generation(), iteration, admission))
+    let mut error = stall.error(generation.generation(), iteration, admission);
+    error.message.push_str(&memory_note(generation));
+    Err(error)
+}
+
+/// The largest exact-lane workspace the memory limit refused on this fit,
+/// as a clause for a final separation error; empty when none was refused.
+pub(super) fn memory_note(generation: &PreparedPpmlModelGeneration) -> String {
+    generation
+        .separation_memory
+        .as_deref()
+        .and_then(|plan| plan.refusal())
+        .map_or_else(String::new, |refusal| format!("; {}", refusal.describe()))
 }
 
 /// One streamed exact lane on this generation, unless a simplex step ran it.

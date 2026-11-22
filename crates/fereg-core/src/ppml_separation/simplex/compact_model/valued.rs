@@ -8,11 +8,14 @@
 //! only through the caller's exact replay of every raw row, and a Farkas
 //! vector is lifted to a physical dual for the requested IR certificate.
 use super::super::verify_indexed_farkas_certificate;
+
+mod revised_cone;
 use super::super::{combine_basis, compact_tableau};
 use super::projection::{self, Grow};
 use super::sparse_echelon::{self, Echelon};
-use super::{fallible_collect, fallible_filled, trace_refusal, CompactWork};
+use super::{fallible_collect, fallible_filled, reserve, trace_refusal, CompactWork};
 use crate::error::{ErrorCode, Result};
+use crate::memory::fallible_copy;
 use crate::ppml::ExactNullspace;
 use crate::ppml_separation::SeparationConfig;
 
@@ -41,10 +44,34 @@ pub(crate) enum ValuedModel {
         coefficients: Vec<f64>,
         iterations: usize,
     },
+    /// A ray beyond 64-bit integers from the exact dyadic lift, replayed
+    /// exactly by the caller.
+    WideDirection {
+        ray: super::WideRay,
+        iterations: usize,
+    },
+    /// A no-separation terminal whose Farkas vector passed the indexed replay
+    /// and whose exact rational dual passed the caller's exact moment check,
+    /// in the form the binary lane returns it.
+    Terminal(super::CompactModel),
 }
 
 /// Exact raw replay of an integer ray: true only for a certified ray.
 pub(crate) type Verify<'v> = &'v mut dyn FnMut(&[i64]) -> Result<bool>;
+
+/// Exact check of an integer dual: every zero row strictly positive and
+/// every model moment exactly zero.
+pub(crate) type DualCheck<'v> = &'v mut dyn FnMut(&super::ExactDual) -> Result<bool>;
+
+/// The caller's exact checks of a proposed ray and of a proposed dual.
+pub(crate) struct Verifiers<'v> {
+    pub(crate) ray: Verify<'v>,
+    pub(crate) wide: WideCheck<'v>,
+    pub(crate) dual: DualCheck<'v>,
+}
+
+/// Exact raw replay of a wide integer ray: true only for a certified ray.
+pub(crate) type WideCheck<'v> = &'v mut dyn FnMut(&super::WideRay) -> Result<bool>;
 
 /// Column-major copy of a dense cone basis: one row's projection visits only
 /// its own terms.
@@ -67,6 +94,17 @@ impl Columns {
             by_column,
             dimension,
         })
+    }
+
+    /// `out_j = sum_k basis_k[j] y_k`.
+    fn combine(&self, y: &[f64], out: &mut [f64]) {
+        let dimension = self.dimension;
+        for (o, column) in out
+            .iter_mut()
+            .zip(self.by_column.chunks_exact(dimension.max(1)))
+        {
+            *o = column.iter().zip(y).map(|(&b, &c)| b * c).sum();
+        }
     }
 
     fn project(
@@ -104,6 +142,11 @@ impl Columns {
 }
 
 /// Pivot counter, interrupt poll and memory request of one search.
+/// Interrupt and storage hooks of the exact dual.
+type ExactHooks<'i, 'g> = (
+    &'i mut dyn FnMut() -> Result<()>,
+    &'g mut dyn FnMut(usize) -> Option<usize>,
+);
 type Hooks<'p, 'i, 'g> = (
     &'p mut usize,
     &'i mut dyn FnMut() -> Result<()>,
@@ -140,7 +183,7 @@ impl ValuedSearch<'_, '_> {
         pivots: &mut usize,
         interrupt: &mut dyn FnMut() -> Result<()>,
         grow: &mut dyn FnMut(usize) -> Option<usize>,
-        verify: Verify<'_>,
+        verify: &mut Verifiers<'_>,
     ) -> Result<Option<ValuedModel>> {
         let (outcome, width) = (self.outcome, self.design.width);
         let positive: Vec<usize> = fallible_collect(
@@ -218,7 +261,7 @@ impl ValuedSearch<'_, '_> {
         representatives: &[usize],
         echelon: &Echelon,
         (pivots, interrupt, grow): Hooks<'_, '_, '_>,
-        verify: Verify<'_>,
+        verify: &mut Verifiers<'_>,
     ) -> Result<Option<ValuedModel>> {
         let outcome = self.outcome;
         let boundary: Vec<usize> = fallible_collect(
@@ -325,7 +368,7 @@ impl ValuedSearch<'_, '_> {
         pivots: &mut usize,
         interrupt: &mut dyn FnMut() -> Result<()>,
         grow: &mut dyn FnMut(usize) -> Option<usize>,
-        verify: Verify<'_>,
+        verify: &mut Verifiers<'_>,
     ) -> Result<Option<ValuedModel>> {
         let (width, dimension) = (self.design.width, basis.len());
         let tolerance = self.config.projection_tolerance;
@@ -334,7 +377,8 @@ impl ValuedSearch<'_, '_> {
             .saturating_add(representatives.len())
             .saturating_add(width);
         let Some(mut cone) = self.project(&mut basis, boundary, fixed, grow)? else {
-            return Ok(None);
+            let sets = (boundary, representatives, echelon);
+            return self.revised_cone(basis, sets, pivots, (interrupt, grow), verify);
         };
         let live = fixed.saturating_add(cone.live_cells);
         let mut reduced = {
@@ -353,6 +397,11 @@ impl ValuedSearch<'_, '_> {
             return Ok(None);
         }
         let retained = reduced.as_ref().map_or(basis.len(), |r| r.basis.len());
+        // Rank of the projected boundary rows: the equality rows and the
+        // retained axes of the cone that phase I searches.
+        let cone_rank = reduced
+            .as_ref()
+            .map_or(retained, |r| r.rank() + r.basis.len());
         let live = live.saturating_add(reduced.as_ref().map_or(0, |r| r.cells));
         let search = reduced.as_ref().map_or(&cone, |r| &r.cone);
         let axes = reduced.as_ref().map_or(retained, |r| r.basis.len());
@@ -406,13 +455,13 @@ impl ValuedSearch<'_, '_> {
                 let basis = reduced.map_or(basis, |r| r.basis);
                 let coefficients = combine_basis(&basis, &coordinates)?;
                 drop(basis);
-                let lifted = self.lift(&coefficients, representatives, iterations, verify)?;
-                Ok(lifted.or(Some(ValuedModel::NumericalDirection {
-                    coefficients,
-                    iterations,
-                })))
+                let sets = (coefficients, representatives, iterations);
+                self.direction_model(sets, (interrupt, grow), verify)
             }
-            Some(compact_tableau::Proposal::PositiveWeights { weights, .. }) => {
+            Some(compact_tableau::Proposal::PositiveWeights {
+                weights,
+                iterations,
+            }) => {
                 let weights = match &reduced {
                     Some(r) => r.complete(&cone, weights)?,
                     None => weights,
@@ -431,9 +480,22 @@ impl ValuedSearch<'_, '_> {
                 )?;
                 drop(cone);
                 drop(dual);
-                if passed.is_none() {
+                let Some(certificate) = passed else {
                     trace_refusal("valued_numerical_farkas", boundary.len(), 0);
                     return Ok(None);
+                };
+                let sets = (boundary, &weights[..], representatives);
+                let target = representatives.len() + cone_rank;
+                let proof = (certificate, iterations);
+                let terminal = self.exact_terminal(
+                    sets,
+                    target,
+                    proof,
+                    (&mut *interrupt, &mut *grow),
+                    verify,
+                )?;
+                if let Some(model) = terminal {
+                    return Ok(Some(ValuedModel::Terminal(model)));
                 }
                 self.dual(boundary, &weights, representatives, echelon, grow)
             }
@@ -536,6 +598,139 @@ impl ValuedSearch<'_, '_> {
         }
         trace_refusal("valued_ray_lift", k, width);
         Ok(None)
+    }
+
+    /// A proposed ray: its small-integer lift, else its exact dyadic lift,
+    /// else the numerical direction for IR.
+    fn direction_model(
+        &mut self,
+        (coefficients, representatives, iterations): (Vec<f64>, &[usize], usize),
+        (interrupt, grow): ExactHooks<'_, '_>,
+        verify: &mut Verifiers<'_>,
+    ) -> Result<Option<ValuedModel>> {
+        let mut lifted = self.lift(&coefficients, representatives, iterations, &mut *verify.ray)?;
+        if lifted.is_none() {
+            lifted = self.wide_lift(
+                (&coefficients, representatives, iterations),
+                (interrupt, grow),
+                &mut *verify.wide,
+            )?;
+        }
+        Ok(lifted.or(Some(ValuedModel::NumericalDirection {
+            coefficients,
+            iterations,
+        })))
+    }
+
+    /// The exact dyadic lift of a ray whose small-integer lift failed: the
+    /// representatives, the zero rows the proposal leaves at zero and the
+    /// remaining positive rows bind it on its support.
+    fn wide_lift(
+        &mut self,
+        (coefficients, representatives, iterations): (&[f64], &[usize], usize),
+        (interrupt, grow): ExactHooks<'_, '_>,
+        verify: WideCheck<'_>,
+    ) -> Result<Option<ValuedModel>> {
+        let width = coefficients.len();
+        let scale = coefficients.iter().map(|v| v.abs()).fold(0., f64::max);
+        if !(scale.is_finite() && scale > 0.) {
+            return Ok(None);
+        }
+        let threshold = self.config.projection_tolerance * scale;
+        let active: Vec<usize> = fallible_collect(
+            (0..width).filter(|&j| coefficients[j].abs() > threshold),
+            width,
+            "unable to reserve wide ray support",
+        )?;
+        let rows = self.outcome.len();
+        let mut binding = fallible_copy(representatives, "unable to reserve wide ray rows")?;
+        let mut positive = Vec::new();
+        for i in 0..rows {
+            crate::interrupt::row_checkpoint(i)?;
+            let list = if self.outcome[i] > 0. {
+                &mut positive
+            } else {
+                let (mut score, mut magnitude) = (0., 0_f64);
+                (self.design.read)(i, &mut |j, v| {
+                    if j < width {
+                        score += v * coefficients[j];
+                        magnitude += (v * coefficients[j]).abs();
+                    }
+                })?;
+                if score.abs() > threshold * magnitude.max(1.) {
+                    continue;
+                }
+                &mut binding
+            };
+            reserve(list, 1, "unable to reserve wide ray rows")?;
+            list.push(i);
+        }
+        reserve(
+            &mut binding,
+            positive.len(),
+            "unable to reserve wide ray rows",
+        )?;
+        binding.extend_from_slice(&positive);
+        drop(positive);
+        let (read, stage) = (self.design.read, self.work.stage);
+        let mut admit = |words: usize| self.require(words, grow);
+        let sets = (&active[..], &binding[..]);
+        let built =
+            super::exact_dyadic::exact_ray(read, coefficients, sets, stage, &mut admit, interrupt)?;
+        let ray = match built {
+            Ok(ray) => ray,
+            Err(reason) => {
+                trace_refusal(reason, active.len(), width);
+                return Ok(None);
+            }
+        };
+        if !verify(&ray)? {
+            trace_refusal("exact_ray_replay", active.len(), width);
+            return Ok(None);
+        }
+        Ok(Some(ValuedModel::WideDirection { ray, iterations }))
+    }
+
+    /// The exact rational dual of an accepted Farkas vector, or `None` when
+    /// it cannot be formed or the caller's exact moment check refuses it.
+    fn exact_terminal(
+        &mut self,
+        sets: (&[usize], &[f64], &[usize]),
+        target: usize,
+        (certificate, iterations): (crate::ppml_separation::SeparationCertificate, usize),
+        (interrupt, grow): ExactHooks<'_, '_>,
+        verify: &mut Verifiers<'_>,
+    ) -> Result<Option<super::CompactModel>> {
+        let (read, width) = (self.design.read, self.design.width);
+        let stage = self.work.stage;
+        let mut admit = |words: usize| self.require(words, grow);
+        let built = super::exact_dyadic::exact_dual(
+            read, width, sets, target, stage, &mut admit, interrupt,
+        )?;
+        let dual = match built {
+            Ok(dual) => dual,
+            Err(reason) => {
+                trace_refusal(reason, target, width);
+                return Ok(None);
+            }
+        };
+        let certified = (verify.dual)(&dual)?;
+        if crate::diagnostics::solver_trace_enabled() {
+            eprintln!(
+                "FEREG_SOLVER_TRACE|phase=valued_exact_dual|target={target}|basis={}|rows={}|bits={}|certified={}",
+                dual.basis.len(),
+                dual.basis.len() + dual.integers.len(),
+                dual.basis.iter().map(|(_, d)| d.bits()).max().unwrap_or(0),
+                u8::from(certified)
+            );
+        }
+        Ok(certified.then(|| {
+            super::terminal(
+                certificate,
+                iterations,
+                "model simplex phase-I infeasibility passed an independent Farkas certificate",
+            )
+        }))
     }
 
     fn dual(

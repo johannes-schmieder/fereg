@@ -214,11 +214,106 @@ fn trace_decline(generation: &PreparedPpmlModelGeneration, reason: &str) {
 
 /// The binary lane when the design is a binary intercept design; otherwise,
 /// or when it declines, the valued lane on the raw reader.
-/// The simplex phase defers designs with non-binary values or absorbed slopes
-/// (outer `None`): the IR step that 0.6.7 uses on them often certifies in a
-/// few projections, and its measured stall runs the valued lane instead. A
-/// binary design declined only for storage still takes the valued lane here.
+/// The simplex phase defers intercept designs with non-binary values (outer
+/// `None`): the IR step that 0.6.7 uses on them often certifies in a few
+/// projections, and its first checkpoint or measured stall runs the valued
+/// lane instead. Binary designs declined only for storage and designs with
+/// absorbed slopes take the valued lane here.
 fn exact_lane(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    method: SeparationMethod,
+    flags: (bool, bool),
+) -> Result<Option<Option<Exact>>> {
+    match lane_result(generation, config, interrupt, method, flags)? {
+        Some(Some(Exact::Dual(dual))) => {
+            exact_physical_dual(generation, config, interrupt, method, dual).map(|e| Some(Some(e)))
+        }
+        other => Ok(other),
+    }
+}
+
+/// A lane's numerical physical dual made exact when it can be: zero rows
+/// keep its weights, positive rows are basis candidates, and the exact
+/// dyadic dual must pass the exact moment check. Otherwise the numerical
+/// dual goes on to the IR certificate unchanged.
+fn exact_physical_dual(
+    generation: &PreparedPpmlModelGeneration,
+    config: SeparationConfig,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+    method: SeparationMethod,
+    dual: Vec<f64>,
+) -> Result<Exact> {
+    let outcome = generation.outcome();
+    let rows = outcome.len();
+    if dual.len() != rows {
+        return Ok(Exact::Dual(dual));
+    }
+    let (mut boundary, mut weights, mut positive) = (Vec::new(), Vec::new(), Vec::new());
+    for (i, (&y, &d)) in outcome.iter().zip(&dual).enumerate() {
+        if y > 0. {
+            fallible_push(&mut positive, i)?;
+        } else if d.is_finite() && d > 0. {
+            fallible_push(&mut boundary, i)?;
+            fallible_push(&mut weights, d)?;
+        } else {
+            return Ok(Exact::Dual(dual));
+        }
+    }
+    if boundary.is_empty() {
+        return Ok(Exact::Dual(dual));
+    }
+    let raw = primal::RawRows::new(generation, true)?;
+    let width = raw.width;
+    let read = |i: usize, f: &mut dyn FnMut(usize, f64)| raw.terms(i, &mut *f);
+    let mut admission = primal::SparseProofAdmission::new_with_initial(
+        generation,
+        method,
+        config,
+        config.simplex_max_tableau_cells,
+    );
+    let stage = CompactWork::scaled(rows, raw.sparse_row_visits(), width).stage;
+    let mut poll = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
+    let mut admit = |words: usize| admission.admit(words);
+    let sets = (&boundary[..], &weights[..], &positive[..]);
+    let built = exact_dyadic_dual(&read, width, sets, width, stage, &mut admit, &mut poll)?;
+    let certified = match &built {
+        Ok(exact) => stable::certify_exact_dual(generation, exact)?,
+        Err(_) => false,
+    };
+    if crate::diagnostics::solver_trace_enabled() {
+        let reason = built.as_ref().err().copied().unwrap_or("formed");
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=exact_physical_dual|generation={}|boundary={}|reason={reason}|certified={}",
+            generation.generation(),
+            boundary.len(),
+            u8::from(certified)
+        );
+    }
+    let low = weights.iter().copied().fold(f64::INFINITY, f64::min);
+    let high = weights.iter().copied().fold(0., f64::max);
+    let terminal = certified
+        .then(|| {
+            exact_dual_terminal(
+                boundary.len(),
+                width,
+                high / low,
+                config.certificate_tolerance,
+            )
+        })
+        .flatten();
+    Ok(terminal.map_or(Exact::Dual(dual), Exact::Binary))
+}
+
+fn fallible_push<T>(list: &mut Vec<T>, value: T) -> Result<()> {
+    list.try_reserve(1)
+        .map_err(|_| allocation("unable to reserve exact physical dual rows"))?;
+    list.push(value);
+    Ok(())
+}
+
+fn lane_result(
     generation: &PreparedPpmlModelGeneration,
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
@@ -227,7 +322,13 @@ fn exact_lane(
 ) -> Result<Option<Option<Exact>>> {
     let valued_values = if intercept_only {
         match prepared_streamed_compact(generation, config, interrupt, method)? {
-            Ok(model) => {
+            // Storage refused the binary bank: the valued lane's revised
+            // phase I needs no bank.
+            Ok((None, true)) => {
+                trace_decline(generation, "binary_storage");
+                false
+            }
+            Ok((model, _)) => {
                 return Ok(Some(model.map(|model| match model {
                     CompactModel::NumericalDual { dual } => Exact::Dual(dual),
                     CompactModel::NumericalDirection {
@@ -243,8 +344,10 @@ fn exact_lane(
             }
         }
     } else {
+        // Absorbed slopes: IR's dual certificate needs the local span audit,
+        // so the valued lane and its exact dual go first.
         trace_decline(generation, "absorbed_slopes");
-        true
+        false
     };
     if defer_values && valued_values {
         trace_decline(generation, "valued_after_ir_stall");
@@ -289,12 +392,19 @@ fn valued_lane(
     };
     let mut pivots = 0;
     let mut poll = || interrupt(PpmlInterruptPoint::SeparationSimplexPivot);
-    let mut verify = |coefficients: &[i64]| primal::exact_ray(generation, coefficients);
+    let mut ray = |coefficients: &[i64]| primal::exact_ray(generation, coefficients);
+    let mut wide = |ray: &WideRay| primal::exact_wide_ray(generation, ray);
+    let mut dual = |weights: &ExactDual| stable::certify_exact_dual(generation, weights);
+    let mut verifiers = Verifiers {
+        ray: &mut ray,
+        wide: &mut wide,
+        dual: &mut dual,
+    };
     let model = search.run(
         &mut pivots,
         &mut poll,
         &mut |needed| admission.admit(needed).then(|| admission.words()),
-        &mut verify,
+        &mut verifiers,
     )?;
     let result = match model {
         Some(ValuedModel::Direction {
@@ -307,10 +417,15 @@ fn valued_lane(
             coefficients,
             iterations,
         }) => Some(Exact::FloatRay(coefficients, iterations)),
+        Some(ValuedModel::Terminal(model)) => Some(Exact::Binary(model)),
+        Some(ValuedModel::WideDirection { ray, iterations }) => {
+            reconcile::wide_ray(generation, ray, iterations.max(1), method, config)?.map(Exact::Ray)
+        }
         None => None,
     };
     if crate::diagnostics::solver_trace_enabled() {
         let outcome = match &result {
+            Some(Exact::Binary(_)) => "terminal",
             Some(Exact::Ray(_)) => "direction",
             Some(Exact::Dual(_)) => "numerical_dual",
             Some(Exact::FloatRay(..)) => "numerical_direction",
@@ -331,7 +446,7 @@ fn prepared_streamed_compact(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     method: SeparationMethod,
-) -> Result<std::result::Result<Option<CompactModel>, &'static str>> {
+) -> Result<std::result::Result<(Option<CompactModel>, bool), &'static str>> {
     let rows = generation.outcome().len();
     let raw = primal::RawRows::new(generation, true)?;
     let Some(blocks) = raw.intercept_blocks()? else {
@@ -354,7 +469,7 @@ fn prepared_streamed_compact(
         .saturating_add(metadata);
     if !admission.admit(design_cells) {
         trace_streamed_compact(rows, columns, "design_memory", None, 0);
-        return Ok(Ok(None));
+        return Ok(Ok((None, true)));
     }
     let mut effects = Vec::new();
     effects
@@ -386,6 +501,7 @@ fn prepared_streamed_compact(
     let limit = admission.words().saturating_sub(metadata);
     let mut pivots = 0;
     let outcome = generation.outcome();
+    let mut refused = false;
     let compact = compact_model_scaled(
         outcome,
         &design,
@@ -395,7 +511,9 @@ fn prepared_streamed_compact(
         &mut poll,
         &mut |required| {
             let total = base.checked_add(required)?;
-            admission.admit(total).then(|| admission.words() - base)
+            let admitted = admission.admit(total);
+            refused |= !admitted;
+            admitted.then(|| admission.words() - base)
         },
     )?;
     let branch = match &compact {
@@ -406,7 +524,7 @@ fn prepared_streamed_compact(
         None => "unresolved",
     };
     trace_streamed_compact(rows, columns, branch, Some(work), pivots);
-    Ok(Ok(compact))
+    Ok(Ok((compact, refused)))
 }
 
 fn trace_streamed_compact(

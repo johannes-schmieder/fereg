@@ -11,9 +11,11 @@ mod compact_model;
 mod compact_tableau;
 mod exact_terminal;
 pub(crate) use compact_model::{
-    compact_model, compact_model_scaled, BinaryDesign, CompactInput, CompactModel, CompactWork,
-    StreamedEffect, ValuedDesign, ValuedModel, ValuedSearch,
+    compact_model, compact_model_scaled, Big, BinaryDesign, CompactInput, CompactModel,
+    CompactWork, ExactDual, StreamedEffect, ValuedDesign, ValuedModel, ValuedSearch, Verifiers,
+    WideRay,
 };
+pub(crate) use compact_model::{exact_dual_terminal, exact_dyadic_dual};
 pub(crate) use exact_terminal::raw_positive_dual;
 mod nullspace;
 mod tableau;
@@ -447,7 +449,7 @@ fn verify_indexed_farkas_certificate(
     ))
 }
 
-fn farkas_residual_certificate(
+pub(super) fn farkas_residual_certificate(
     boundary: usize,
     nullity: usize,
     scale: f64,

@@ -568,7 +568,10 @@ mod stable;
 mod stable_alias;
 mod stable_local;
 mod streamed;
-use crate::ppml_separation::{ValuedDesign, ValuedModel, ValuedSearch};
+use crate::ppml_separation::{
+    exact_dual_terminal, exact_dyadic_dual, ExactDual, ValuedDesign, ValuedModel, ValuedSearch,
+    Verifiers, WideRay,
+};
 use streamed::{bind_compact_result, compact_raw_reader, streamed_switch, ExactSwitch, IrHint};
 mod trace;
 
@@ -4293,13 +4296,20 @@ fn certify_numerical_proposal(
     linear: PreparedOlsFitConfig,
     defer_many_fe_fallback: bool,
 ) -> Result<SeparationCertificate> {
-    if let Some(primal::Witness::Sparse(coefficients)) = &proposal.exact_primal {
-        if !reconcile::admits_compact_replay(
-            generation,
-            proposal.method,
-            config,
-            coefficients.capacity(),
-        ) {
+    let replay = match &proposal.exact_primal {
+        Some(primal::Witness::Sparse(coefficients)) => Some(coefficients.capacity()),
+        // The wide replay holds a u32 slot per raw coordinate and its terms.
+        Some(primal::Witness::Wide(ray)) => Some(
+            ray.values
+                .iter()
+                .map(|v| v.limbs().len() + 3)
+                .sum::<usize>()
+                .saturating_add(primal::RawRows::new(generation, true)?.width.div_ceil(2)),
+        ),
+        _ => None,
+    };
+    if let Some(capacity) = replay {
+        if !reconcile::admits_compact_replay(generation, proposal.method, config, capacity) {
             return Err(allocation(
                 "unable to admit sparse separation certificate replay",
             ));

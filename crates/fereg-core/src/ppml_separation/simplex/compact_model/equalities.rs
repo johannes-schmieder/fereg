@@ -212,6 +212,11 @@ pub(super) fn reduce(
 }
 
 impl Reduced {
+    /// Rank of the equality rows.
+    pub(super) fn rank(&self) -> usize {
+        self.echelon.rank()
+    }
+
     /// Complete reduced Farkas weights on every boundary row: the residual
     /// boundary total lies in the span of the equality rows, and each
     /// independent equality takes its coefficient as extra mass on the pair

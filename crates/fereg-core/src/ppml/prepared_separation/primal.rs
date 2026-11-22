@@ -11,6 +11,7 @@ mod factor_graph;
 mod fe_pair;
 mod pair;
 mod sparse;
+mod wide;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Column {
@@ -46,6 +47,8 @@ pub(super) enum Witness {
     Saturated {
         absorbed: bool,
     },
+    /// Raw-order coefficients beyond 64 bits from the exact dyadic lift.
+    Wide(crate::ppml_separation::WideRay),
 }
 
 struct Block<'a> {
@@ -287,6 +290,25 @@ pub(super) fn exact_ray(model: &PreparedPpmlModelGeneration, coefficients: &[i64
     Ok(valid && strict)
 }
 
+/// Exact replay of a wide integer ray: zero on positive rows, nonpositive on
+/// zero rows and strictly negative on at least one.
+pub(super) fn exact_wide_ray(
+    model: &PreparedPpmlModelGeneration,
+    ray: &crate::ppml_separation::WideRay,
+) -> Result<bool> {
+    let outcome = model.outcome();
+    let mut strict = false;
+    let valid = wide::visit(model, ray, |r, sign, _| {
+        strict |= sign == Ordering::Less;
+        if outcome[r] > 0. {
+            sign == Ordering::Equal
+        } else {
+            sign != Ordering::Greater
+        }
+    })?;
+    Ok(valid && strict)
+}
+
 fn visit(
     model: &PreparedPpmlModelGeneration,
     witness: &Witness,
@@ -294,6 +316,7 @@ fn visit(
 ) -> Result<bool> {
     match witness {
         Witness::Sparse(coefficients) => sparse::visit(model, coefficients, inspect),
+        Witness::Wide(ray) => wide::visit(model, ray, inspect),
         Witness::FactorPair(pair) => pair.visit(model, inspect),
         Witness::Factor(f) => f.visit(model, inspect),
         Witness::PairOffsets {

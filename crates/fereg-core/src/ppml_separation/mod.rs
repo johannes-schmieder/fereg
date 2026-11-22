@@ -10,10 +10,11 @@ mod prepared_coordinator;
 mod simplex;
 pub(crate) use simplex::{
     compact_model, compact_model_scaled, full_positive_rank_proposal, model_simplex_interruptible,
-    no_separation_certificate, raw_positive_dual, simplex_workspace_peak_cells, BinaryDesign,
-    CompactInput, CompactModel, CompactWork, StreamedEffect, ValuedDesign, ValuedModel,
-    ValuedSearch,
+    no_separation_certificate, raw_positive_dual, simplex_workspace_peak_cells, Big, BinaryDesign,
+    CompactInput, CompactModel, CompactWork, ExactDual, StreamedEffect, ValuedDesign, ValuedModel,
+    ValuedSearch, Verifiers, WideRay,
 };
+pub(crate) use simplex::{exact_dual_terminal, exact_dyadic_dual};
 
 pub(crate) use prepared_coordinator::{
     PreparedSeparationCascade, PreparedSeparationCoordinator, PreparedSeparationRebuilder,

@@ -32,13 +32,16 @@ pub(crate) enum CompactModel {
 }
 
 mod equalities;
+mod exact_dyadic;
+mod revised;
+pub(crate) use exact_dyadic::{exact_dual as exact_dyadic_dual, Big, ExactDual, WideRay};
 mod grouped;
 pub(crate) use grouped::CompactInput;
 mod positive_rows;
 mod projection;
 mod sparse_echelon;
 mod valued;
-pub(crate) use valued::{ValuedDesign, ValuedModel, ValuedSearch};
+pub(crate) use valued::{ValuedDesign, ValuedModel, ValuedSearch, Verifiers};
 
 const MAX_WORK: usize = 128 << 20;
 /// Exact dense certificates in a scaled search may spend this multiple of the
@@ -1327,6 +1330,24 @@ fn positive_nullspace(
     )?;
     *positive = pivots;
     Ok(Some(basis))
+}
+
+/// The terminal of an exact dyadic dual found for a lane's numerical
+/// physical dual: the exact moment check has already passed, so the Farkas
+/// residual is zero; the scale is the boundary weights' spread.
+pub(crate) fn exact_dual_terminal(
+    boundary: usize,
+    nullity: usize,
+    spread: f64,
+    tolerance: f64,
+) -> Option<CompactModel> {
+    let certificate =
+        super::farkas_residual_certificate(boundary, nullity, spread, -1., 0., 0., tolerance)?;
+    Some(terminal(
+        certificate,
+        0,
+        "model simplex phase-I infeasibility passed an independent Farkas certificate",
+    ))
 }
 
 fn terminal(

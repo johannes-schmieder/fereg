@@ -711,12 +711,53 @@ fn valued_lane_separates_the_hidden_cell_beside_a_continuous_regressor() {
             }
             Ok(strict)
         };
+        // An independent exact check of a proposed integer dual: every zero
+        // row positive and every coordinate's moment exactly zero.
+        let mut exact = |dual: &ExactDual| -> Result<bool> {
+            let mut weight = vec![None; n];
+            for &(row, k) in &dual.integers {
+                weight[row] = Some(dual.scale.mul_i64(k)?);
+            }
+            for (row, d) in &dual.basis {
+                weight[*row] = Some(d.clone());
+            }
+            for (i, &y) in cell.outcome.iter().enumerate() {
+                if y == 0. && weight[i].as_ref().is_none_or(|d| d.signum() <= 0) {
+                    return Ok(false);
+                }
+            }
+            for column in 0..width {
+                let mut sum = Big::zero();
+                for (i, d) in weight.iter().enumerate() {
+                    let Some(d) = d else { continue };
+                    let mut value = 0.;
+                    read(i, &mut |j, v| {
+                        if j == column {
+                            value += v;
+                        }
+                    })?;
+                    if value != 0. {
+                        // Scale every value by 2^1100 to integers exactly.
+                        let (m, e) = super::exact_dyadic::dyadic_for_tests(value);
+                        sum = sum.add(&d.mul_i64(m)?.shl((e + 1100) as u32)?)?;
+                    }
+                }
+                if !sum.is_zero() {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
+        };
         let result = search
             .run(
                 &mut 0,
                 &mut || Ok(()),
                 &mut |needed| Some(needed),
-                &mut verify,
+                &mut Verifiers {
+                    ray: &mut verify,
+                    wide: &mut |_| Ok(false),
+                    dual: &mut exact,
+                },
             )
             .unwrap();
         match result {
@@ -724,13 +765,12 @@ fn valued_lane_separates_the_hidden_cell_beside_a_continuous_regressor() {
                 assert!(!close);
                 assert!(verify(&coefficients).unwrap());
             }
-            Some(ValuedModel::NumericalDual { dual }) => {
-                assert!(close);
-                for (i, &y) in cell.outcome.iter().enumerate() {
-                    if y == 0. {
-                        assert!(dual[i] >= 1.);
-                    }
-                }
+            Some(ValuedModel::Terminal(_)) => assert!(close, "only the closed cell has no ray"),
+            Some(ValuedModel::WideDirection { .. }) => {
+                panic!("the hidden cell's ray has a small integer lift")
+            }
+            Some(ValuedModel::NumericalDual { .. }) => {
+                panic!("the closed cell has an exact rational dual")
             }
             Some(ValuedModel::NumericalDirection { .. }) => {
                 panic!("the hidden cell's ray has an exact integer lift")
@@ -755,7 +795,11 @@ fn valued_lane_separates_the_hidden_cell_beside_a_continuous_regressor() {
                 &mut 0,
                 &mut || Ok(()),
                 &mut |needed| Some(needed),
-                &mut |_| Ok(false),
+                &mut Verifiers {
+                    ray: &mut |_| Ok(false),
+                    wide: &mut |_| Ok(false),
+                    dual: &mut |_| Ok(false),
+                },
             )
             .unwrap();
         let Some(ValuedModel::NumericalDirection { coefficients, .. }) = refused else {

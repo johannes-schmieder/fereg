@@ -90,6 +90,35 @@ pub(super) const DIAGNOSTIC_RECORD_BYTES: u128 = 288;
 pub(super) struct LiveMemoryPlan {
     current: std::sync::Mutex<PpmlMemoryPlan>,
     report_capacity: std::sync::atomic::AtomicUsize,
+    /// The largest sparse separation request the plan refused.
+    refused: std::sync::Mutex<Option<SparseRefusal>>,
+}
+
+/// A sparse separation request the live plan could not admit: the request,
+/// the bytes free for it and what holds the rest of the usable budget.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct SparseRefusal {
+    pub(super) phase: PpmlPhase,
+    pub(super) required_bytes: u128,
+    pub(super) free_bytes: u128,
+    pub(super) held_bytes: u128,
+    pub(super) usable_bytes: u128,
+    pub(super) available_bytes: Option<u128>,
+}
+
+impl SparseRefusal {
+    /// A user-facing account of the refusal and the memory that would admit it.
+    pub(super) fn describe(&self) -> String {
+        let need = self.held_bytes.saturating_add(self.required_bytes);
+        let limit = crate::memory::available_for_usable(need);
+        let available = self
+            .available_bytes
+            .map_or_else(|| "unknown".to_owned(), |v| format!("{v} bytes"));
+        format!(
+            "the exact separation lanes were refused a {:?} workspace of {} bytes: {} bytes were free of {} usable bytes ({} held by the fit; available memory {available}); allow at least {limit} bytes of memory (FEREG_MEMORY_LIMIT_BYTES or free system memory) for the exact lanes",
+            self.phase, self.required_bytes, self.free_bytes, self.usable_bytes, self.held_bytes,
+        )
+    }
 }
 
 impl PartialEq for LiveMemoryPlan {
@@ -109,6 +138,7 @@ impl LiveMemoryPlan {
         Self {
             current: std::sync::Mutex::new(plan),
             report_capacity: std::sync::atomic::AtomicUsize::new(0),
+            refused: std::sync::Mutex::new(None),
         }
     }
 
@@ -140,7 +170,21 @@ impl LiveMemoryPlan {
                 plan.selected_inventory()
                     .separation_method_report_record_bytes,
             );
-        plan.admit_sparse(phase, required_extra, preferred_extra, report_bytes)
+        let granted = plan.admit_sparse(phase, required_extra, preferred_extra, report_bytes);
+        if granted.is_none() {
+            if let Some(refusal) = plan.sparse_refusal(phase, required_extra, report_bytes) {
+                let mut slot = self.refused.lock().expect("PPML sparse refusal");
+                if slot.is_none_or(|r| r.required_bytes < refusal.required_bytes) {
+                    *slot = Some(refusal);
+                }
+            }
+        }
+        granted
+    }
+
+    /// The largest sparse separation request refused so far.
+    pub(super) fn refusal(&self) -> Option<SparseRefusal> {
+        *self.refused.lock().expect("PPML sparse refusal")
     }
 }
 
@@ -846,17 +890,27 @@ impl PpmlMemoryPlan {
         const_max(simplex, const_max(ir, mu))
     }
 
-    /// Admit only the extension to an already registered sparse workspace.
-    /// The phase base includes the complete generation-zero detector model,
-    /// the embedding's live bytes and the already admitted optional detector
-    /// projection. Report capacity beyond the initial bank is live as well.
-    fn admit_sparse(
-        &mut self,
+    /// The account of a refused sparse request for the final diagnosis.
+    fn sparse_refusal(
+        &self,
         phase: PpmlPhase,
         required_words: usize,
-        preferred_words: usize,
         extra_report_bytes: u128,
-    ) -> Option<usize> {
+    ) -> Option<SparseRefusal> {
+        let usable = self.usable_bytes?;
+        let (_, base) = self.sparse_base(phase, extra_report_bytes)?;
+        Some(SparseRefusal {
+            phase,
+            required_bytes: (required_words as u128).saturating_mul(size_of::<f64>() as u128),
+            free_bytes: usable.saturating_sub(base),
+            held_bytes: base,
+            usable_bytes: usable,
+            available_bytes: self.available_bytes,
+        })
+    }
+
+    /// The phase's peak index and the bytes live before its sparse arena.
+    fn sparse_base(&self, phase: PpmlPhase, extra_report_bytes: u128) -> Option<(usize, u128)> {
         let (index, phase_base) = match phase {
             PpmlPhase::SeparationSimplex => (0, self.selected_inventory().separation_peak_bytes),
             PpmlPhase::SeparationIr => (1, self.selected_inventory().separation_peak_bytes),
@@ -875,10 +929,25 @@ impl PpmlMemoryPlan {
             }
             _ => return None,
         };
-        let usable = self.usable_bytes?;
         let base = phase_base
             .checked_add(self.separation_projection_bytes)?
             .checked_add(extra_report_bytes)?;
+        Some((index, base))
+    }
+
+    /// Admit only the extension to an already registered sparse workspace.
+    /// The phase base includes the complete generation-zero detector model,
+    /// the embedding's live bytes and the already admitted optional detector
+    /// projection. Report capacity beyond the initial bank is live as well.
+    fn admit_sparse(
+        &mut self,
+        phase: PpmlPhase,
+        required_words: usize,
+        preferred_words: usize,
+        extra_report_bytes: u128,
+    ) -> Option<usize> {
+        let usable = self.usable_bytes?;
+        let (index, base) = self.sparse_base(phase, extra_report_bytes)?;
         let headroom = usable.checked_sub(base)? / size_of::<f64>() as u128;
         let granted = (preferred_words as u128).min(headroom);
         if required_words > preferred_words
@@ -1180,12 +1249,16 @@ pub(crate) fn plan_ppml_memory_with_probe(
                 || "unavailable".to_owned(),
                 |value| format!("{value} bytes"),
             );
+            let smallest = estimate.fast.peak_bytes.min(estimate.low.peak_bytes);
+            let usable =
+                usable_bytes.map_or_else(|| "unknown".to_owned(), |value| format!("{value} bytes"));
             return Err(allocation(format!(
-                "feppml memory preflight failed before workspace allocation: fast={} bytes, low={} bytes, available={}, safety_headroom={} bytes",
+                "feppml memory preflight failed before workspace allocation: fast={} bytes, low={} bytes, available={}, safety_headroom={} bytes; the smaller route needs {smallest} bytes of workspace and {usable} are usable; allow at least {} bytes of memory (FEREG_MEMORY_LIMIT_BYTES or free system memory) or reduce the model",
                 estimate.fast.peak_bytes,
                 estimate.low.peak_bytes,
                 available,
                 safety_headroom_bytes,
+                crate::memory::available_for_usable(smallest),
             )));
         }
     };

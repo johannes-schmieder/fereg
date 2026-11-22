@@ -91,6 +91,167 @@ fn zero_moment(
     Ok(sum == 0.)
 }
 
+/// The exact rational counterpart of `certify`: weights of any size on the
+/// listed rows (zero elsewhere), every zero-outcome row strictly positive
+/// and every original model column's moment exactly zero. Like `certify`,
+/// no rank or conditioning assumption enters.
+pub(super) fn certify_exact(
+    generation: &PreparedPpmlModelGeneration,
+    dual: &crate::ppml_separation::ExactDual,
+) -> Result<bool> {
+    let outcome = generation.outcome();
+    let listed = dual.integers.len() + dual.basis.len();
+    if dual.scale.signum() <= 0 || listed >= u32::MAX as usize {
+        return Ok(false);
+    }
+    let mut index = fallible_filled(
+        outcome.len(),
+        u32::MAX,
+        "unable to reserve exact dual index",
+    )?;
+    let explicit = dual.basis.iter().map(|(row, _)| *row);
+    let rows = dual.integers.iter().map(|&(row, _)| row).chain(explicit);
+    for (slot, row) in rows.enumerate() {
+        if row >= outcome.len() || index[row] != u32::MAX {
+            return Ok(false);
+        }
+        index[row] = slot as u32;
+    }
+    let split = dual.integers.len();
+    for (row, &y) in outcome.iter().enumerate() {
+        let slot = index[row] as usize;
+        let positive = match index[row] {
+            u32::MAX => false,
+            _ if slot < split => dual.integers[slot].1 >= 1,
+            _ => dual.basis[slot - split].1.signum() > 0,
+        };
+        if y == 0. && !positive {
+            return Ok(false);
+        }
+    }
+    let fit = generation.fit_view();
+    let all = || {
+        dual.integers
+            .iter()
+            .map(|&(row, _)| row)
+            .chain(dual.basis.iter().map(|(row, _)| *row))
+    };
+    let moment = |rows: &mut dyn Iterator<Item = usize>, value: &dyn Fn(usize) -> Result<f64>| {
+        exact_zero_moment(rows, dual, &index, value)
+    };
+    if fit.fit_structural_intercept() && !moment(&mut all(), &|_| Ok(1.))? {
+        return Ok(false);
+    }
+    for column in 0..fit.model().columns.len() {
+        crate::interrupt::checkpoint()?;
+        if !moment(&mut all(), &|row| fit.column_value(column, row))? {
+            return Ok(false);
+        }
+    }
+    let categorical = generation.prepared().as_ref();
+    let topology = DetectorTopology::new(generation.prepared())?;
+    for (effect, spec) in categorical.effect_specs().iter().enumerate() {
+        let source = topology.sources[topology.effect_to_source[effect]];
+        for level in 0..source.n_levels() {
+            crate::interrupt::checkpoint()?;
+            let members = source.checked_members(level)?;
+            let listed = || {
+                members
+                    .iter()
+                    .copied()
+                    .filter(|&row| index[row] != u32::MAX)
+            };
+            if spec.intercept && !moment(&mut listed(), &|_| Ok(1.))? {
+                return Ok(false);
+            }
+            for slope in &spec.slopes {
+                let values = categorical.numeric_source_values(slope.source)?;
+                if !moment(&mut listed(), &|row| Ok(values[row]))? {
+                    return Ok(false);
+                }
+            }
+        }
+    }
+    Ok(true)
+}
+
+/// The exact sum of `weight(row) * value(row)` is zero. Each binary64 value
+/// is `m 2^e`; the integer-weight and explicit-weight parts are each aligned
+/// at their smallest exponent and added exactly.
+fn exact_zero_moment(
+    rows: &mut dyn Iterator<Item = usize>,
+    dual: &crate::ppml_separation::ExactDual,
+    index: &[u32],
+    value: &dyn Fn(usize) -> Result<f64>,
+) -> Result<bool> {
+    use crate::ppml_separation::Big;
+    let split = dual.integers.len();
+    let mut terms: Vec<(usize, i64, i32)> = Vec::new();
+    for (position, row) in rows.enumerate() {
+        crate::interrupt::row_checkpoint(position)?;
+        let v = value(row)?;
+        if !v.is_finite() {
+            return Ok(false);
+        }
+        if v != 0. {
+            terms
+                .try_reserve(1)
+                .map_err(|_| crate::error::allocation("unable to reserve exact moment terms"))?;
+            let (m, e) = dyadic_parts(v);
+            terms.push((index[row] as usize, m, e));
+        }
+    }
+    let low = |explicit: bool| {
+        terms
+            .iter()
+            .filter(|&&(slot, _, _)| (slot >= split) == explicit)
+            .map(|&(_, _, e)| e)
+            .min()
+    };
+    let (low_integer, low_explicit) = (low(false), low(true));
+    let (mut integer, mut explicit) = (Big::zero(), Big::zero());
+    for &(slot, m, e) in &terms {
+        if slot < split {
+            let k = i128::from(dual.integers[slot].1) * i128::from(m);
+            let shift = (e - low_integer.unwrap_or(e)) as u32;
+            integer = integer.add(&Big::from_i128(k)?.shl(shift)?)?;
+        } else {
+            let shift = (e - low_explicit.unwrap_or(e)) as u32;
+            explicit = explicit.add(&dual.basis[slot - split].1.mul_i64(m)?.shl(shift)?)?;
+        }
+    }
+    let integer = dual.scale.mul(&integer)?;
+    let total = match (low_integer, low_explicit) {
+        (Some(a), Some(b)) => {
+            let low = a.min(b);
+            integer
+                .shl((a - low) as u32)?
+                .add(&explicit.shl((b - low) as u32)?)?
+        }
+        (Some(_), None) => integer,
+        (None, Some(_)) => explicit,
+        (None, None) => return Ok(true),
+    };
+    Ok(total.is_zero())
+}
+
+/// `v = m 2^e` with odd `m`, for finite nonzero `v`.
+fn dyadic_parts(v: f64) -> (i64, i32) {
+    let bits = v.to_bits();
+    let exponent = ((bits >> 52) & 0x7ff) as i32;
+    let fraction = bits & 0x000f_ffff_ffff_ffff;
+    let (mut m, mut e) = if exponent == 0 {
+        (fraction, -1074)
+    } else {
+        (fraction | (1u64 << 52), exponent - 1075)
+    };
+    let shift = m.trailing_zeros();
+    m >>= shift;
+    e += shift as i32;
+    let m = m as i64;
+    (if bits >> 63 == 1 { -m } else { m }, e)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
